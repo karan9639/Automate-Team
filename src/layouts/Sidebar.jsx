@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
-import { ROUTES } from "../../constants/routes";
-import AutomateLogo from "../common/AutomateLogo";
+import { ROUTES } from "../constants/routes";
+import AutomateLogo from "../components/AutomateLogo";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -18,12 +18,16 @@ import {
   Gift,
   ChevronRight,
   ChevronDown,
-  LogOut,
   Menu,
   X,
 } from "lucide-react";
 
-const Sidebar = ({ isOpen, isMobile, isTablet, toggleSidebar }) => {
+const Sidebar = ({
+  isOpen = true,
+  isMobile = false,
+  isTablet = false,
+  toggleSidebar = () => {},
+}) => {
   const location = useLocation();
   const sidebarRef = useRef(null);
   const [expandedGroups, setExpandedGroups] = useState({
@@ -34,8 +38,9 @@ const Sidebar = ({ isOpen, isMobile, isTablet, toggleSidebar }) => {
     tools: false,
   });
 
-  // Determine if sidebar is in compact mode
-  const isCompact = isTablet || (!isMobile && !isOpen);
+  // Determine if sidebar is in compact mode - now only for mobile when closed
+  // No longer using compact mode for tablet screens
+  const isCompact = isMobile && !isOpen;
 
   // Update expanded groups based on current route
   useEffect(() => {
@@ -244,12 +249,17 @@ const Sidebar = ({ isOpen, isMobile, isTablet, toggleSidebar }) => {
     }
   };
 
-  // Sidebar animation variants
+  // Sidebar animation variants - now using full width for tablet
   const sidebarVariants = {
-    open: { x: 0, width: isMobile ? "85%" : isTablet ? "4rem" : "16rem" },
+    open: {
+      x: 0,
+      width: isMobile ? "85%" : "16rem", // Always use full width for tablet and desktop
+      transition: { type: "spring", stiffness: 400, damping: 30 },
+    },
     closed: {
       x: "-100%",
-      width: isMobile ? "85%" : isTablet ? "4rem" : "16rem",
+      width: isMobile ? "85%" : "16rem", // Always use full width for tablet and desktop
+      transition: { type: "spring", stiffness: 400, damping: 30 },
     },
   };
 
@@ -279,16 +289,10 @@ const Sidebar = ({ isOpen, isMobile, isTablet, toggleSidebar }) => {
       <motion.div
         ref={sidebarRef}
         className={`fixed top-0 left-0 z-40 h-screen bg-gray-900 shadow-lg overflow-hidden
-                   ${isMobile ? "max-w-[85%]" : isTablet ? "w-16" : "w-64"}`}
+                   ${isMobile ? "max-w-[85%]" : "w-64"}`} // Always use full width for tablet
         initial="closed"
         animate={isOpen ? "open" : "closed"}
         variants={sidebarVariants}
-        transition={{
-          type: "spring",
-          stiffness: 400,
-          damping: 30,
-          duration: 0.2,
-        }}
       >
         {/* Logo header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
@@ -378,20 +382,6 @@ const Sidebar = ({ isOpen, isMobile, isTablet, toggleSidebar }) => {
               </AnimatePresence>
             </div>
           ))}
-
-          {/* Logout button at bottom */}
-          <div className="mt-auto pt-4 border-t border-gray-800 mx-2">
-            <button
-              className={`flex items-center ${
-                isCompact ? "justify-center" : "w-full"
-              } px-3 py-2 text-sm text-red-400 hover:text-red-300 rounded-md hover:bg-gray-800 transition-colors`}
-              onClick={() => console.log("Logout clicked")}
-              title={isCompact ? "Logout" : ""}
-            >
-              <LogOut size={18} className={isCompact ? "mx-auto" : "mr-2"} />
-              {!isCompact && <span>Logout</span>}
-            </button>
-          </div>
         </div>
       </motion.div>
     </>
@@ -399,10 +389,10 @@ const Sidebar = ({ isOpen, isMobile, isTablet, toggleSidebar }) => {
 };
 
 Sidebar.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  isMobile: PropTypes.bool.isRequired,
-  isTablet: PropTypes.bool.isRequired,
-  toggleSidebar: PropTypes.func.isRequired,
+  isOpen: PropTypes.bool,
+  isMobile: PropTypes.bool,
+  isTablet: PropTypes.bool,
+  toggleSidebar: PropTypes.func,
 };
 
 export default Sidebar;

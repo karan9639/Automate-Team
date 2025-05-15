@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Calendar, Download, Search, Filter, ChevronDown } from "lucide-react"
+import { useState } from "react";
+import { Calendar, Download, Search, Filter, ChevronDown } from "lucide-react";
 
 // Mock data for team attendance
 const teamAttendance = [
@@ -55,31 +55,33 @@ const teamAttendance = [
     workHours: "191h 10m",
     status: "Present",
   },
-]
+];
 
 // Attendance table component
 const AttendanceTable = ({ data }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "Present":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "Absent":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       case "Late":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "On Leave":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Employee
+            </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Department
             </th>
@@ -113,19 +115,31 @@ const AttendanceTable = ({ data }) => {
                     />
                   </div>
                   <div className="ml-4">
-                    <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {employee.name}
+                    </div>
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.department}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.presentDays}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.absentDays}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.lateDays}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.workHours}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {employee.department}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {employee.presentDays}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {employee.absentDays}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {employee.lateDays}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {employee.workHours}
+              </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span
                   className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                    employee.status,
+                    employee.status
                   )}`}
                 >
                   {employee.status}
@@ -136,22 +150,22 @@ const AttendanceTable = ({ data }) => {
         </tbody>
       </table>
     </div>
-  )
-}
+  );
+};
 
 // Main component
 const AllAttendance = () => {
-  const [dateRange, setDateRange] = useState("This Month")
-  const [filterOpen, setFilterOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [department, setDepartment] = useState("All")
+  const [dateRange, setDateRange] = useState("This Month");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [department, setDepartment] = useState("All");
 
   // Filter data based on search term and department
   const filteredData = teamAttendance.filter(
     (employee) =>
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (department === "All" || employee.department === department),
-  )
+      (department === "All" || employee.department === department)
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -172,13 +186,19 @@ const AllAttendance = () => {
             {filterOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
                 <div className="py-1">
-                  {["Today", "This Week", "This Month", "Last Month", "Custom Range"].map((range) => (
+                  {[
+                    "Today",
+                    "This Week",
+                    "This Month",
+                    "Last Month",
+                    "Custom Range",
+                  ].map((range) => (
                     <button
                       key={range}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => {
-                        setDateRange(range)
-                        setFilterOpen(false)
+                        setDateRange(range);
+                        setFilterOpen(false);
                       }}
                     >
                       {range}
@@ -235,11 +255,13 @@ const AllAttendance = () => {
 
       {filteredData.length === 0 && (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">No attendance records found matching your criteria.</p>
+          <p className="text-gray-500">
+            No attendance records found matching your criteria.
+          </p>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default AllAttendance
+export default AllAttendance;

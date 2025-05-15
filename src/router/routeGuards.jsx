@@ -1,10 +1,11 @@
 "use client";
 
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
 import PropTypes from "prop-types";
+import { useAuth } from "../contexts/AuthContext";
+import { ROUTES } from "../constants/routes";
 
-// Loading Component
+// Loading spinner component
 const LoadingSpinner = () => (
   <div className="flex h-screen items-center justify-center">
     <div className="text-center">
@@ -14,42 +15,55 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Protected route component
+// Protected route component - enhanced with better redirection
 export const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
+  // Show loading state while checking authentication
   if (loading) {
     return <LoadingSpinner />;
   }
 
+  // If not authenticated, redirect to login with return path
   if (!isAuthenticated) {
-    console.log("User not authenticated, redirecting to login");
-    // Pass the current location to the login page so we can redirect after login
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    console.log("Access to protected route denied - redirecting to login");
+    return (
+      <Navigate
+        to={ROUTES.AUTH.LOGIN}
+        state={{ from: location.pathname }}
+        replace
+      />
+    );
   }
 
+  // If authenticated, render the protected content
   return children;
-};
-
-ProtectedRoute.propTypes = {
-  children: PropTypes.node.isRequired,
 };
 
 // Auth route component (redirects to dashboard if authenticated)
 export const AuthRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
+  // Show loading state while checking authentication
   if (loading) {
     return <LoadingSpinner />;
   }
 
+  // If already authenticated, redirect to the intended destination or dashboard
   if (isAuthenticated) {
-    console.log("User already authenticated, redirecting to dashboard");
-    return <Navigate to="/dashboard" replace />;
+    const destination = location.state?.from || ROUTES.DASHBOARD;
+    console.log(`User already authenticated, redirecting to: ${destination}`);
+    return <Navigate to={destination} replace />;
   }
 
+  // If not authenticated, render the auth content (login/signup)
   return children;
+};
+
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 AuthRoute.propTypes = {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -14,14 +14,15 @@ import {
   Settings,
   ChevronDown,
 } from "lucide-react";
-import AutomateLogo from "../common/AutomateLogo";
+import AutomateLogo from "../components/AutomateLogo";
 import PropTypes from "prop-types";
+import { ROUTES } from "../constants/routes";
 
 const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
   // Close dropdowns when clicking outside
@@ -58,9 +59,51 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [searchOpen]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  // Enhanced logout function with proper redirection and state management
+  const handleLogout = async () => {
+    try {
+      // Close the dropdown first
+      setDropdownOpen(false);
+
+      // Call the logout function from auth context
+      await logout();
+
+      // Navigate to login page after successful logout
+      navigate(ROUTES.AUTH.LOGIN, { replace: true });
+
+      console.log("User successfully signed out and redirected to login page");
+    } catch (error) {
+      console.error("Error during sign-out:", error);
+      // Even if there's an error, try to navigate to login page
+      navigate(ROUTES.AUTH.LOGIN, { replace: true });
+    }
+  };
+
+  // Get user display name or first letter for avatar
+  const getUserInitial = () => {
+    if (currentUser?.name) {
+      return currentUser.name.charAt(0).toUpperCase();
+    }
+    if (currentUser?.email) {
+      return currentUser.email.charAt(0).toUpperCase();
+    }
+    return "U";
+  };
+
+  // Get user display name
+  const getUserName = () => {
+    if (currentUser?.name) {
+      return currentUser.name;
+    }
+    if (currentUser?.email) {
+      return currentUser.email.split("@")[0];
+    }
+    return "User";
+  };
+
+  // Get user role
+  const getUserRole = () => {
+    return currentUser?.role || "User";
   };
 
   return (
@@ -195,13 +238,11 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
             aria-haspopup="true"
           >
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-              {user?.name?.charAt(0) || "K"}
+              {getUserInitial()}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-white text-sm font-medium">
-                {user?.name || "Karan"}
-              </p>
-              <p className="text-gray-400 text-xs">{user?.role || "Admin"}</p>
+              <p className="text-white text-sm font-medium">{getUserName()}</p>
+              <p className="text-gray-400 text-xs">{getUserRole()}</p>
             </div>
             <ChevronDown size={16} className="text-gray-400 hidden md:block" />
           </button>
@@ -229,7 +270,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
-                    navigate("/settings");
+                    navigate(ROUTES.SETTINGS);
                   }}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
@@ -241,7 +282,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                   className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                 >
                   <LogOut size={16} className="mr-2" />
-                  Logout
+                  Sign out
                 </button>
               </motion.div>
             )}

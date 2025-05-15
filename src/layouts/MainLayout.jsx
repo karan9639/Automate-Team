@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../components/layout/Sidebar";
-import Topbar from "../components/layout/Topbar";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 
 /**
  * Main layout component that wraps all authenticated pages

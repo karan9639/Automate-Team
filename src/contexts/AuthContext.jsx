@@ -62,13 +62,20 @@ export const AuthProvider = ({ children }) => {
     checkUserAuth();
   }, []);
 
-  // Reset auth state helper
+  // Reset auth state helper - enhanced for better cleanup
   const resetAuthState = () => {
+    // Clear all auth-related localStorage items
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("token_expiry");
+
+    // Reset state
     setCurrentUser(null);
     setIsAuthenticated(false);
     setAuthError(null);
+
+    console.log("Auth state reset successfully");
   };
 
   // Login function
@@ -118,7 +125,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout function
+  // Enhanced logout function with better error handling and state management
   const logout = async () => {
     try {
       setLoading(true);
@@ -126,17 +133,20 @@ export const AuthProvider = ({ children }) => {
       // Try to use the API logout if available
       try {
         await apiLogout();
+        console.log("API logout successful");
       } catch (apiError) {
-        console.warn("API logout failed:", apiError);
+        console.warn("API logout failed, using fallback cleanup:", apiError);
       }
 
-      // Reset auth state
+      // Reset auth state regardless of API success
       resetAuthState();
-      console.log("Logout successful");
+
+      return true; // Indicate successful logout
     } catch (error) {
       console.error("Logout error:", error);
       // Still reset state even if API fails
       resetAuthState();
+      return false; // Indicate error during logout
     } finally {
       setLoading(false);
     }
