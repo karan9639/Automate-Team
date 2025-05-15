@@ -1,12 +1,4 @@
-/**
- * Application routes - centralized route definitions
- * All routes should be defined here and referenced elsewhere for consistency
- */
 export const ROUTES = {
-  // Root and fallback
-  ROOT: "/",
-  NOT_FOUND: "*",
-
   // Auth routes
   AUTH: {
     LOGIN: "/login",
@@ -14,10 +6,10 @@ export const ROUTES = {
     FORGOT_PASSWORD: "/forgot-password",
   },
 
-  // Main routes
+  // Main dashboard
   DASHBOARD: "/dashboard",
 
-  // Task routes
+  // Tasks routes
   TASKS: {
     MANAGEMENT: "/tasks",
     DIRECTORY: "/tasks/directory",
@@ -31,14 +23,14 @@ export const ROUTES = {
     SETTINGS: "/attendance/settings",
   },
 
-  // Leave routes
+  // Leaves routes
   LEAVES: {
     MY: "/leaves",
     ALL: "/leaves/all",
     APPROVALS: "/leaves/approvals",
   },
 
-  // Event routes
+  // Events routes
   EVENTS: {
     MAIN: "/events",
     HOLIDAYS: "/events/holidays",
@@ -49,10 +41,12 @@ export const ROUTES = {
     MY_TEAM: "/team",
   },
 
-  // Other routes
-  MOBILE_APP: "/mobile-app",
+  // Tools routes
   CHECKLIST: "/checklist",
   LINKS: "/links",
+  MOBILE_APP: "/mobile-app",
   REFER_EARN: "/refer-earn",
+
+  // Settings route
   SETTINGS: "/settings",
 };

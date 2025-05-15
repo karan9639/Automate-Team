@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Topbar from "../components/layout/Topbar";
-import AuthDebugger from "../components/debug/AuthDebugger";
 
 /**
  * Main layout component that wraps all authenticated pages
@@ -53,13 +52,12 @@ const MainLayout = () => {
       >
         <Topbar toggleSidebar={toggleSidebar} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {/* This renders the matched route component */}
           <Outlet />
         </main>
       </div>
 
       {/* Debug Components - only show in development */}
-      {process.env.NODE_ENV === "development" && <AuthDebugger />}
+      {/* {process.env.NODE_ENV === "development" && <AuthDebugger />} */}
     </div>
   );
 };

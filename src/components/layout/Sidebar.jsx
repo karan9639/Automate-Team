@@ -23,56 +23,59 @@ import {
   X,
 } from "lucide-react";
 
-// Using JavaScript default parameters instead of defaultProps
 const Sidebar = ({
   isOpen = true,
   isMobile = false,
+  isTablet = false,
   toggleSidebar = () => {},
 }) => {
   const location = useLocation();
   const sidebarRef = useRef(null);
   const [expandedGroups, setExpandedGroups] = useState({
-    tasks: true,
-    attendance: true,
-    leaves: true,
-    events: true,
-    tools: true,
+    tasks: false,
+    attendance: false,
+    leaves: false,
+    events: false,
+    tools: false,
   });
-  const [compactMode, setCompactMode] = useState(false);
+
+  // Determine if sidebar is in compact mode - now only for mobile when closed
+  // No longer using compact mode for tablet screens
+  const isCompact = isMobile && !isOpen;
 
   // Update expanded groups based on current route
   useEffect(() => {
     const path = location.pathname;
 
-    // Auto-expand relevant section based on current path
-    if (path.includes("/tasks")) {
-      setExpandedGroups((prev) => ({ ...prev, tasks: true }));
-    } else if (path.includes("/attendance")) {
-      setExpandedGroups((prev) => ({ ...prev, attendance: true }));
-    } else if (path.includes("/leaves")) {
-      setExpandedGroups((prev) => ({ ...prev, leaves: true }));
-    } else if (path.includes("/events")) {
-      setExpandedGroups((prev) => ({ ...prev, events: true }));
-    } else if (path.includes("/checklist") || path.includes("/links")) {
-      setExpandedGroups((prev) => ({ ...prev, tools: true }));
-    }
-  }, [location.pathname]);
-
-  // Handle responsive sidebar modes
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024 && window.innerWidth >= 768) {
-        setCompactMode(true);
-      } else {
-        setCompactMode(false);
-      }
+    // Reset all to collapsed state
+    const newExpandedState = {
+      tasks: false,
+      attendance: false,
+      leaves: false,
+      events: false,
+      tools: false,
     };
 
-    window.addEventListener("resize", handleResize);
-    handleResize(); // Initial check
+    // Auto-expand relevant section based on current path
+    if (path.includes("/tasks")) {
+      newExpandedState.tasks = true;
+    } else if (path.includes("/attendance")) {
+      newExpandedState.attendance = true;
+    } else if (path.includes("/leaves")) {
+      newExpandedState.leaves = true;
+    } else if (path.includes("/events")) {
+      newExpandedState.events = true;
+    } else if (
+      path.includes("/checklist") ||
+      path.includes("/links") ||
+      path.includes("/mobile-app") ||
+      path.includes("/refer-earn")
+    ) {
+      newExpandedState.tools = true;
+    }
 
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    setExpandedGroups(newExpandedState);
+  }, [location.pathname]);
 
   // Handle click outside to close sidebar on mobile
   useEffect(() => {
@@ -102,7 +105,7 @@ const Sidebar = ({
   // Helper function to determine if a route is active
   const isRouteActive = (path) => {
     if (location.pathname === path) return true;
-    if (path !== ROUTES.DASHBOARD && location.pathname.startsWith(path + "/"))
+    if (path !== ROUTES.DASHBOARD && location.pathname.startsWith(path))
       return true;
     return false;
   };
@@ -247,12 +250,17 @@ const Sidebar = ({
     }
   };
 
-  // Sidebar animation variants
+  // Sidebar animation variants - now using full width for tablet
   const sidebarVariants = {
-    open: { x: 0, transition: { type: "spring", stiffness: 300, damping: 30 } },
+    open: {
+      x: 0,
+      width: isMobile ? "85%" : "16rem", // Always use full width for tablet and desktop
+      transition: { type: "spring", stiffness: 400, damping: 30 },
+    },
     closed: {
       x: "-100%",
-      transition: { type: "spring", stiffness: 300, damping: 30 },
+      width: isMobile ? "85%" : "16rem", // Always use full width for tablet and desktop
+      transition: { type: "spring", stiffness: 400, damping: 30 },
     },
   };
 
@@ -265,28 +273,32 @@ const Sidebar = ({
   return (
     <>
       {/* Mobile backdrop */}
-      <motion.div
-        className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-        initial="closed"
-        animate={isOpen && isMobile ? "open" : "closed"}
-        variants={backdropVariants}
-        onClick={toggleSidebar}
-      />
+      <AnimatePresence>
+        {isMobile && isOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 z-30"
+            initial="closed"
+            animate="open"
+            exit="closed"
+            variants={backdropVariants}
+            onClick={toggleSidebar}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
       <motion.div
         ref={sidebarRef}
-        className={`fixed top-0 left-0 z-40 h-screen bg-gray-900 shadow-lg overflow-hidden ${
-          compactMode ? "w-16" : "w-64"
-        }`}
+        className={`fixed top-0 left-0 z-40 h-screen bg-gray-900 shadow-lg overflow-hidden
+                   ${isMobile ? "max-w-[85%]" : "w-64"}`} // Always use full width for tablet
         initial="closed"
-        animate={isOpen || !isMobile ? "open" : "closed"}
+        animate={isOpen ? "open" : "closed"}
         variants={sidebarVariants}
       >
         {/* Logo header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          {!compactMode && <AutomateLogo />}
-          {compactMode && (
+          {!isCompact && <AutomateLogo />}
+          {isCompact && (
             <div className="mx-auto">
               <Menu size={24} className="text-white" />
             </div>
@@ -303,14 +315,15 @@ const Sidebar = ({
         </div>
 
         {/* Navigation menu */}
-        <div className="overflow-y-auto h-[calc(100vh-64px)] py-2 px-3">
+        <div className="overflow-y-auto h-[calc(100vh-64px)] py-2 px-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
           {navigationGroups.map((group) => (
             <div key={group.id} className="mb-2">
               {/* Group header (if it has a title) */}
-              {group.title && !compactMode && (
+              {group.title && !isCompact && (
                 <button
                   onClick={() => toggleGroup(group.id)}
                   className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-800 transition-colors"
+                  aria-expanded={expandedGroups[group.id]}
                 >
                   <div className="flex items-center">
                     <span className="mr-2 text-gray-400">{group.icon}</span>
@@ -328,11 +341,11 @@ const Sidebar = ({
 
               {/* Group items */}
               <AnimatePresence>
-                {(!group.title || expandedGroups[group.id] || compactMode) && (
+                {(!group.title || expandedGroups[group.id] || isCompact) && (
                   <motion.div
-                    initial={!compactMode ? { height: 0, opacity: 0 } : false}
-                    animate={!compactMode ? { height: "auto", opacity: 1 } : {}}
-                    exit={!compactMode ? { height: 0, opacity: 0 } : {}}
+                    initial={!isCompact ? { height: 0, opacity: 0 } : false}
+                    animate={!isCompact ? { height: "auto", opacity: 1 } : {}}
+                    exit={!isCompact ? { height: 0, opacity: 0 } : {}}
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
@@ -345,9 +358,9 @@ const Sidebar = ({
                           to={item.path}
                           className={`
                             flex items-center ${
-                              compactMode ? "justify-center" : ""
+                              isCompact ? "justify-center" : ""
                             } px-3 py-2 my-1 text-sm rounded-md transition-all
-                            ${!compactMode && group.title ? "pl-9" : "pl-3"}
+                            ${!isCompact && group.title ? "pl-9" : "pl-3"}
                             ${
                               isActive
                                 ? "bg-blue-600/20 text-blue-400 font-medium"
@@ -356,12 +369,12 @@ const Sidebar = ({
                           `}
                           onClick={handleNavClick}
                           end={item.path === ROUTES.DASHBOARD}
-                          title={compactMode ? item.title : ""}
+                          title={isCompact ? item.title : ""}
                         >
-                          <span className={compactMode ? "mx-auto" : "mr-2"}>
+                          <span className={isCompact ? "mx-auto" : "mr-2"}>
                             {item.icon || group.icon}
                           </span>
-                          {!compactMode && <span>{item.title}</span>}
+                          {!isCompact && <span>{item.title}</span>}
                         </NavLink>
                       );
                     })}
@@ -375,13 +388,13 @@ const Sidebar = ({
           <div className="mt-auto pt-4 border-t border-gray-800 mx-2">
             <button
               className={`flex items-center ${
-                compactMode ? "justify-center" : "w-full"
+                isCompact ? "justify-center" : "w-full"
               } px-3 py-2 text-sm text-red-400 hover:text-red-300 rounded-md hover:bg-gray-800 transition-colors`}
               onClick={() => console.log("Logout clicked")}
-              title={compactMode ? "Logout" : ""}
+              title={isCompact ? "Logout" : ""}
             >
-              <LogOut size={18} className={compactMode ? "mx-auto" : "mr-2"} />
-              {!compactMode && <span>Logout</span>}
+              <LogOut size={18} className={isCompact ? "mx-auto" : "mr-2"} />
+              {!isCompact && <span>Logout</span>}
             </button>
           </div>
         </div>
@@ -393,6 +406,7 @@ const Sidebar = ({
 Sidebar.propTypes = {
   isOpen: PropTypes.bool,
   isMobile: PropTypes.bool,
+  isTablet: PropTypes.bool,
   toggleSidebar: PropTypes.func,
 };
 
