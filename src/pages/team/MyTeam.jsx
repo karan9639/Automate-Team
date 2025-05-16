@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { UserPlus, Upload, Pencil, Trash2, Search, Filter } from "lucide-react"
+import { UserPlus, Upload, Pencil, Trash2, Search, Filter, ArrowLeft, Eye, EyeOff } from "lucide-react"
 import ConfirmModal from "../../components/common/ConfirmModal"
 import EmptyState from "../../components/common/EmptyState"
 import DataTable from "../../components/common/DataTable"
@@ -21,6 +21,23 @@ const MyTeam = () => {
     accessType: "",
   })
 
+  // New member form state
+  const [newMember, setNewMember] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    country: "India",
+    whatsappNumber: "",
+    role: "",
+    reportingManager: "",
+    password: "",
+    taskAccess: false,
+    leaveAttendanceAccess: false,
+  })
+
+  // Password visibility state
+  const [showPassword, setShowPassword] = useState(false)
+
   // Mock data for team members
   const [members, setMembers] = useState([
     {
@@ -30,6 +47,24 @@ const MyTeam = () => {
       mobile: "7055424269",
       role: "Admin",
       reportsTo: null,
+      accessType: "Full",
+    },
+    {
+      id: "2",
+      name: "Prashant Tyagi",
+      email: "prashant@natharts.com",
+      mobile: "9876543210",
+      role: "Team Member",
+      reportsTo: "Karan Singh",
+      accessType: "Limited",
+    },
+    {
+      id: "3",
+      name: "Sunny Prajapat",
+      email: "sunnyprajapat65351@gmail.com",
+      mobile: "8765432109",
+      role: "Manager",
+      reportsTo: "Karan Singh",
       accessType: "Full",
     },
   ])
@@ -67,12 +102,37 @@ const MyTeam = () => {
   // Handle add member
   const handleAddMember = () => {
     setSelectedMember(null)
+    setNewMember({
+      firstName: "",
+      lastName: "",
+      email: "",
+      country: "India",
+      whatsappNumber: "",
+      role: "",
+      reportingManager: "",
+      password: "",
+      taskAccess: false,
+      leaveAttendanceAccess: false,
+    })
     setIsAddMemberModalOpen(true)
   }
 
   // Handle edit member
   const handleEditMember = (member) => {
+    const nameParts = member.name.split(" ")
     setSelectedMember(member)
+    setNewMember({
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      email: member.email || "",
+      country: "India",
+      whatsappNumber: member.mobile || "",
+      role: member.role || "",
+      reportingManager: member.reportsTo || "",
+      password: "",
+      taskAccess: member.accessType === "Full" || member.accessType === "Limited",
+      leaveAttendanceAccess: member.accessType === "Full" || member.accessType === "Limited",
+    })
     setIsAddMemberModalOpen(true)
   }
 
@@ -96,6 +156,47 @@ const MyTeam = () => {
       ...prev,
       [filterType]: value,
     }))
+  }
+
+  // Handle input change for new member form
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setNewMember((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }))
+  }
+
+  // Handle form submission
+  const handleSubmitMember = (e) => {
+    e.preventDefault()
+
+    const accessType =
+      newMember.taskAccess && newMember.leaveAttendanceAccess
+        ? "Full"
+        : newMember.taskAccess || newMember.leaveAttendanceAccess
+          ? "Limited"
+          : "Read-only"
+
+    const memberData = {
+      id: selectedMember ? selectedMember.id : Date.now().toString(),
+      name: `${newMember.firstName} ${newMember.lastName}`.trim(),
+      email: newMember.email,
+      mobile: newMember.whatsappNumber,
+      role: newMember.role,
+      reportsTo: newMember.reportingManager || null,
+      accessType: accessType,
+    }
+
+    if (selectedMember) {
+      // Update existing member
+      setMembers(members.map((m) => (m.id === selectedMember.id ? memberData : m)))
+    } else {
+      // Add new member
+      setMembers([...members, memberData])
+    }
+
+    setIsAddMemberModalOpen(false)
   }
 
   const columns = [
@@ -181,7 +282,7 @@ const MyTeam = () => {
             <option value="">Role</option>
             <option value="Admin">Admin</option>
             <option value="Manager">Manager</option>
-            <option value="Member">Member</option>
+            <option value="Team Member">Team Member</option>
           </select>
 
           <select
@@ -190,8 +291,8 @@ const MyTeam = () => {
             className="border rounded-md px-3 py-2"
           >
             <option value="">Reporting Manager</option>
-            <option value="Karan">Karan</option>
-            <option value="Prashant">Prashant</option>
+            <option value="Karan Singh">Karan Singh</option>
+            <option value="Prashant Tyagi">Prashant Tyagi</option>
           </select>
 
           <select
@@ -216,10 +317,12 @@ const MyTeam = () => {
       <div className="flex flex-wrap gap-2 mb-6">
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full">{members.length} Members</div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full">
-          {members.length}/{members.length} Task App
+          {members.filter((m) => m.accessType === "Full" || m.accessType === "Limited").length}/{members.length} Task
+          App
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full">
-          {members.length}/{members.length} Leave & Attendance App
+          {members.filter((m) => m.accessType === "Full" || m.accessType === "Limited").length}/{members.length} Leave &
+          Attendance App
         </div>
       </div>
 
@@ -228,7 +331,7 @@ const MyTeam = () => {
           title="No team members found"
           description="Add team members to your organization or adjust your filters."
           icon={UserPlus}
-          actionLabel="Add Member"
+          actionLabel="Add Member" 
           onAction={handleAddMember}
           className="bg-white rounded-lg border p-8"
         />
@@ -252,6 +355,181 @@ const MyTeam = () => {
         cancelText="Cancel"
         variant="destructive"
       />
+
+      {/* Add/Edit Member Modal */}
+      {isAddMemberModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md mx-4 overflow-hidden shadow-xl">
+            <div className="p-4 border-b flex items-center">
+              <button onClick={() => setIsAddMemberModalOpen(false)} className="mr-3 text-gray-500 hover:text-gray-700">
+                <ArrowLeft size={20} />
+              </button>
+              <h2 className="text-xl font-semibold">{selectedMember ? "Edit Team Member" : "Add New Team Member"}</h2>
+            </div>
+
+            <form onSubmit={handleSubmitMember} className="p-5">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={newMember.firstName}
+                    onChange={handleInputChange}
+                    className="w-full p-1.5 border rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={newMember.lastName}
+                    onChange={handleInputChange}
+                    className="w-full p-1.5 border rounded-md"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={newMember.email}
+                  onChange={handleInputChange}
+                  className="w-full p-1.5 border rounded-md"
+                  required
+                />
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <div className="flex items-center p-1.5 border rounded-md bg-gray-50">
+                  <div className="flex items-center">
+                    <div className="w-6 h-4 mr-2 overflow-hidden">
+                      <div className="flex flex-col h-full">
+                        <div className="h-1/3 bg-orange-500"></div>
+                        <div className="h-1/3 bg-white"></div>
+                        <div className="h-1/3 bg-green-600"></div>
+                      </div>
+                    </div>
+                    <span>India</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
+                <div className="flex">
+                  <div className="bg-gray-100 p-1.5 border border-r-0 rounded-l-md">+91</div>
+                  <input
+                    type="tel"
+                    name="whatsappNumber"
+                    value={newMember.whatsappNumber}
+                    onChange={handleInputChange}
+                    className="w-full p-1.5 border rounded-r-md"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  name="role"
+                  value={newMember.role}
+                  onChange={handleInputChange}
+                  className="w-full p-1.5 border rounded-md"
+                  required
+                >
+                  <option value="">Select Role</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Team Member">Team Member</option>
+                </select>
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reporting Manager</label>
+                <select
+                  name="reportingManager"
+                  value={newMember.reportingManager}
+                  onChange={handleInputChange}
+                  className="w-full p-1.5 border rounded-md"
+                >
+                  <option value="">Select Manager</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.name}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={newMember.password}
+                    onChange={handleInputChange}
+                    className="w-full p-1.5 border rounded-md pr-10"
+                    required={!selectedMember}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Task Access</label>
+                  <div
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ${newMember.taskAccess ? "bg-green-500" : "bg-gray-300"}`}
+                  >
+                    <div
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${newMember.taskAccess ? "translate-x-6" : ""}`}
+                      onClick={() => setNewMember({ ...newMember, taskAccess: !newMember.taskAccess })}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Leave & Attendance Access</label>
+                  <div
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ${newMember.leaveAttendanceAccess ? "bg-green-500" : "bg-gray-300"}`}
+                  >
+                    <div
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${newMember.leaveAttendanceAccess ? "translate-x-6" : ""}`}
+                      onClick={() =>
+                        setNewMember({ ...newMember, leaveAttendanceAccess: !newMember.leaveAttendanceAccess })
+                      }
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <UserPlus size={18} />
+                {selectedMember ? "Update Team Member" : "Add Team Member"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
