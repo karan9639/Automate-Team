@@ -1,25 +1,64 @@
 "use client"
 
-import * as React from "react"
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { Check } from "lucide-react"
+import { forwardRef, useEffect, useState } from "react"
 
-import { cn } from "../../utils/helpers"
+export const Checkbox = forwardRef(
+  ({ className = "", checked = false, onCheckedChange, disabled = false, ...props }, ref) => {
+    const [isChecked, setIsChecked] = useState(checked)
 
-const Checkbox = React.forwardRef(({ className, ...props }, ref) => (
-  <CheckboxPrimitive.Root
-    ref={ref}
-    className={cn(
-      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-emerald-500 data-[state=checked]:text-primary-foreground",
-      className,
-    )}
-    {...props}
-  >
-    <CheckboxPrimitive.Indicator className={cn("flex items-center justify-center text-current")}>
-      <Check className="h-4 w-4" />
-    </CheckboxPrimitive.Indicator>
-  </CheckboxPrimitive.Root>
-))
-Checkbox.displayName = CheckboxPrimitive.Root.displayName
+    // Update internal state when the checked prop changes
+    useEffect(() => {
+      setIsChecked(checked)
+    }, [checked])
 
-export { Checkbox }
+    const handleChange = (e) => {
+      if (disabled) return
+
+      const newChecked = e.target.checked
+      setIsChecked(newChecked)
+
+      // Only call the callback if it exists
+      if (typeof onCheckedChange === "function") {
+        onCheckedChange(newChecked)
+      }
+    }
+
+    return (
+      <label
+        className={`inline-flex items-center ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"} ${className}`}
+      >
+        <input
+          type="checkbox"
+          className="sr-only"
+          checked={isChecked}
+          onChange={handleChange}
+          disabled={disabled}
+          ref={ref}
+          {...props}
+        />
+        <div
+          className={`h-4 w-4 rounded-sm border flex items-center justify-center ${
+            isChecked ? "bg-emerald-500 border-emerald-500" : "bg-white border-gray-300"
+          }`}
+        >
+          {isChecked && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3 text-white"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+        </div>
+      </label>
+    )
+  },
+)
+
+Checkbox.displayName = "Checkbox"

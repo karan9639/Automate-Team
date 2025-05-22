@@ -1,13 +1,10 @@
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
 /**
  * Combines multiple class names into a single string
  * @param {...string} classes - Class names to combine
  * @returns {string} - Combined class names
  */
-export function cn(...inputs) {
-  return twMerge(clsx(inputs));
+export function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
 }
 
 /**
@@ -50,3 +47,14 @@ export function truncateText(text, length = 100) {
   if (text.length <= length) return text;
   return text.substring(0, length) + "...";
 }
+
+/**
+ * Generate a random ID
+ * @returns {string} - Random ID
+ */
+export const generateId = () => {
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
+};
