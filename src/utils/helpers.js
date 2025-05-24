@@ -1,77 +1,60 @@
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
 /**
- * Combines class names with Tailwind CSS classes
- * @param {...string} inputs - Class names to combine
+ * Combines multiple class names into a single string
+ * @param {...string} classes - Class names to combine
  * @returns {string} - Combined class names
  */
-export function cn(...inputs) {
-  return twMerge(clsx(inputs));
+export function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
 }
 
 /**
- * Formats a date to a readable string
- * @param {Date} date - Date to format
- * @param {string} format - Format to use (default: 'medium')
+ * Format date to a readable string
+ * @param {Date|string} date - Date to format
  * @returns {string} - Formatted date string
  */
-export function formatDate(date, format = "medium") {
+export function formatDate(date) {
   if (!date) return "";
-
-  const dateObj = new Date(date);
-
-  const options = {
-    short: { month: "short", day: "numeric" },
-    medium: { month: "short", day: "numeric", year: "numeric" },
-    long: { weekday: "long", month: "long", day: "numeric", year: "numeric" },
-    time: { hour: "numeric", minute: "numeric" },
-    dateTime: {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-    },
-  };
-
-  return dateObj.toLocaleDateString("en-US", options[format] || options.medium);
+  const d = new Date(date);
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /**
- * Truncates a string to a specified length
- * @param {string} str - String to truncate
- * @param {number} length - Maximum length
- * @returns {string} - Truncated string
+ * Format time to a readable string
+ * @param {Date|string} date - Date to format
+ * @returns {string} - Formatted time string
  */
-export function truncateString(str, length = 50) {
-  if (!str) return "";
-  if (str.length <= length) return str;
-  return str.slice(0, length) + "...";
+export function formatTime(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /**
- * Generates a random ID
+ * Truncate text to a specified length
+ * @param {string} text - Text to truncate
+ * @param {number} length - Maximum length
+ * @returns {string} - Truncated text
+ */
+export function truncateText(text, length = 100) {
+  if (!text) return "";
+  if (text.length <= length) return text;
+  return text.substring(0, length) + "...";
+}
+
+/**
+ * Generate a random ID
  * @returns {string} - Random ID
  */
-export function generateId() {
-  return Math.random().toString(36).substring(2, 9);
-}
-
-/**
- * Debounces a function
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} - Debounced function
- */
-export function debounce(func, wait = 300) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
+export const generateId = () => {
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
+};

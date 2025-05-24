@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 
 // Mock data for task templates
 const mockTemplates = [
@@ -80,6 +90,144 @@ const mockTemplates = [
     ],
   },
 ];
+
+// Create Template Modal Component
+const CreateTemplateModal = ({ isOpen, onClose, onCreateTemplate }) => {
+  const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
+  const [tasks, setTasks] = useState([
+    { id: Date.now(), title: "", assignee: "", duration: "" },
+  ]);
+
+  const handleAddTask = () => {
+    setTasks([
+      ...tasks,
+      { id: Date.now(), title: "", assignee: "", duration: "" },
+    ]);
+  };
+
+  const handleTaskChange = (id, field, value) => {
+    setTasks(
+      tasks.map((task) => {
+        if (task.id === id) {
+          return { ...task, [field]: value };
+        }
+        return task;
+      })
+    );
+  };
+
+  const handleRemoveTask = (id) => {
+    if (tasks.length > 1) {
+      setTasks(tasks.filter((task) => task.id !== id));
+    }
+  };
+
+  const handleSubmit = () => {
+    if (templateName.trim() === "") return;
+
+    onCreateTemplate({
+      id: Date.now(),
+      name: templateName,
+      description: templateDescription,
+      tasks: tasks.filter((task) => task.title.trim() !== ""),
+    });
+
+    // Reset form
+    setTemplateName("");
+    setTemplateDescription("");
+    setTasks([{ id: Date.now(), title: "", assignee: "", duration: "" }]);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Create New Template</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div>
+            <Input
+              placeholder="Template Name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              className="border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <Textarea
+              placeholder="Template Description"
+              value={templateDescription}
+              onChange={(e) => setTemplateDescription(e.target.value)}
+              className="min-h-[80px] bg-gray-50"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-medium">Tasks</h3>
+            {tasks.map((task, index) => (
+              <div key={task.id} className="grid grid-cols-3 gap-2">
+                <Input
+                  placeholder="Task Title"
+                  value={task.title}
+                  onChange={(e) =>
+                    handleTaskChange(task.id, "title", e.target.value)
+                  }
+                />
+                <Input
+                  placeholder="Assignee"
+                  value={task.assignee}
+                  onChange={(e) =>
+                    handleTaskChange(task.id, "assignee", e.target.value)
+                  }
+                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Duration"
+                    value={task.duration}
+                    onChange={(e) =>
+                      handleTaskChange(task.id, "duration", e.target.value)
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleRemoveTask(task.id)}
+                    disabled={tasks.length === 1}
+                    className="flex-shrink-0"
+                  >
+                    X
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddTask}
+              className="w-full border-dashed"
+            >
+              + Add Task
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            onClick={handleSubmit}
+            className="w-full bg-emerald-500 hover:bg-emerald-600"
+          >
+            Create Template
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Task Template Card Component
 const TemplateCard = ({ template, onView }) => {
@@ -196,9 +344,11 @@ const TemplateDetailsModal = ({ template, onClose, onUse }) => {
 
 // Main Task Templates Component
 const TaskTemplates = () => {
-  const [templates] = useState(mockTemplates);
+  const [templates, setTemplates] = useState(mockTemplates);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] =
+    useState(false);
 
   // Filter templates based on search term
   const filteredTemplates = templates.filter(
@@ -224,11 +374,29 @@ const TaskTemplates = () => {
     setSelectedTemplate(null);
   };
 
+  // Open create template modal
+  const handleOpenCreateTemplateModal = () => {
+    setIsCreateTemplateModalOpen(true);
+  };
+
+  // Close create template modal
+  const handleCloseCreateTemplateModal = () => {
+    setIsCreateTemplateModalOpen(false);
+  };
+
+  // Create new template
+  const handleCreateTemplate = (newTemplate) => {
+    setTemplates([...templates, newTemplate]);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Task Templates</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          onClick={handleOpenCreateTemplateModal}
+        >
           Create Template
         </button>
       </div>
@@ -268,6 +436,13 @@ const TaskTemplates = () => {
           onUse={handleUseTemplate}
         />
       )}
+
+      {/* Create Template Modal */}
+      <CreateTemplateModal
+        isOpen={isCreateTemplateModalOpen}
+        onClose={handleCloseCreateTemplateModal}
+        onCreateTemplate={handleCreateTemplate}
+      />
     </div>
   );
 };

@@ -15,7 +15,7 @@ const rootReducer = {
 };
 
 // Configure store
-export const store = configureStore({
+const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -26,3 +26,5 @@ export const store = configureStore({
 // Type exports
 export const RootState = store.getState;
 export const AppDispatch = store.dispatch;
+
+export default store;

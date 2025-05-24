@@ -1,112 +1,140 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import PropTypes from "prop-types"
+import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { Button } from "../../components/ui/button";
+import { PlusCircle, AlertCircle } from "lucide-react";
+import AssignTaskModal from "../../components/modals/AssignTaskModal";
+import TaskCard from "../../components/tasks/TaskCard";
+import EmptyState from "../../components/common/EmptyState";
+import { fetchTasks } from "../../store/slices/taskSlice";
 
-// Mock data for tasks
-const mockTasks = [
-  { id: 1, title: "Complete project proposal", status: "In Progress", dueDate: "2023-06-15", priority: "High" },
-  { id: 2, title: "Review client feedback", status: "Pending", dueDate: "2023-06-18", priority: "Medium" },
-  { id: 3, title: "Update documentation", status: "Completed", dueDate: "2023-06-10", priority: "Low" },
-  { id: 4, title: "Schedule team meeting", status: "In Progress", dueDate: "2023-06-20", priority: "Medium" },
-  { id: 5, title: "Prepare presentation", status: "Pending", dueDate: "2023-06-25", priority: "High" },
-]
-
-// Task Card Component
-const TaskCard = ({ task }) => {
-  // Status color mapping
-  const statusColors = {
-    Completed: "bg-green-100 text-green-800",
-    "In Progress": "bg-blue-100 text-blue-800",
-    Pending: "bg-yellow-100 text-yellow-800",
-  }
-
-  // Priority color mapping
-  const priorityColors = {
-    High: "bg-red-100 text-red-800",
-    Medium: "bg-orange-100 text-orange-800",
-    Low: "bg-gray-100 text-gray-800",
-  }
-
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-      <h3 className="font-semibold text-lg mb-2">{task.title}</h3>
-      <div className="flex justify-between items-center mb-2">
-        <span className={`px-2 py-1 rounded-full text-xs ${statusColors[task.status]}`}>{task.status}</span>
-        <span className={`px-2 py-1 rounded-full text-xs ${priorityColors[task.priority]}`}>{task.priority}</span>
-      </div>
-      <p className="text-sm text-gray-600">Due: {task.dueDate}</p>
-    </div>
-  )
-}
-
-TaskCard.propTypes = {
-  task: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    title: PropTypes.string.isRequired,
-    status: PropTypes.string.isRequired,
-    dueDate: PropTypes.string.isRequired,
-    priority: PropTypes.string.isRequired,
-  }).isRequired,
-}
-
-// Main Task Management Component
 const TaskManagement = () => {
-  const [tasks] = useState(mockTasks)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("All")
+  const dispatch = useDispatch();
+  const { tasks, loading, error } = useSelector(
+    (state) => state.tasks || { tasks: [], loading: false, error: null }
+  );
 
-  // Filter tasks based on search term and status filter
+  const [activeTab, setActiveTab] = useState("my-tasks");
+  const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
+
+  // Fetch tasks on component mount
+  useEffect(() => {
+    dispatch(fetchTasks());
+  }, [dispatch]);
+
+  // Filter tasks based on active tab
   const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "All" || task.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+    if (activeTab === "my-tasks") {
+      return task.assignees && task.assignees.includes("1"); // Assuming "1" is the current user ID
+    } else if (activeTab === "delegated-tasks") {
+      return (
+        task.createdBy === "currentUser" &&
+        (!task.assignees || !task.assignees.includes("1"))
+      );
+    }
+    return true; // all-tasks tab
+  });
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Task Management</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
-          Add New Task
-        </button>
+        <h1 className="text-2xl font-bold">Task Management</h1>
+        <Button
+          onClick={() => setIsAssignTaskModalOpen(true)}
+          variant="green"
+          className="flex items-center gap-2"
+        >
+          <PlusCircle className="h-4 w-4" />
+          Assign Task
+        </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="w-full md:w-48">
-          <select
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="All">All Status</option>
-            <option value="Completed">Completed</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Pending">Pending</option>
-          </select>
+      <div className="mb-6">
+        <div className="border-b">
+          <nav className="flex space-x-8">
+            {["my-tasks", "delegated-tasks", "all-tasks"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab
+                    ? "border-emerald-500 text-emerald-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab
+                  .split("-")
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ")}
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTasks.length > 0 ? (
-          filteredTasks.map((task) => <TaskCard key={task.id} task={task} />)
-        ) : (
-          <div className="col-span-full text-center py-8">
-            <p className="text-gray-500">No tasks found matching your criteria.</p>
-          </div>
-        )}
-      </div>
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-md flex items-center">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          <span>Error loading tasks: {error}</span>
+        </div>
+      )}
+
+      {/* Task list or empty state */}
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+        </div>
+      ) : filteredTasks.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTasks.map((task) => (
+            <TaskCard key={task.id} task={task} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-16 w-16 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
+          }
+          title={`No ${
+            activeTab === "my-tasks"
+              ? "Tasks"
+              : activeTab === "delegated-tasks"
+              ? "Delegated Tasks"
+              : "Tasks"
+          } Found`}
+          description={
+            activeTab === "my-tasks"
+              ? "You don't have any tasks assigned to you."
+              : activeTab === "delegated-tasks"
+              ? "You haven't delegated any tasks yet."
+              : "There are no tasks in the system."
+          }
+          className="py-16"
+        />
+      )}
+
+      {/* Assign Task Modal */}
+      <AssignTaskModal
+        isOpen={isAssignTaskModalOpen}
+        onClose={() => setIsAssignTaskModalOpen(false)}
+      />
     </div>
-  )
-}
+  );
+};
 
-export default TaskManagement
+export default TaskManagement;
