@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setAuthError(null);
- 
+    
       // Try to use the API login
       let user;
 
