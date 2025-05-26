@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Label } from "../../components/ui/label";
+import { Input } from "../../components/ui/input";
 
 const GenerateReportModal = ({
   isOpen,
@@ -10,133 +20,121 @@ const GenerateReportModal = ({
   tasksCount,
   kpis,
 }) => {
-  const [reportConfig, setReportConfig] = useState({
-    includeKPIs: true,
-    includeTasks: true,
-    includeActivities: true,
-    includeCharts: true,
-    format: "json",
+  const [reportName, setReportName] = useState(
+    `Task Report - ${new Date().toLocaleDateString()}`
+  );
+  const [includeOptions, setIncludeOptions] = useState({
+    tasks: true,
+    kpis: true,
+    charts: true,
+    activities: true,
   });
-  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, checked, value, type } = e.target;
-    setReportConfig((prev) => ({
+  const handleOptionChange = (option) => {
+    setIncludeOptions((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [option]: !prev[option],
     }));
   };
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      await onGenerate(reportConfig);
-    } catch (error) {
-      console.error("Error generating report:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+  const handleGenerate = () => {
+    onGenerate({
+      reportName,
+      includeOptions,
+      generatedAt: new Date().toISOString(),
+    });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Generate Report
-          </h2>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Generate Report</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-1 gap-2">
+            <Label htmlFor="reportName">Report Name</Label>
+            <Input
+              id="reportName"
+              value={reportName}
+              onChange={(e) => setReportName(e.target.value)}
+              placeholder="Enter report name"
+            />
+          </div>
 
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-md">
-              <p className="text-sm text-blue-800">
-                Your report will include data for {tasksCount} tasks and{" "}
-                {kpis.activeUsers} users.
-              </p>
-            </div>
-
+          <div className="grid grid-cols-1 gap-2">
+            <Label>Include in Report</Label>
             <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="includeKPIs"
-                  checked={reportConfig.includeKPIs}
-                  onChange={handleChange}
-                  className="mr-2"
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="includeTasks"
+                  checked={includeOptions.tasks}
+                  onCheckedChange={() => handleOptionChange("tasks")}
                 />
-                <span className="text-sm">Include KPIs and metrics</span>
-              </label>
-
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="includeTasks"
-                  checked={reportConfig.includeTasks}
-                  onChange={handleChange}
-                  className="mr-2"
+                <Label htmlFor="includeTasks" className="text-sm font-normal">
+                  Tasks ({tasksCount})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="includeKpis"
+                  checked={includeOptions.kpis}
+                  onCheckedChange={() => handleOptionChange("kpis")}
                 />
-                <span className="text-sm">Include task details</span>
-              </label>
-
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="includeActivities"
-                  checked={reportConfig.includeActivities}
-                  onChange={handleChange}
-                  className="mr-2"
+                <Label htmlFor="includeKpis" className="text-sm font-normal">
+                  KPIs (Completed: {kpis?.completedTasks || 0}, Overdue:{" "}
+                  {kpis?.overdueTasks || 0})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="includeCharts"
+                  checked={includeOptions.charts}
+                  onCheckedChange={() => handleOptionChange("charts")}
                 />
-                <span className="text-sm">Include activity history</span>
-              </label>
-
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="includeCharts"
-                  checked={reportConfig.includeCharts}
-                  onChange={handleChange}
-                  className="mr-2"
+                <Label htmlFor="includeCharts" className="text-sm font-normal">
+                  Charts & Visualizations
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="includeActivities"
+                  checked={includeOptions.activities}
+                  onCheckedChange={() => handleOptionChange("activities")}
                 />
-                <span className="text-sm">Include chart data</span>
-              </label>
+                <Label
+                  htmlFor="includeActivities"
+                  className="text-sm font-normal"
+                >
+                  Recent Activities
+                </Label>
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label
-                htmlFor="format"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Report Format
-              </label>
-              <select
-                id="format"
+          <div className="grid grid-cols-1 gap-2">
+            <Label>Report Format</Label>
+            <div className="flex items-center space-x-2">
+              <Input
+                type="radio"
+                id="formatJson"
                 name="format"
-                value={reportConfig.format}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="json">JSON</option>
-                <option value="csv">CSV</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                disabled={isGenerating}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleGenerate} disabled={isGenerating}>
-                {isGenerating ? "Generating..." : "Generate Report"}
-              </Button>
+                defaultChecked
+              />
+              <Label htmlFor="formatJson" className="text-sm font-normal">
+                JSON
+              </Label>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleGenerate}>Generate Report</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -5,7 +5,7 @@ import { generateId } from "../../utils/helpers";
 const mockApiCall = (data) => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ ...data, id: generateId() });
+      resolve({ ...data, id: data.id || generateId() });
     }, 1000);
   });
 };
@@ -90,12 +90,6 @@ export const deleteTask = createAsyncThunk(
   }
 );
 
-// For local testing without API
-// export const addTaskLocal = (task) => ({
-//   type: "tasks/addTaskLocal",
-//   payload: { ...task, id: task.id || generateId() }
-// })
-
 const initialState = {
   tasks: [],
   categories: [
@@ -116,14 +110,20 @@ const taskSlice = createSlice({
       state.tasks.push(action.payload);
     },
     updateTaskLocal: (state, action) => {
-      const { id } = action.payload;
+      const { id, ...updates } = action.payload;
       const index = state.tasks.findIndex((task) => task.id === id);
       if (index !== -1) {
-        state.tasks[index] = action.payload;
+        state.tasks[index] = { ...state.tasks[index], ...updates };
       }
     },
     deleteTaskLocal: (state, action) => {
       state.tasks = state.tasks.filter((task) => task.id !== action.payload);
+    },
+    setTasks: (state, action) => {
+      state.tasks = action.payload;
+    },
+    clearError: (state) => {
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -191,6 +191,22 @@ const taskSlice = createSlice({
   },
 });
 
-export const { addTaskLocal, updateTaskLocal, deleteTaskLocal } =
-  taskSlice.actions;
+export const {
+  addTaskLocal,
+  updateTaskLocal,
+  deleteTaskLocal,
+  setTasks,
+  clearError,
+} = taskSlice.actions;
+
+// Selectors
+export const selectAllTasks = (state) => state.tasks.tasks;
+export const selectTaskById = (state, taskId) =>
+  state.tasks.tasks.find((task) => task.id === taskId);
+export const selectTasksByStatus = (state, status) =>
+  state.tasks.tasks.filter((task) => task.status === status);
+export const selectTaskCategories = (state) => state.categories;
+export const selectTasksLoading = (state) => state.loading;
+export const selectTasksError = (state) => state.error;
+
 export default taskSlice.reducer;
