@@ -4,6 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import AppRoutes from "./routes/AppRoutes";
 import RouteErrorBoundary from "./components/error/RouteErrorBoundary";
 import store from "./store";
+import { Toaster } from "react-hot-toast"; 
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <RouteErrorBoundary>
           <AuthProvider>
             <AppRoutes />
+            <Toaster position="top-right" reverseOrder={false} /> 
           </AuthProvider>
         </RouteErrorBoundary>
       </BrowserRouter>

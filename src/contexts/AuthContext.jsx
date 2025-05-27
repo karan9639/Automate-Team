@@ -1,156 +1,126 @@
-"use client";
+"use client"
 
-import { createContext, useContext, useState, useEffect } from "react";
-import PropTypes from "prop-types";
-import {
-  login as apiLogin,
-  logout as apiLogout,
-  checkAuth as apiCheckAuth,
-} from "../services/authService";
+import { createContext, useContext, useState, useEffect } from "react"
+import PropTypes from "prop-types"
 
 // Create auth context
-const AuthContext = createContext();
+const AuthContext = createContext()
 
 // Auth provider component
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState(null)
 
   // Check if user is already logged in on mount
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
-        setLoading(true);
+        setLoading(true)
 
-        // Use the API service to check authentication
-        const user = await apiCheckAuth();
+        // Check for existing auth data in localStorage
+        const token = localStorage.getItem("auth_token")
+        const userJson = localStorage.getItem("user")
 
-        if (user) {
-          setCurrentUser(user);
-          setIsAuthenticated(true);
-          console.log("User authenticated from API check");
-        } else {
-          // Fallback to localStorage check if API fails
-          const token = localStorage.getItem("auth_token");
-          const userJson = localStorage.getItem("user");
-
-          if (token && userJson) {
-            try {
-              const parsedUser = JSON.parse(userJson);
-              setCurrentUser(parsedUser);
-              setIsAuthenticated(true);
-              console.log("User authenticated from localStorage fallback");
-            } catch (parseError) {
-              console.error("Error parsing user data:", parseError);
-              resetAuthState();
-            }
-          } else {
-            console.log("No valid auth data found");
-            resetAuthState();
+        if (token && userJson) {
+          try {
+            const parsedUser = JSON.parse(userJson)
+            console.log("AuthContext: Loaded user from localStorage:", parsedUser)
+            setCurrentUser(parsedUser)
+            setIsAuthenticated(true)
+          } catch (parseError) {
+            console.error("Error parsing user data:", parseError)
+            resetAuthState()
           }
+        } else {
+          console.log("AuthContext: No valid auth data found")
+          resetAuthState()
         }
       } catch (error) {
-        console.error("Error checking authentication:", error);
-        resetAuthState();
+        console.error("Error checking authentication:", error)
+        resetAuthState()
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    checkUserAuth();
-  }, []);
+    checkUserAuth()
+  }, [])
 
-  // Reset auth state helper - enhanced for better cleanup
+  // Reset auth state helper
   const resetAuthState = () => {
     // Clear all auth-related localStorage items
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("token_expiry");
+    localStorage.removeItem("auth_token")
+    localStorage.removeItem("user")
+    localStorage.removeItem("refresh_token")
+    localStorage.removeItem("token_expiry")
 
     // Reset state
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    setAuthError(null);
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setAuthError(null)
 
-    console.log("Auth state reset successfully");
-  }; 
+    console.log("AuthContext: Auth state reset successfully")
+  }
 
-  // Login function
-  const login = async (email, password) => {
+  // Login function - this is what your LoginPage calls
+  const login = async (userData, token) => {
     try {
-      setLoading(true);
-      setAuthError(null);
-    
-      // Try to use the API login
-      let user;
+      setLoading(true)
+      setAuthError(null)
 
-      try {
-        // Try to use the real API service
-        user = await apiLogin({ email, password });
-        console.log("API login successful");
-      } catch (apiError) {
-        console.warn("API login failed, using fallback:", apiError);
+      console.log("AuthContext: Login called with userData:", userData)
+      console.log("AuthContext: Login called with token:", token)
 
-        // Fallback for demo/development: Accept any email/password
-        user = {
-          id: 1,
-          name: email.split("@")[0],
-          email,
-          role: "Admin",
-        };
+      // Store token and user data in localStorage
+      localStorage.setItem("auth_token", token)
+      localStorage.setItem("user", JSON.stringify(userData))
 
-        // Store token manually since API call failed
-        localStorage.setItem("auth_token", "demo-token-" + Date.now());
-        // Store user in localStorage
-        localStorage.setItem("user", JSON.stringify(user));
-      }
+      // Update state with the user data
+      setCurrentUser(userData)
+      setIsAuthenticated(true)
 
-      // Update state
-      setCurrentUser(user);
-      setIsAuthenticated(true);
+      console.log("AuthContext: User state updated successfully")
+      console.log("AuthContext: Current user is now:", userData)
 
-      // Signal successful authentication
-      console.log("Login successful for:", email);
-
-      return user;
+      return userData
     } catch (error) {
-      console.error("Login error:", error);
-      setAuthError(error.message || "Login failed. Please try again.");
-      throw error;
+      console.error("AuthContext login error:", error)
+      setAuthError(error.message || "Login failed. Please try again.")
+      throw error
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  // Enhanced logout function with better error handling and state management
+  // Update user function (for profile updates)
+  const updateUser = (updatedUserData) => {
+    try {
+      const updatedUser = { ...currentUser, ...updatedUserData }
+      setCurrentUser(updatedUser)
+      localStorage.setItem("user", JSON.stringify(updatedUser))
+      console.log("AuthContext: User data updated:", updatedUser)
+    } catch (error) {
+      console.error("Error updating user data:", error)
+    }
+  }
+
+  // Logout function
   const logout = async () => {
     try {
-      setLoading(true);
-
-      // Try to use the API logout if available
-      try {
-        await apiLogout();
-        console.log("API logout successful");
-      } catch (apiError) {
-        console.warn("API logout failed, using fallback cleanup:", apiError);
-      }
-
-      // Reset auth state regardless of API success
-      resetAuthState();
-
-      return true; // Indicate successful logout
+      setLoading(true)
+      console.log("AuthContext: Logging out user")
+      resetAuthState()
+      return true
     } catch (error) {
-      console.error("Logout error:", error);
-      // Still reset state even if API fails
-      resetAuthState();
-      return false; // Indicate error during logout
+      console.error("Logout error:", error)
+      resetAuthState()
+      return false
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // Context value
   const value = {
@@ -160,16 +130,21 @@ export const AuthProvider = ({ children }) => {
     authError,
     login,
     logout,
-  };
+    updateUser,
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
 
 AuthProvider.propTypes = {
   children: PropTypes.node.isRequired,
-};
+}
 
 // Custom hook to use auth context
 export const useAuth = () => {
-  return useContext(AuthContext);
-};
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
+}
