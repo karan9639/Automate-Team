@@ -19,8 +19,9 @@ import UserActivityFeed from "../components/dashboard/UserActivityFeed";
 import TaskComments from "../components/dashboard/TaskComments";
 import DateFilterModal from "../components/dashboard/DateFilterModal";
 import GenerateReportModal from "../components/dashboard/GenerateReportModal";
-import TaskFormModal from "../components/dashboard/TaskFormModal";
 import ConfirmDeleteModal from "../components/dashboard/ConfirmDeleteModal";
+import TaskFilters from "../components/dashboard/TaskFilters";
+import AssignTaskModal from "../components/modals/AssignTaskModal";
 
 // Dummy data for dashboard
 const DUMMY_TASKS = [
@@ -36,6 +37,7 @@ const DUMMY_TASKS = [
     createdAt: "2024-01-20",
     completedAt: null,
     category: "Development",
+    frequency: "One-time",
     comments: [
       {
         id: 1,
@@ -63,6 +65,7 @@ const DUMMY_TASKS = [
     createdAt: "2024-01-15",
     completedAt: "2024-01-25",
     category: "Design",
+    frequency: "One-time",
     comments: [
       {
         id: 3,
@@ -84,6 +87,7 @@ const DUMMY_TASKS = [
     createdAt: "2024-01-25",
     completedAt: null,
     category: "Backend",
+    frequency: "Monthly",
     comments: [],
   },
   {
@@ -98,6 +102,7 @@ const DUMMY_TASKS = [
     createdAt: "2024-01-18",
     completedAt: null,
     category: "Documentation",
+    frequency: "One-time",
     comments: [
       {
         id: 4,
@@ -119,6 +124,7 @@ const DUMMY_TASKS = [
     createdAt: "2024-01-10",
     completedAt: null,
     category: "Testing",
+    frequency: "Weekly",
     comments: [
       {
         id: 5,
@@ -127,6 +133,36 @@ const DUMMY_TASKS = [
         timestamp: "2024-01-27T16:20:00Z",
       },
     ],
+  },
+  {
+    id: 6,
+    name: "Weekly team meeting",
+    description: "Conduct weekly team sync-up meeting",
+    dueDate: "2024-02-05",
+    assignedUser: "John Doe",
+    assignedUserId: "user1",
+    status: "To Do",
+    priority: "Medium",
+    createdAt: "2024-01-22",
+    completedAt: null,
+    category: "Meetings",
+    frequency: "Weekly",
+    comments: [],
+  },
+  {
+    id: 7,
+    name: "Monthly performance review",
+    description: "Review team performance metrics and set goals",
+    dueDate: "2024-02-28",
+    assignedUser: "Jane Smith",
+    assignedUserId: "user2",
+    status: "To Do",
+    priority: "High",
+    createdAt: "2024-01-15",
+    completedAt: null,
+    category: "Management",
+    frequency: "Monthly",
+    comments: [],
   },
 ];
 
@@ -185,6 +221,8 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [userFilter, setUserFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [frequencyFilter, setFrequencyFilter] = useState("All");
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
   const [isGenerateReportOpen, setIsGenerateReportOpen] = useState(false);
@@ -198,6 +236,7 @@ const Dashboard = () => {
     filterType: "dueDate",
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Generate unique ID for new tasks
   const generateTaskId = () => {
@@ -215,9 +254,9 @@ const Dashboard = () => {
     return {
       totalTasks: taskList.length,
       completedTasks: taskList.filter((task) => task.status === "Done").length,
-      pendingTasks: taskList.filter(
-        (task) => task.status === "In Progress" || task.status === "To Do"
-      ).length,
+      pendingTasks: taskList.filter((task) => task.status === "To Do").length,
+      inProgressTasks: taskList.filter((task) => task.status === "In Progress")
+        .length,
       overdueTasks: overdueTasks.length,
       activeUsers: [...new Set(taskList.map((task) => task.assignedUser))]
         .length,
@@ -300,6 +339,12 @@ const Dashboard = () => {
           const dueDate = new Date(task.dueDate);
           return dueDate < now && task.status !== "Done";
         });
+      } else if (statusFilter === "Pending") {
+        filtered = filtered.filter((task) => task.status === "To Do");
+      } else if (statusFilter === "In Progress") {
+        filtered = filtered.filter((task) => task.status === "In Progress");
+      } else if (statusFilter === "Completed") {
+        filtered = filtered.filter((task) => task.status === "Done");
       } else {
         filtered = filtered.filter((task) => task.status === statusFilter);
       }
@@ -315,18 +360,32 @@ const Dashboard = () => {
       filtered = filtered.filter((task) => task.priority === priorityFilter);
     }
 
+    // Apply category filter
+    if (categoryFilter !== "All") {
+      filtered = filtered.filter((task) => task.category === categoryFilter);
+    }
+
+    // Apply frequency filter
+    if (frequencyFilter !== "All") {
+      filtered = filtered.filter((task) => task.frequency === frequencyFilter);
+    }
+
     setFilteredTasks(filtered);
   }, [
     searchQuery,
     statusFilter,
     userFilter,
     priorityFilter,
+    categoryFilter,
+    frequencyFilter,
     dateFilter,
     tasks,
   ]);
 
-  // Get unique users for filter dropdown
+  // Get unique values for filter dropdowns
   const uniqueUsers = [...new Set(tasks.map((task) => task.assignedUser))];
+  const uniqueCategories = [...new Set(tasks.map((task) => task.category))];
+  const uniqueFrequencies = [...new Set(tasks.map((task) => task.frequency))];
 
   // Handle creating new task
   const handleCreateTask = () => {
@@ -637,6 +696,35 @@ const Dashboard = () => {
     return "All Time";
   };
 
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("All");
+    setUserFilter("All");
+    setPriorityFilter("All");
+    setCategoryFilter("All");
+    setFrequencyFilter("All");
+    setDateFilter({
+      startDate: null,
+      endDate: null,
+      filterType: "dueDate",
+    });
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = () => {
+    return (
+      searchQuery ||
+      statusFilter !== "All" ||
+      userFilter !== "All" ||
+      priorityFilter !== "All" ||
+      categoryFilter !== "All" ||
+      frequencyFilter !== "All" ||
+      dateFilter.startDate ||
+      dateFilter.endDate
+    );
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Dashboard Header */}
@@ -688,10 +776,7 @@ const Dashboard = () => {
       </div>
 
       {/* Active Filters Display */}
-      {(searchQuery ||
-        statusFilter !== "All" ||
-        userFilter !== "All" ||
-        priorityFilter !== "All") && (
+      {hasActiveFilters() && (
         <div className="flex items-center gap-2 flex-wrap p-4 bg-blue-50 rounded-lg border border-blue-200">
           <Filter className="h-4 w-4 text-blue-600" />
           <span className="text-sm font-medium text-blue-900">
@@ -709,7 +794,7 @@ const Dashboard = () => {
           )}
           {userFilter !== "All" && (
             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-              User: {userFilter}
+              Assigned to: {userFilter}
             </span>
           )}
           {priorityFilter !== "All" && (
@@ -717,16 +802,21 @@ const Dashboard = () => {
               Priority: {priorityFilter}
             </span>
           )}
+          {categoryFilter !== "All" && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+              Category: {categoryFilter}
+            </span>
+          )}
+          {frequencyFilter !== "All" && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+              Frequency: {frequencyFilter}
+            </span>
+          )}
           <Button
             variant="ghost"
             size="sm"
             className="text-blue-600 hover:text-blue-800"
-            onClick={() => {
-              setSearchQuery("");
-              setStatusFilter("All");
-              setUserFilter("All");
-              setPriorityFilter("All");
-            }}
+            onClick={clearAllFilters}
           >
             Clear All
           </Button>
@@ -740,7 +830,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Task Distribution Chart */}
         <div className="lg:col-span-1">
-          <TaskDistributionChart data={taskDistribution} />
+          <TaskDistributionChart tasks={filteredTasks} />
         </div>
 
         {/* Right Column - User Activity Feed */}
@@ -763,14 +853,25 @@ const Dashboard = () => {
                   Showing {filteredTasks.length} of {tasks.length} tasks
                 </p>
               </div>
-              <Button
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={handleCreateTask}
-              >
-                <Plus className="h-4 w-4" />
-                New Task
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                >
+                  <Filter className="h-4 w-4" />
+                  {isFiltersOpen ? "Hide Filters" : "Show Filters"}
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={handleCreateTask}
+                >
+                  <Plus className="h-4 w-4" />
+                  New Task
+                </Button>
+              </div>
             </div>
 
             {/* Search and Filter Controls */}
@@ -784,41 +885,25 @@ const Dashboard = () => {
                   className="pl-10"
                 />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="All">All Status</option>
-                  <option value="To Do">To Do</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Done">Done</option>
-                  <option value="Overdue">Overdue</option>
-                </select>
-                <select
-                  value={userFilter}
-                  onChange={(e) => setUserFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="All">All Users</option>
-                  {uniqueUsers.map((user) => (
-                    <option key={user} value={user}>
-                      {user}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="All">All Priority</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
+
+              {isFiltersOpen && (
+                <TaskFilters
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  userFilter={userFilter}
+                  setUserFilter={setUserFilter}
+                  priorityFilter={priorityFilter}
+                  setPriorityFilter={setPriorityFilter}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  frequencyFilter={frequencyFilter}
+                  setFrequencyFilter={setFrequencyFilter}
+                  uniqueUsers={uniqueUsers}
+                  uniqueCategories={uniqueCategories}
+                  uniqueFrequencies={uniqueFrequencies}
+                  clearAllFilters={clearAllFilters}
+                />
+              )}
             </div>
 
             {/* Task List Component */}
@@ -856,15 +941,13 @@ const Dashboard = () => {
         kpis={kpis}
       />
 
-      <TaskFormModal
+      <AssignTaskModal
         isOpen={isTaskFormOpen}
         onClose={() => {
           setIsTaskFormOpen(false);
           setEditingTask(null);
         }}
-        onSubmit={handleTaskSubmit}
         task={editingTask}
-        users={users}
       />
 
       <ConfirmDeleteModal

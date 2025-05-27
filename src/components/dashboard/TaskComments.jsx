@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";
+import { formatDistanceToNow } from "date-fns";
 import { Send } from "lucide-react";
 
 const TaskComments = ({ task, onAddComment }) => {
@@ -25,84 +31,84 @@ const TaskComments = ({ task, onAddComment }) => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-    });
+  // Function to format the timestamp
+  const formatTimestamp = (timestamp) => {
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    } catch (error) {
+      return "Invalid date";
+    }
   };
 
-  if (!task) {
-    return (
-      <Card className="p-6">
-        <div className="text-center py-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Task Comments
-          </h3>
-          <p className="text-gray-500">
-            Select a task to view and add comments
-          </p>
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-2">Task Comments</h3>
-      <div className="mb-4">
-        <h4 className="font-medium text-gray-800">{task.name}</h4>
-        <p className="text-sm text-gray-600 mt-1">{task.description}</p>
-      </div>
-
-      <div className="border-t border-gray-200 pt-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Comments ({task.comments.length})
-        </h4>
-
-        <div className="space-y-4 max-h-[300px] overflow-y-auto mb-4">
-          {task.comments.length === 0 ? (
-            <p className="text-sm text-gray-500">No comments yet</p>
-          ) : (
-            task.comments.map((comment) => (
-              <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
-                <div className="flex justify-between items-start">
-                  <span className="font-medium text-sm">{comment.user}</span>
-                  <span className="text-xs text-gray-500">
-                    {formatDate(comment.timestamp)}
-                  </span>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-medium">
+          {task ? `Comments for "${task.name}"` : "Task Comments"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {task ? (
+          <>
+            <div className="space-y-4 max-h-[300px] overflow-y-auto mb-4 pr-2">
+              {task.comments && task.comments.length > 0 ? (
+                task.comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="flex space-x-3 pb-3 border-b border-gray-100"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      <span className="text-xs font-bold">
+                        {comment.user.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-baseline">
+                        <p className="text-sm font-medium text-gray-900">
+                          {comment.user}
+                        </p>
+                        <span className="ml-2 text-xs text-gray-500">
+                          {formatTimestamp(comment.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-1">
+                        {comment.text}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-4 text-center">
+                  <p className="text-gray-500">No comments yet</p>
                 </div>
-                <p className="text-sm mt-1">{comment.text}</p>
-              </div>
-            ))
-          )}
-        </div>
+              )}
+            </div>
 
-        <form onSubmit={handleSubmit} className="mt-4">
-          <Textarea
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="mb-2"
-            rows={3}
-          />
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={!comment.trim() || isSubmitting}
-              className="flex items-center gap-1"
-            >
-              <Send className="h-4 w-4" />
-              {isSubmitting ? "Sending..." : "Add Comment"}
-            </Button>
+            <form onSubmit={handleSubmit} className="mt-4">
+              <div className="flex items-start space-x-2">
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 min-h-[80px]"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!comment.trim() || isSubmitting}
+                >
+                  <Send className="h-4 w-4 mr-1" />
+                  Send
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-gray-500">Select a task to view comments</p>
           </div>
-        </form>
-      </div>
+        )}
+      </CardContent>
     </Card>
   );
 };

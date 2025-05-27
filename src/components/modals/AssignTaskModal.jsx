@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { Switch } from "../../components/ui/switch";
-import { addTask } from "../../store/slices/taskSlice";
+import { updateTaskLocal, addTaskLocal } from "../../store/slices/taskSlice";
 import {
   Check,
   Link,
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { generateId } from "../../utils/helpers";
 
-const AssignTaskModal = ({ isOpen, onClose }) => {
+const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const dispatch = useDispatch();
   const { users } = useSelector((state) => state.team || { users: [] });
   const { categories } = useSelector(
@@ -42,17 +42,41 @@ const AssignTaskModal = ({ isOpen, onClose }) => {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showLoopDropdown, setShowLoopDropdown] = useState(false);
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens/closes or task changes
   useEffect(() => {
     if (isOpen) {
-      // Set default due date to tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setDueDate(tomorrow.toISOString().split("T")[0]);
+      if (task) {
+        // Initialize form with task data for editing
+        setTaskTitle(task.title || task.name || "");
+        setTaskDescription(task.description || "");
+        setSelectedUsers(
+          task.assignees
+            ? task.assignees.map((a) => (typeof a === "object" ? a.id : a))
+            : task.assigneeId
+            ? [task.assigneeId]
+            : []
+        );
+        setSelectedCategory(task.category || "");
+        setUsersInLoop(task.usersInLoop || []);
+        setSelectedPriority(
+          task.priority ? task.priority.toLowerCase() : "medium"
+        );
+        setIsRepeating(
+          task.frequency
+            ? task.frequency !== "One-time"
+            : task.isRepeating || false
+        );
+        setDueDate(task.dueDate ? task.dueDate.split("T")[0] : "");
+      } else {
+        // Set default due date to tomorrow for new tasks
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setDueDate(tomorrow.toISOString().split("T")[0]);
+      }
     } else {
       resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, task]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -83,9 +107,8 @@ const AssignTaskModal = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
 
     try {
-      // Create new task object
-      const newTask = {
-        id: generateId(),
+      // Create task object
+      const taskData = {
         title: taskTitle,
         description: taskDescription,
         assignees: selectedUsers,
@@ -93,17 +116,32 @@ const AssignTaskModal = ({ isOpen, onClose }) => {
         usersInLoop: usersInLoop,
         priority: selectedPriority,
         isRepeating,
+        frequency: isRepeating ? "Weekly" : "One-time", // Default to weekly if repeating
         dueDate: dueDate,
-        status: "pending",
-        createdAt: new Date().toISOString(),
+        status: task?.status || "pending",
         createdBy: "currentUser", // Replace with actual current user ID
       };
 
-      // Dispatch action to add task
-      await dispatch(addTask(newTask));
-
-      // Show success message or notification
-      console.log("Task created successfully:", newTask);
+      if (task) {
+        // Update existing task
+        const updatedTask = {
+          ...task,
+          ...taskData,
+          id: task.id,
+        };
+        await dispatch(updateTaskLocal({ id: task.id, ...updatedTask }));
+        console.log("Task updated successfully:", updatedTask);
+      } else {
+        // Create new task
+        const newTask = {
+          id: generateId(),
+          ...taskData,
+          createdAt: new Date().toISOString(),
+          status: "pending",
+        };
+        await dispatch(addTaskLocal(newTask));
+        console.log("Task created successfully:", newTask);
+      }
 
       // Reset form if not assigning more tasks
       if (!assignMoreTasks) {
@@ -112,8 +150,8 @@ const AssignTaskModal = ({ isOpen, onClose }) => {
         resetForm();
       }
     } catch (error) {
-      console.error("Error creating task:", error);
-      setErrors({ submit: "Failed to create task. Please try again." });
+      console.error("Error saving task:", error);
+      setErrors({ submit: "Failed to save task. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -170,7 +208,7 @@ const AssignTaskModal = ({ isOpen, onClose }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Assign New Task"
+      title={task ? "Edit Task" : "Assign New Task"}
       className="max-w-2xl"
     >
       {/* Improved form container with better padding and spacing */}
@@ -622,11 +660,12 @@ const AssignTaskModal = ({ isOpen, onClose }) => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Assigning...
+                  {task ? "Updating..." : "Assigning..."}
                 </>
               ) : (
                 <>
-                  <Check className="mr-2 h-5 w-5" /> Assign Task
+                  <Check className="mr-2 h-5 w-5" />{" "}
+                  {task ? "Update Task" : "Assign Task"}
                 </>
               )}
             </Button>
