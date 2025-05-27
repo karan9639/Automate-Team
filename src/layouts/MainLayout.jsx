@@ -4,60 +4,54 @@ import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 /**
- * Main layout component that wraps all authenticated pages
- * Uses Outlet from react-router-dom to render nested route components
+ * Main layout component with responsive sidebar and topbar
  */
 const MainLayout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isTablet = useMediaQuery("(min-width: 769px) and (max-width: 1024px)");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
 
-  // Handle responsive behavior
+  // Update sidebar state when screen size changes
   useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 1024;
-      setIsMobile(mobile);
-      if (mobile) {
-        setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-      }
-    };
+    setIsSidebarOpen(!isMobile);
+  }, [isMobile]);
 
-    window.addEventListener("resize", handleResize);
-    handleResize(); // Initial check
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
+  // Toggle sidebar
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar */}
       <Sidebar
         isOpen={isSidebarOpen}
         isMobile={isMobile}
+        isTablet={isTablet}
         toggleSidebar={toggleSidebar}
       />
 
-      {/* Main Content */}
+      {/* Main content */}
       <div
-        className={`flex flex-col flex-1 transition-all duration-300 ${
+        className={`flex-1 flex flex-col transition-all duration-300 ${
           isSidebarOpen && !isMobile ? "ml-64" : "ml-0"
         }`}
       >
-        <Topbar toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        {/* Topbar */}
+        <Topbar
+          isSidebarOpen={isSidebarOpen}
+          toggleSidebar={toggleSidebar}
+          isMobile={isMobile}
+        />
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
       </div>
-
-      {/* Debug Components - only show in development */}
-      {/* {process.env.NODE_ENV === "development" && <AuthDebugger />} */}
     </div>
   );
 };

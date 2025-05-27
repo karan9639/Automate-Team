@@ -1,95 +1,107 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import PropTypes from "prop-types";
 
+/**
+ * Component to display task distribution by status
+ */
 const TaskDistributionChart = ({ tasks = [] }) => {
-  // Calculate task distribution by status
-  const statusCounts = {
-    "To Do": tasks.filter((task) => task.status === "To Do").length,
+  // Calculate task counts by status
+  const taskCounts = {
+    Pending: tasks.filter((task) => task.status === "Pending").length,
     "In Progress": tasks.filter((task) => task.status === "In Progress").length,
     Completed: tasks.filter(
       (task) => task.status === "Completed" || task.status === "Done"
     ).length,
-    Overdue: tasks.filter(
-      (task) =>
-        task.status !== "Completed" &&
-        task.status !== "Done" &&
-        new Date(task.dueDate) < new Date()
-    ).length,
+    Overdue: tasks.filter((task) => {
+      const dueDate = new Date(task.dueDate);
+      const today = new Date();
+      return (
+        task.status !== "Completed" && task.status !== "Done" && dueDate < today
+      );
+    }).length,
   };
 
-  const total = tasks.length;
+  // Calculate total tasks
+  const totalTasks = Object.values(taskCounts).reduce(
+    (sum, count) => sum + count,
+    0
+  );
 
   // Calculate percentages
-  const percentages = {
-    "To Do": total > 0 ? Math.round((statusCounts["To Do"] / total) * 100) : 0,
-    "In Progress":
-      total > 0 ? Math.round((statusCounts["In Progress"] / total) * 100) : 0,
-    Completed:
-      total > 0 ? Math.round((statusCounts.Completed / total) * 100) : 0,
-    Overdue: total > 0 ? Math.round((statusCounts.Overdue / total) * 100) : 0,
+  const getPercentage = (count) => {
+    if (totalTasks === 0) return 0;
+    return Math.round((count / totalTasks) * 100);
   };
 
   // Status colors
-  const colors = {
-    "To Do": "bg-blue-500",
-    "In Progress": "bg-yellow-500",
+  const statusColors = {
+    Pending: "bg-yellow-500",
+    "In Progress": "bg-blue-500",
     Completed: "bg-green-500",
     Overdue: "bg-red-500",
   };
 
+  if (totalTasks === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Task Distribution
+        </h3>
+        <div className="flex items-center justify-center h-40">
+          <p className="text-gray-500 dark:text-gray-400">
+            No task data available
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium">Task Distribution</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {total > 0 ? (
-          <>
-            <div className="mb-4">
-              <div className="flex h-4 rounded-full overflow-hidden">
-                {Object.entries(percentages).map(
-                  ([status, percentage]) =>
-                    percentage > 0 && (
-                      <div
-                        key={status}
-                        className={colors[status]}
-                        style={{ width: `${percentage}%` }}
-                        title={`${status}: ${percentage}%`}
-                      />
-                    )
-                )}
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        Task Distribution
+      </h3>
+
+      {/* Stacked bar chart */}
+      <div className="h-8 flex rounded-full overflow-hidden mb-6">
+        {Object.entries(taskCounts).map(([status, count]) => {
+          const percentage = getPercentage(count);
+          return percentage > 0 ? (
+            <div
+              key={status}
+              className={`${statusColors[status]} relative group`}
+              style={{ width: `${percentage}%` }}
+            >
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                {status}: {count} ({percentage}%)
               </div>
             </div>
+          ) : null;
+        })}
+      </div>
 
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {Object.entries(statusCounts).map(([status, count]) => (
-                <div key={status} className="text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <div
-                      className={`h-3 w-3 ${colors[status]} rounded-full`}
-                    ></div>
-                    <span className="text-sm font-medium">{status}</span>
-                  </div>
-                  <p className="text-2xl font-bold mt-1">{count}</p>
-                  <p className="text-xs text-gray-500">
-                    {percentages[status]}%
-                  </p>
-                </div>
-              ))}
+      {/* Legend */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {Object.entries(taskCounts).map(([status, count]) => (
+          <div key={status} className="flex items-center">
+            <div
+              className={`w-3 h-3 rounded-full ${statusColors[status]} mr-2`}
+            ></div>
+            <div className="text-sm">
+              <span className="text-gray-700 dark:text-gray-300">{status}</span>
+              <span className="text-gray-500 dark:text-gray-400 ml-1">
+                ({count}, {getPercentage(count)}%)
+              </span>
             </div>
-          </>
-        ) : (
-          <div className="h-[200px] flex items-center justify-center">
-            <p className="text-gray-500">No task data available</p>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+    </div>
   );
+};
+
+TaskDistributionChart.propTypes = {
+  tasks: PropTypes.array,
 };
 
 export default TaskDistributionChart;
