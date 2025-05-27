@@ -76,14 +76,14 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
 
     console.log("Auth state reset successfully");
-  };
+  }; 
 
   // Login function
   const login = async (email, password) => {
     try {
       setLoading(true);
       setAuthError(null);
-
+    
       // Try to use the API login
       let user;
 

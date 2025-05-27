@@ -232,7 +232,7 @@ const MyTeam = () => {
             <option value="">Role</option>
             <option value="Admin">Admin</option>
             <option value="Manager">Manager</option>
-            <option value="Member">Member</option>
+            <option value="Team Member">Team Member</option>
           </select>
 
           <select
@@ -287,7 +287,7 @@ const MyTeam = () => {
               : "Add team members to your organization."
           }
           icon={UserPlus}
-          actionLabel="Add Member"
+          actionLabel="Add Member" 
           onAction={handleAddMember}
           className="bg-white dark:bg-gray-800 rounded-lg border p-8 dark:border-gray-700"
         />
