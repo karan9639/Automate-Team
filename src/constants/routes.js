@@ -49,4 +49,7 @@ export const ROUTES = {
 
   // Settings route
   SETTINGS: "/settings",
+
+  // Profile route
+  PROFILE: "/profile",
 };

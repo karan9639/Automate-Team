@@ -1,100 +1,111 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { useAuth } from "../contexts/AuthContext"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Bell, Menu, X, User, LogOut, Settings, ChevronDown
-} from "lucide-react"
-import AutomateLogo from "../components/common/AutomateLogo"
-import PropTypes from "prop-types"
-import { ROUTES } from "../constants/routes"
-import { toast } from "react-hot-toast"
-import { logoutUser } from "@/api/authApi"
+  Search,
+  Bell,
+  Menu,
+  X,
+  User,
+  LogOut,
+  Settings,
+  ChevronDown,
+} from "lucide-react";
+import AutomateLogo from "../components/common/AutomateLogo";
+import PropTypes from "prop-types";
+import { ROUTES } from "../constants/routes";
+import { toast } from "react-hot-toast";
+import { logoutUser } from "@/api/authApi";
 
 const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const { currentUser, logout } = useAuth()
-  const navigate = useNavigate()
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownOpen && !event.target.closest(".user-dropdown")) {
-        setDropdownOpen(false)
+        setDropdownOpen(false);
       }
-      if (notificationsOpen && !event.target.closest(".notifications-dropdown")) {
-        setNotificationsOpen(false)
+      if (
+        notificationsOpen &&
+        !event.target.closest(".notifications-dropdown")
+      ) {
+        setNotificationsOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [dropdownOpen, notificationsOpen])
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen, notificationsOpen]);
 
   // Keyboard shortcut for search
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault()
-        setSearchOpen(true)
+        e.preventDefault();
+        setSearchOpen(true);
       }
       if (e.key === "Escape" && searchOpen) {
-        setSearchOpen(false)
+        setSearchOpen(false);
       }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [searchOpen])
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [searchOpen]);
 
   // 🛠 Fixed logout function
   const handleLogout = async (event) => {
-    event?.preventDefault()
-    event?.stopPropagation()
+    event?.preventDefault();
+    event?.stopPropagation();
 
-    if (isLoggingOut) return
+    if (isLoggingOut) return;
 
     try {
-      setIsLoggingOut(true)
-      setDropdownOpen(false)
+      setIsLoggingOut(true);
+      setDropdownOpen(false);
 
-      const apiResponse = await logoutUser()
+      const apiResponse = await logoutUser();
 
-      console.log("Logout API success:", apiResponse)
+      console.log("Logout API success:", apiResponse);
 
-      await logout()
-      navigate(ROUTES.AUTH.LOGIN, { replace: true })
-      toast.success("Logged out successfully.")
+      await logout();
+      navigate(ROUTES.AUTH.LOGIN, { replace: true });
+      toast.success("Logged out successfully.");
     } catch (error) {
-      console.error("Logout failed:", error)
+      console.error("Logout failed:", error);
 
       if (error.message?.includes("401") || error.status === 401) {
-        toast.error("Session expired. Please login again.")
-        navigate(ROUTES.AUTH.LOGIN, { replace: true })
+        toast.error("Session expired. Please login again.");
+        navigate(ROUTES.AUTH.LOGIN, { replace: true });
       } else {
-        toast.error(`Logout failed: ${error.message || "Unknown error"}`)
+        toast.error(`Logout failed: ${error.message || "Unknown error"}`);
       }
     } finally {
-      setIsLoggingOut(false)
+      setIsLoggingOut(false);
     }
-  }
+  };
 
   const getUserDisplayName = () => {
-    if (!currentUser) return "User"
+    if (!currentUser) return "User";
     return (
       currentUser.fullname?.trim() ||
       currentUser.name?.trim() ||
       currentUser.email?.split("@")[0] ||
       "User"
-    )
-  }
+    );
+  };
 
-  const getUserInitial = () => getUserDisplayName().charAt(0).toUpperCase()
-  const getUserRole = () => currentUser?.accountType || currentUser?.role || "User"
-  const getUserEmail = () => currentUser?.email || ""
+  const getUserInitial = () => getUserDisplayName().charAt(0).toUpperCase();
+  const getUserRole = () =>
+    currentUser?.accountType || currentUser?.role || "User";
+  const getUserEmail = () => currentUser?.email || "";
 
   return (
     <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 z-10 sticky top-0">
@@ -119,7 +130,9 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
             onClick={() => setSearchOpen(true)}
           >
             <Search size={16} />
-            <span className="ml-2 text-sm hidden md:inline">Search (CTRL/CMD+K)</span>
+            <span className="ml-2 text-sm hidden md:inline">
+              Search (CTRL/CMD+K)
+            </span>
           </div>
 
           <AnimatePresence>
@@ -130,7 +143,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-20 z-50"
                 onClick={(e) => {
-                  if (e.target === e.currentTarget) setSearchOpen(false)
+                  if (e.target === e.currentTarget) setSearchOpen(false);
                 }}
               >
                 <motion.div
@@ -210,7 +223,10 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
               {getUserInitial()}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-white text-sm font-medium" title={getUserEmail()}>
+              <p
+                className="text-white text-sm font-medium"
+                title={getUserEmail()}
+              >
                 {getUserDisplayName()}
               </p>
               <p className="text-gray-400 text-xs">{getUserRole()}</p>
@@ -228,15 +244,19 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                 className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-50"
               >
                 <div className="px-4 py-3 border-b border-gray-100 md:hidden">
-                  <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {getUserDisplayName()}
+                  </p>
                   <p className="text-xs text-gray-500">{getUserEmail()}</p>
-                  <p className="text-xs text-blue-600 font-medium">{getUserRole()}</p>
+                  <p className="text-xs text-blue-600 font-medium">
+                    {getUserRole()}
+                  </p>
                 </div>
 
                 <button
                   onClick={() => {
-                    setDropdownOpen(false)
-                    navigate("/profile")
+                    setDropdownOpen(false);
+                    navigate(ROUTES.PROFILE);
                   }}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
@@ -245,8 +265,8 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                 </button>
                 <button
                   onClick={() => {
-                    setDropdownOpen(false)
-                    navigate(ROUTES.SETTINGS)
+                    setDropdownOpen(false);
+                    navigate(ROUTES.SETTINGS);
                   }}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
@@ -257,7 +277,9 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                   onClick={(e) => handleLogout(e)}
                   disabled={isLoggingOut}
                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                    isLoggingOut ? "text-gray-400 cursor-not-allowed" : "text-red-600"
+                    isLoggingOut
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-red-600"
                   }`}
                 >
                   <LogOut size={16} className="mr-2" />
@@ -269,13 +291,13 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
         </div>
       </div>
     </header>
-  )
-}
+  );
+};
 
 Topbar.propTypes = {
   toggleSidebar: PropTypes.func.isRequired,
   isSidebarOpen: PropTypes.bool.isRequired,
   isMobile: PropTypes.bool.isRequired,
-}
+};
 
-export default Topbar
+export default Topbar;

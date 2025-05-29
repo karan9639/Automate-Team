@@ -1,52 +1,54 @@
-"use client"
+"use client";
 
-import { Routes, Route, Navigate } from "react-router-dom"
-import { useAuth } from "../contexts/AuthContext"
-import { ROUTES } from "../constants/routes"
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { ROUTES } from "../constants/routes";
 
 // Layouts
-import MainLayout from "../layouts/MainLayout"
+import MainLayout from "../layouts/MainLayout";
 
 // Auth Pages
-import LoginPage from "../pages/auth/LoginPage"
-import SignupPage from "../pages/auth/SignupPage"
-import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage"
+import LoginPage from "../pages/auth/LoginPage";
+import SignupPage from "../pages/auth/SignupPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 
 // Main Pages
-import Dashboard from "../pages/Dashboard"
-import NotFound from "../pages/NotFound"
+import Dashboard from "../pages/Dashboard";
+import NotFound from "../pages/NotFound";
 
 // Task Pages
-import TaskManagement from "../pages/tasks/TaskManagement"
-import TaskDirectory from "../pages/tasks/TaskDirectory"
-import TaskTemplates from "../pages/tasks/TaskTemplates"
+import TaskManagement from "../pages/tasks/TaskManagement";
+import TaskDirectory from "../pages/tasks/TaskDirectory";
+import TaskTemplates from "../pages/tasks/TaskTemplates";
 
 // Attendance Pages
-import MyAttendance from "../pages/attendance/MyAttendance"
-import AllAttendance from "../pages/attendance/AllAttendance"
-import AttendanceSettings from "../pages/attendance/AttendanceSettings"
+import MyAttendance from "../pages/attendance/MyAttendance";
+import AllAttendance from "../pages/attendance/AllAttendance";
+import AttendanceSettings from "../pages/attendance/AttendanceSettings";
 
 // Leave Pages
-import MyLeaves from "../pages/leaves/MyLeaves"
-import AllLeaves from "../pages/leaves/AllLeaves"
-import Approvals from "../pages/leaves/Approvals"
+import MyLeaves from "../pages/leaves/MyLeaves";
+import AllLeaves from "../pages/leaves/AllLeaves";
+import Approvals from "../pages/leaves/Approvals";
 
 // Event Pages
-import Events from "../pages/events/Events"
-import Holidays from "../pages/events/Holidays"
+import Events from "../pages/events/Events";
+import Holidays from "../pages/events/Holidays";
 
 // Team Pages
-import MyTeam from "../pages/team/MyTeam"
+import MyTeam from "../pages/team/MyTeam";
 
 // Other Pages
-import MobileApp from "../pages/MobileApp"
-import Checklist from "../pages/Checklist"
-import Links from "../pages/Links"
-import ReferAndEarn from "../pages/ReferAndEarn"
-import Settings from "../pages/settings/Settings"
+import MobileApp from "../pages/MobileApp";
+import Checklist from "../pages/Checklist";
+import Links from "../pages/Links";
+import ReferAndEarn from "../pages/ReferAndEarn";
+import Settings from "../pages/settings/Settings";
 
 // Import the Support component
 // import Support from "../pages/Support"
+import Profile from "../pages/profile/Profile";
+import Support from "../pages/Support";
 
 // Loading Component
 const LoadingSpinner = () => (
@@ -56,45 +58,59 @@ const LoadingSpinner = () => (
       <p>Loading...</p>
     </div>
   </div>
-)
+);
 
 // Protected route component - NOW INSIDE AppRoutes where AuthProvider is available
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading } = useAuth();
 
-  console.log("ProtectedRoute: isAuthenticated =", isAuthenticated, "loading =", loading)
+  console.log(
+    "ProtectedRoute: isAuthenticated =",
+    isAuthenticated,
+    "loading =",
+    loading
+  );
 
   if (loading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
-    console.log("ProtectedRoute: User not authenticated, redirecting to login")
-    return <Navigate to={ROUTES.AUTH.LOGIN} replace />
+    console.log("ProtectedRoute: User not authenticated, redirecting to login");
+    return <Navigate to={ROUTES.AUTH.LOGIN} replace />;
   }
 
-  console.log("ProtectedRoute: User authenticated, rendering protected content")
-  return children
-}
+  console.log(
+    "ProtectedRoute: User authenticated, rendering protected content"
+  );
+  return children;
+};
 
 // Auth route component (redirects to dashboard if authenticated)
 const AuthRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading } = useAuth();
 
-  console.log("AuthRoute: isAuthenticated =", isAuthenticated, "loading =", loading)
+  console.log(
+    "AuthRoute: isAuthenticated =",
+    isAuthenticated,
+    "loading =",
+    loading
+  );
 
   if (loading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner />;
   }
 
   if (isAuthenticated) {
-    console.log("AuthRoute: User already authenticated, redirecting to dashboard")
-    return <Navigate to={ROUTES.DASHBOARD} replace />
+    console.log(
+      "AuthRoute: User already authenticated, redirecting to dashboard"
+    );
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
-  console.log("AuthRoute: User not authenticated, showing auth page")
-  return children
-}
+  console.log("AuthRoute: User not authenticated, showing auth page");
+  return children;
+};
 
 // Main routes component
 const AppRoutes = () => {
@@ -334,22 +350,33 @@ const AppRoutes = () => {
         <Route index element={<Settings />} />
       </Route>
 
-      {/* Support Route */}
       <Route
-        path={ROUTES.SUPPORT}
+        path={ROUTES.PROFILE}
         element={
           <ProtectedRoute>
-            <MainLayout>
-              {/* <Support /> */}
-            </MainLayout>
+            <MainLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Profile />} />
+      </Route>
+
+      {/* Support Route */}
+      <Route
+        path="/support"
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Support />} />
+      </Route>
 
       {/* 404 route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
-  )
-}
+  );
+};
 
-export default AppRoutes
+export default AppRoutes;
