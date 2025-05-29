@@ -1,19 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { UserPlus, Upload, Pencil, Trash2, Search, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  UserPlus,
+  Upload,
+  Trash2,
+  Search,
+  Filter,
+  RefreshCw,
+} from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import EmptyState from "../../components/common/EmptyState";
 import DataTable from "../../components/common/DataTable";
 import AddMemberModal from "../../components/modals/AddMemberModal";
+import UploadUsersModal from "../../components/modals/UploadUsersModal";
+import { userApi } from "../../apiService/apiService";
 import {
+  setTeamMembers,
   addTeamMember,
-  updateTeamMember,
   deleteTeamMember,
   selectAllTeamMembers,
 } from "../../store/slices/teamSlice";
-import UploadUsersModal from "../../components/modals/UploadUsersModal";
 
 /**
  * My Team page component
@@ -28,25 +37,65 @@ const MyTeam = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [filters, setFilters] = useState({
-    role: "",
+    accountType: "",
     reportingManager: "",
   });
+
+  // Fetch team members on component mount
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
+
+  // Fetch team members from API
+  const fetchTeamMembers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await userApi.fetchAllTeamMembers();
+      const members = response.data || [];
+      dispatch(setTeamMembers(members));
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to fetch team members"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Refresh team members
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await userApi.fetchAllTeamMembers();
+      const members = response.data || [];
+      dispatch(setTeamMembers(members));
+      toast.success("Team members refreshed");
+    } catch (error) {
+      console.error("Error refreshing team members:", error);
+      toast.error("Failed to refresh team members");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Filter members based on search query and filters
   const filteredMembers = teamMembers.filter((member) => {
     // Search filter
     if (
       searchQuery &&
-      !member.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !member.email.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !member.mobile.includes(searchQuery)
+      !member.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !member.email?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !member.whatsappNumber?.includes(searchQuery)
     ) {
       return false;
     }
 
-    // Role filter
-    if (filters.role && member.role !== filters.role) {
+    // Account type filter
+    if (filters.accountType && member.accountType !== filters.accountType) {
       return false;
     }
 
@@ -72,12 +121,6 @@ const MyTeam = () => {
     setIsUploadModalOpen(true);
   };
 
-  // Handle edit member
-  const handleEditMember = (member) => {
-    setSelectedMember(member);
-    setIsAddMemberModalOpen(true);
-  };
-
   // Handle delete member
   const handleDeleteMember = (member) => {
     setSelectedMember(member);
@@ -85,25 +128,44 @@ const MyTeam = () => {
   };
 
   // Handle confirm delete
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedMember) {
-      dispatch(deleteTeamMember(selectedMember.id));
-      setIsDeleteModalOpen(false);
-      setSelectedMember(null);
+      try {
+        await userApi.deleteMember(selectedMember._id || selectedMember.id);
+        dispatch(deleteTeamMember(selectedMember._id || selectedMember.id));
+        toast.success("Team member deleted successfully");
+        setIsDeleteModalOpen(false);
+        setSelectedMember(null);
+      } catch (error) {
+        console.error("Error deleting member:", error);
+        toast.error(
+          error.response?.data?.message || "Failed to delete team member"
+        );
+      }
     }
   };
 
-  // Handle save member
-  const handleSaveMember = (memberData) => {
-    if (selectedMember) {
-      // Update existing member
-      dispatch(updateTeamMember({ ...memberData, id: selectedMember.id }));
-    } else {
-      // Add new member
-      dispatch(addTeamMember({ ...memberData, id: Date.now().toString() }));
+  // Handle save member (add new member via API)
+  const handleSaveMember = async (memberData) => {
+    try {
+      const response = await userApi.addNewMember(memberData);
+      const newMember = response.data;
+
+      // Add to Redux store
+      dispatch(addTeamMember(newMember));
+
+      toast.success("Team member added successfully");
+      setIsAddMemberModalOpen(false);
+
+      // Refresh the list to ensure sync
+      fetchTeamMembers();
+    } catch (error) {
+      console.error("Error adding member:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to add team member";
+      toast.error(errorMessage);
+      throw error; // Re-throw to handle in modal
     }
-    setIsAddMemberModalOpen(false);
-    setSelectedMember(null);
   };
 
   // Handle filter change
@@ -116,26 +178,41 @@ const MyTeam = () => {
 
   // Handle download template
   const handleDownloadTemplate = () => {
-    // In a real app, this would download a CSV template
-    alert("Downloading CSV template for user upload");
+    // Create CSV template
+    const csvContent =
+      "fullname,email,whatsappNumber,accountType,password\n" +
+      "John Doe,john@example.com,9876543210,Member,password123\n" +
+      "Jane Smith,jane@example.com,9876543211,Manager,password456";
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "team_members_template.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success("Template downloaded successfully");
   };
 
   const columns = [
     {
-      key: "name",
+      key: "fullname",
       header: "User",
       render: (row) => (
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white">
-            {row.name
-              .split(" ")
+            {row.fullname
+              ?.split(" ")
               .map((n) => n[0])
               .join("")
-              .toUpperCase()}
+              .toUpperCase() || "?"}
           </div>
           <div className="ml-4">
             <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {row.name}
+              {row.fullname || "N/A"}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {row.email}
@@ -144,20 +221,27 @@ const MyTeam = () => {
         </div>
       ),
     },
-    { key: "mobile", header: "Mobile" },
     {
-      key: "reportsTo",
-      header: "Reports To",
-      render: (row) => row.reportsTo || "NA",
+      key: "whatsappNumber",
+      header: "WhatsApp",
+      render: (row) => row.whatsappNumber || "N/A",
     },
     {
-      key: "role",
-      header: "Role",
+      key: "accountType",
+      header: "Account Type",
       render: (row) => (
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-          {row.role}
+          {row.accountType || "Member"}
         </span>
       ),
+    },
+    {
+      key: "createdAt",
+      header: "Joined",
+      render: (row) => {
+        if (!row.createdAt) return "N/A";
+        return new Date(row.createdAt).toLocaleDateString();
+      },
     },
     {
       key: "actions",
@@ -167,20 +251,10 @@ const MyTeam = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleEditMember(row);
-            }}
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            aria-label={`Edit ${row.name}`}
-          >
-            <Pencil size={18} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
               handleDeleteMember(row);
             }}
             className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            aria-label={`Delete ${row.name}`}
+            aria-label={`Delete ${row.fullname}`}
           >
             <Trash2 size={18} />
           </button>
@@ -194,6 +268,17 @@ const MyTeam = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">My Team</h1>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          >
+            <RefreshCw
+              size={18}
+              className={isRefreshing ? "animate-spin" : ""}
+            />
+            <span>Refresh</span>
+          </button>
           <button
             onClick={handleAddMember}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
@@ -225,32 +310,20 @@ const MyTeam = () => {
 
         <div className="flex flex-wrap gap-2">
           <select
-            value={filters.role}
-            onChange={(e) => handleFilterChange("role", e.target.value)}
+            value={filters.accountType}
+            onChange={(e) => handleFilterChange("accountType", e.target.value)}
             className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           >
-            <option value="">Role</option>
+            <option value="">All Types</option>
             <option value="Admin">Admin</option>
             <option value="Manager">Manager</option>
-            <option value="Team Member">Team Member</option>
-          </select>
-
-          <select
-            value={filters.reportingManager}
-            onChange={(e) =>
-              handleFilterChange("reportingManager", e.target.value)
-            }
-            className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-          >
-            <option value="">Reporting Manager</option>
-            <option value="Karan Singh">Karan Singh</option>
-            <option value="Prashant">Prashant</option>
+            <option value="Member">Member</option>
           </select>
 
           <button
             onClick={() =>
               setFilters({
-                role: "",
+                accountType: "",
                 reportingManager: "",
               })
             }
@@ -265,29 +338,34 @@ const MyTeam = () => {
       {/* Status Pills */}
       <div className="flex flex-wrap gap-2 mb-6">
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.length} Members
+          {teamMembers.length} Total Members
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.filter((m) => m.role === "Admin").length} Admins
+          {teamMembers.filter((m) => m.accountType === "Admin").length} Admins
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.filter((m) => m.role === "Manager").length} Managers
+          {teamMembers.filter((m) => m.accountType === "Manager").length}{" "}
+          Managers
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.filter((m) => m.role === "Member").length} Members
+          {teamMembers.filter((m) => m.accountType === "Member").length} Members
         </div>
       </div>
 
-      {filteredMembers.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+        </div>
+      ) : filteredMembers.length === 0 ? (
         <EmptyState
+          icon={UserPlus}
           title="No team members found"
           description={
-            searchQuery || filters.role || filters.reportingManager
+            searchQuery || filters.accountType
               ? "Try adjusting your filters or search query."
               : "Add team members to your organization."
           }
-          icon={UserPlus}
-          actionLabel="Add Member" 
+          actionLabel="Add Member"
           onAction={handleAddMember}
           className="bg-white dark:bg-gray-800 rounded-lg border p-8 dark:border-gray-700"
         />
@@ -295,19 +373,17 @@ const MyTeam = () => {
         <DataTable
           data={filteredMembers}
           columns={columns}
-          onRowClick={(row) => handleEditMember(row)}
           className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700"
         />
       )}
 
-      {/* Add/Edit Member Modal */}
+      {/* Add Member Modal */}
       <AddMemberModal
         isOpen={isAddMemberModalOpen}
         onClose={() => {
           setIsAddMemberModalOpen(false);
           setSelectedMember(null);
         }}
-        member={selectedMember}
         onSave={handleSaveMember}
         teamMembers={teamMembers}
       />
@@ -318,7 +394,7 @@ const MyTeam = () => {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Team Member"
-        description={`Are you sure you want to delete ${selectedMember?.name}? This action cannot be undone.`}
+        description={`Are you sure you want to delete ${selectedMember?.fullname}? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"

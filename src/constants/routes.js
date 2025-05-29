@@ -52,4 +52,7 @@ export const ROUTES = {
 
   // Profile route
   PROFILE: "/profile",
+
+  // Support route
+  SUPPORT: "/support",
 };

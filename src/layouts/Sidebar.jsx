@@ -16,6 +16,7 @@ import {
   LinkIcon,
   Smartphone,
   Gift,
+  HelpCircle,
   ChevronRight,
   ChevronDown,
   Menu,
@@ -227,6 +228,16 @@ const Sidebar = ({
           title: "Refer & Earn",
           icon: <Gift size={18} />,
           path: ROUTES.REFER_EARN,
+        },
+      ],
+    },
+    {
+      id: "support",
+      items: [
+        {
+          title: "Support",
+          icon: <HelpCircle size={18} />,
+          path: ROUTES.SUPPORT,
         },
       ],
     },

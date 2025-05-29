@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Modal } from "../../components/ui/modal";
 import { Button } from "../../components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { Switch } from "../../components/ui/switch";
 import { updateTaskLocal, addTaskLocal } from "../../store/slices/taskSlice";
+import { taskApi } from "../../apiService/apiService"; // Updated import
 import {
   Check,
   Link,
@@ -18,23 +19,100 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { generateId } from "../../utils/helpers";
+import { toast } from "react-hot-toast";
+import { createSelector } from "@reduxjs/toolkit";
+
+// Memoized selectors
+const selectUsers = createSelector(
+  [(state) => state.team?.users || []],
+  (users) => users
+);
+
+const selectCategories = createSelector(
+  [(state) => state.tasks?.categories || []],
+  (categories) => categories
+);
+
+// Validation schema (remains the same)
+const validateTaskForm = (formData) => {
+  const errors = {};
+
+  if (!formData.taskTitle || !formData.taskTitle.trim()) {
+    errors.taskTitle = "Task title is required";
+  } else if (formData.taskTitle.trim().length < 3) {
+    errors.taskTitle = "Task title must be at least 3 characters long";
+  } else if (formData.taskTitle.trim().length > 100) {
+    errors.taskTitle = "Task title must not exceed 100 characters";
+  }
+
+  if (formData.taskDescription && formData.taskDescription.trim().length > 0) {
+    if (formData.taskDescription.trim().length < 10) {
+      errors.taskDescription =
+        "Description must be at least 10 characters long";
+    } else if (formData.taskDescription.trim().length > 500) {
+      errors.taskDescription = "Description must not exceed 500 characters";
+    }
+  }
+
+  if (!formData.taskAssignedTo || formData.taskAssignedTo.length === 0) {
+    errors.taskAssignedTo = "At least one user must be assigned";
+  }
+
+  if (!formData.taskCategory || !formData.taskCategory.trim()) {
+    errors.taskCategory = "Task category is required";
+  }
+
+  if (!formData.taskDueDate) {
+    errors.taskDueDate = "Due date is required";
+  } else {
+    const selectedDate = new Date(formData.taskDueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      errors.taskDueDate = "Due date cannot be in the past";
+    }
+  }
+
+  const validPriorities = ["low", "medium", "high"];
+  if (
+    !formData.taskPriority ||
+    !validPriorities.includes(formData.taskPriority.toLowerCase())
+  ) {
+    errors.taskPriority = "Please select a valid priority";
+  }
+
+  const validFrequencies = [
+    "one-time",
+    "daily",
+    "weekly",
+    "monthly",
+    "quarterly",
+    "yearly",
+  ];
+  if (
+    !formData.taskFrequency ||
+    !validFrequencies.includes(formData.taskFrequency.toLowerCase())
+  ) {
+    errors.taskFrequency = "Please select a valid frequency";
+  }
+
+  return errors;
+};
 
 const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const dispatch = useDispatch();
-  const { users } = useSelector((state) => state.team || { users: [] });
-  const { categories } = useSelector(
-    (state) => state.tasks || { categories: [] }
-  );
+  // Use memoized selectors
+  const users = useSelector(selectUsers);
+  const categories = useSelector(selectCategories);
 
-  // Form state
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [usersInLoop, setUsersInLoop] = useState([]);
-  const [selectedPriority, setSelectedPriority] = useState("high");
-  const [isRepeating, setIsRepeating] = useState(false);
-  const [dueDate, setDueDate] = useState("");
+  const [taskAssignedTo, setTaskAssignedTo] = useState([]);
+  const [taskCategory, setTaskCategory] = useState("");
+  const [usersInLoop, setUsersInLoop] = useState([]); // This field is not in your API spec for create/edit task
+  const [taskPriority, setTaskPriority] = useState("medium");
+  const [taskFrequency, setTaskFrequency] = useState("one-time");
+  const [taskDueDate, setTaskDueDate] = useState("");
   const [assignMoreTasks, setAssignMoreTasks] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,167 +120,195 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showLoopDropdown, setShowLoopDropdown] = useState(false);
 
-  // Reset form when modal opens/closes or task changes
   useEffect(() => {
     if (isOpen) {
       if (task) {
-        // Initialize form with task data for editing
-        setTaskTitle(task.title || task.name || "");
-        setTaskDescription(task.description || "");
-        setSelectedUsers(
-          task.assignees
-            ? task.assignees.map((a) => (typeof a === "object" ? a.id : a))
-            : task.assigneeId
-            ? [task.assigneeId]
-            : []
-        );
-        setSelectedCategory(task.category || "");
-        setUsersInLoop(task.usersInLoop || []);
-        setSelectedPriority(
-          task.priority ? task.priority.toLowerCase() : "medium"
-        );
-        setIsRepeating(
-          task.frequency
-            ? task.frequency !== "One-time"
-            : task.isRepeating || false
-        );
-        setDueDate(task.dueDate ? task.dueDate.split("T")[0] : "");
+        setTaskTitle(task.taskTitle || "");
+        setTaskDescription(task.taskDescription || "");
+        setTaskAssignedTo(task.taskAssignedTo || []);
+        setTaskCategory(task.taskCategory || "");
+        setTaskPriority(task.taskPriority?.toLowerCase() || "medium");
+        setTaskFrequency(task.taskFrequency?.toLowerCase() || "one-time");
+        setTaskDueDate(task.taskDueDate ? task.taskDueDate.split("T")[0] : "");
+        // setUsersInLoop(task.usersInLoop || []); // If you keep this UI element
       } else {
-        // Set default due date to tomorrow for new tasks
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        setDueDate(tomorrow.toISOString().split("T")[0]);
+        setTaskDueDate(tomorrow.toISOString().split("T")[0]);
+        setTaskFrequency("one-time");
+        setTaskPriority("medium");
+        setTaskTitle("");
+        setTaskDescription("");
+        setTaskAssignedTo([]);
+        setTaskCategory("");
+        setUsersInLoop([]);
       }
+      setErrors({});
     } else {
       resetForm();
     }
   }, [isOpen, task]);
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!taskTitle.trim()) {
-      newErrors.taskTitle = "Task title is required";
-    }
-
-    if (!dueDate) {
-      newErrors.dueDate = "Due date is required";
-    }
-
-    if (selectedUsers.length === 0) {
-      newErrors.selectedUsers = "At least one user must be selected";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    const currentFormData = {
+      taskTitle: taskTitle.trim(),
+      taskDescription: taskDescription.trim(),
+      taskAssignedTo, // Ensure this is an array of user IDs
+      taskCategory: taskCategory.trim(),
+      taskDueDate,
+      taskPriority: taskPriority.toLowerCase(),
+      taskFrequency: taskFrequency.toLowerCase(),
+    };
+
+    const validationErrors = validateTaskForm(currentFormData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error("Please fix the validation errors.");
       return;
     }
 
     setIsSubmitting(true);
+    setErrors({});
 
     try {
-      // Create task object
-      const taskData = {
-        title: taskTitle,
-        description: taskDescription,
-        assignees: selectedUsers,
-        category: selectedCategory,
-        usersInLoop: usersInLoop,
-        priority: selectedPriority,
-        isRepeating,
-        frequency: isRepeating ? "Weekly" : "One-time", // Default to weekly if repeating
-        dueDate: dueDate,
-        status: task?.status || "pending",
-        createdBy: "currentUser", // Replace with actual current user ID
-      };
-
-      if (task) {
-        // Update existing task
-        const updatedTask = {
-          ...task,
-          ...taskData,
-          id: task.id,
-        };
-        await dispatch(updateTaskLocal({ id: task.id, ...updatedTask }));
-        console.log("Task updated successfully:", updatedTask);
+      let response;
+      if (task && task.id) {
+        // Editing existing task
+        response = await taskApi.editTask(task.id, currentFormData);
+        // Assuming response.data contains the updated task
+        dispatch(updateTaskLocal({ id: task.id, ...response.data.task })); // Adjust based on actual API response structure
+        toast.success(response.data.message || "Task updated successfully!");
       } else {
-        // Create new task
-        const newTask = {
-          id: generateId(),
-          ...taskData,
-          createdAt: new Date().toISOString(),
-          status: "pending",
-        };
-        await dispatch(addTaskLocal(newTask));
-        console.log("Task created successfully:", newTask);
+        // Creating new task
+        response = await taskApi.createTask(currentFormData);
+        // Assuming response.data contains the new task
+        dispatch(
+          addTaskLocal({
+            id: response.data.task?.id || generateId(),
+            ...response.data.task,
+          })
+        ); // Adjust
+        toast.success(response.data.message || "Task created successfully!");
       }
 
-      // Reset form if not assigning more tasks
       if (!assignMoreTasks) {
         onClose();
       } else {
-        resetForm();
+        resetForm(true); // Pass true to keep due date for next task
       }
     } catch (error) {
       console.error("Error saving task:", error);
-      setErrors({ submit: "Failed to save task. Please try again." });
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to save task. Please try again.";
+      setErrors({ submit: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (keepDueDate = false) => {
     setTaskTitle("");
     setTaskDescription("");
-    setSelectedUsers([]);
-    setSelectedCategory("");
+    setTaskAssignedTo([]);
+    setTaskCategory("");
     setUsersInLoop([]);
-    setSelectedPriority("high");
-    setIsRepeating(false);
-    setDueDate("");
+    setTaskPriority("medium");
+    setTaskFrequency("one-time");
+    if (!keepDueDate) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setTaskDueDate(tomorrow.toISOString().split("T")[0]);
+    }
     setErrors({});
+    // setAssignMoreTasks(false); // Decide if this should reset
   };
 
   const handleUserSelect = (userId) => {
-    if (selectedUsers.includes(userId)) {
-      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
-    } else {
-      setSelectedUsers([...selectedUsers, userId]);
-    }
+    setTaskAssignedTo((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+    if (errors.taskAssignedTo)
+      setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
   };
 
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
+  const handleCategorySelect = (categoryName) => {
+    setTaskCategory(categoryName);
     setShowCategoryDropdown(false);
+    if (errors.taskCategory)
+      setErrors((prev) => ({ ...prev, taskCategory: "" }));
   };
 
   const handleLoopUserSelect = (userId) => {
-    if (usersInLoop.includes(userId)) {
-      setUsersInLoop(usersInLoop.filter((id) => id !== userId));
-    } else {
-      setUsersInLoop([...usersInLoop, userId]);
-    }
+    setUsersInLoop((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
   };
 
-  // Mock data for demonstration
-  const mockUsers = [
-    { id: "1", name: "John Doe", avatar: "/abstract-geometric-shapes.png" },
-    { id: "2", name: "Jane Smith", avatar: "/abstract-geometric-shapes.png" },
-    { id: "3", name: "Alex Johnson", avatar: "/abstract-geometric-shapes.png" },
-  ];
+  const handleInputChange = (field, value) => {
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+    if (field === "taskTitle") setTaskTitle(value);
+    if (field === "taskDescription") setTaskDescription(value);
+    if (field === "taskDueDate") setTaskDueDate(value);
+  };
 
-  const mockCategories = [
-    { id: "1", name: "Development" },
-    { id: "2", name: "Design" },
-    { id: "3", name: "Marketing" },
-    { id: "4", name: "Operations" },
-  ];
+  // Mock data for dropdowns - use memoized values to prevent unnecessary rerenders
+  const mockUsers = useMemo(
+    () => [
+      {
+        id: "1",
+        name: "John Doe",
+        avatar: "/placeholder.svg?height=32&width=32",
+      },
+      {
+        id: "2",
+        name: "Jane Smith",
+        avatar: "/placeholder.svg?height=32&width=32",
+      },
+      {
+        id: "3",
+        name: "Alex Johnson",
+        avatar: "/placeholder.svg?height=32&width=32",
+      },
+    ],
+    []
+  );
+
+  const mockCategories = useMemo(
+    () => [
+      { id: "1", name: "Development" },
+      { id: "2", name: "Design" },
+      { id: "3", name: "Marketing" },
+      { id: "4", name: "Operations" },
+    ],
+    []
+  );
+
+  const frequencyOptions = useMemo(
+    () => [
+      { value: "one-time", label: "One-time" },
+      { value: "daily", label: "Daily" },
+      { value: "weekly", label: "Weekly" },
+      { value: "monthly", label: "Monthly" },
+      { value: "quarterly", label: "Quarterly" },
+      { value: "yearly", label: "Yearly" },
+    ],
+    []
+  );
+
+  // JSX remains largely the same, ensure field names in form match state variables
+  // ... (rest of the JSX from your previous AssignTaskModal)
+  // Ensure that the 'value' and 'onChange' for inputs, textareas, selects, etc.,
+  // correctly map to the state variables (taskTitle, taskDescription, taskAssignedTo, etc.)
+  // and their respective handlers.
 
   return (
     <Modal
@@ -211,10 +317,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       title={task ? "Edit Task" : "Assign New Task"}
       className="max-w-2xl"
     >
-      {/* Improved form container with better padding and spacing */}
       <form onSubmit={handleSubmit} className="px-1 py-2 md:px-2">
         <div className="space-y-6">
-          {/* Task Title - Improved label and input alignment */}
+          {/* Task Title */}
           <div className="space-y-2">
             <label
               htmlFor="taskTitle"
@@ -225,7 +330,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             <Input
               id="taskTitle"
               value={taskTitle}
-              onChange={(e) => setTaskTitle(e.target.value)}
+              onChange={(e) => handleInputChange("taskTitle", e.target.value)}
               placeholder="Enter task title"
               aria-invalid={errors.taskTitle ? "true" : "false"}
               aria-describedby={
@@ -246,7 +351,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             )}
           </div>
 
-          {/* Task Description - Improved spacing */}
+          {/* Task Description */}
           <div className="space-y-2">
             <label
               htmlFor="taskDescription"
@@ -257,19 +362,29 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             <Textarea
               id="taskDescription"
               value={taskDescription}
-              onChange={(e) => setTaskDescription(e.target.value)}
+              onChange={(e) =>
+                handleInputChange("taskDescription", e.target.value)
+              }
               placeholder="Short description of the task..."
-              className="min-h-[100px] bg-gray-50 border-gray-300 rounded-md"
+              className={`min-h-[100px] bg-gray-50 rounded-md ${
+                errors.taskDescription ? "border-red-500" : "border-gray-300"
+              }`}
               rows={4}
             />
+            {errors.taskDescription && (
+              <p className="mt-1 text-sm text-red-500 flex items-center">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                {errors.taskDescription}
+              </p>
+            )}
           </div>
 
-          {/* Two-column layout for Users and Category on larger screens */}
+          {/* Two-column layout for Users and Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Select Users - Improved dropdown styling */}
+            {/* Assign To */}
             <div className="space-y-2">
               <label
-                htmlFor="selectUsers"
+                htmlFor="taskAssignedTo"
                 className="block text-sm font-medium text-gray-700"
               >
                 Assign To <span className="text-red-500">*</span>
@@ -277,115 +392,123 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               <div className="relative">
                 <button
                   type="button"
-                  id="selectUsers"
+                  id="taskAssignedToButton" // Changed ID to avoid conflict with state variable
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
                   className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white ${
-                    errors.selectedUsers ? "border-red-500" : "border-gray-300"
+                    errors.taskAssignedTo ? "border-red-500" : "border-gray-300"
                   }`}
                   aria-expanded={showUserDropdown}
                   aria-haspopup="listbox"
                 >
                   <span className="text-gray-700 truncate">
-                    {selectedUsers.length > 0
-                      ? `${selectedUsers.length} user(s) selected`
+                    {taskAssignedTo.length > 0
+                      ? `${taskAssignedTo.length} user(s) selected`
                       : "Select Users"}
                   </span>
                   <span className="ml-1">▼</span>
                 </button>
-                {errors.selectedUsers && (
+                {errors.taskAssignedTo && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.selectedUsers}
+                    {errors.taskAssignedTo}
                   </p>
                 )}
 
                 {showUserDropdown && (
                   <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60 overflow-auto">
                     <ul role="listbox" className="py-1">
-                      {mockUsers.map((user) => (
-                        <li
-                          key={user.id}
-                          role="option"
-                          aria-selected={selectedUsers.includes(user.id)}
-                          className={`px-3 py-2 cursor-pointer flex items-center ${
-                            selectedUsers.includes(user.id)
-                              ? "bg-blue-50"
-                              : "hover:bg-gray-100"
-                          }`}
-                          onClick={() => handleUserSelect(user.id)}
-                        >
-                          {/* Custom checkbox with improved alignment */}
-                          <div className="mr-2 h-4 w-4 border rounded flex items-center justify-center bg-white">
-                            {selectedUsers.includes(user.id) && (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-3 w-3 text-blue-500"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            )}
-                          </div>
-                          <img
-                            src={user.avatar || "/placeholder.svg"}
-                            alt={user.name}
-                            className="w-6 h-6 rounded-full mr-2"
-                          />
-                          <span className="truncate">{user.name}</span>
+                      {mockUsers.length > 0 ? (
+                        mockUsers.map((user) => (
+                          <li
+                            key={user.id}
+                            role="option"
+                            aria-selected={taskAssignedTo.includes(user.id)}
+                            className={`px-3 py-2 cursor-pointer flex items-center ${
+                              taskAssignedTo.includes(user.id)
+                                ? "bg-blue-50"
+                                : "hover:bg-gray-100"
+                            }`}
+                            onClick={() => handleUserSelect(user.id)}
+                          >
+                            <div className="mr-2 h-4 w-4 border rounded flex items-center justify-center bg-white">
+                              {taskAssignedTo.includes(user.id) && (
+                                <Check className="h-3 w-3 text-blue-500" />
+                              )}
+                            </div>
+                            <img
+                              src={user.avatar || "/placeholder.svg"}
+                              alt={user.name}
+                              className="w-6 h-6 rounded-full mr-2"
+                            />
+                            <span className="truncate">{user.name}</span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-3 py-2 text-gray-500">
+                          No users available
                         </li>
-                      ))}
+                      )}
                     </ul>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Select Category - Improved dropdown styling */}
+            {/* Category */}
             <div className="space-y-2">
               <label
-                htmlFor="selectCategory"
+                htmlFor="taskCategory"
                 className="block text-sm font-medium text-gray-700"
               >
-                Category
+                Category <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <button
                   type="button"
-                  id="selectCategory"
+                  id="taskCategoryButton" // Changed ID
                   onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="w-full flex justify-between items-center px-3 py-2 h-10 border border-gray-300 rounded-md bg-white"
+                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white ${
+                    errors.taskCategory ? "border-red-500" : "border-gray-300"
+                  }`}
                   aria-expanded={showCategoryDropdown}
                   aria-haspopup="listbox"
                 >
                   <span className="text-gray-700 truncate">
-                    {selectedCategory || "Select Category"}
+                    {taskCategory || "Select Category"}
                   </span>
                   <span className="ml-1">▼</span>
                 </button>
+                {errors.taskCategory && (
+                  <p className="mt-1 text-sm text-red-500 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.taskCategory}
+                  </p>
+                )}
 
                 {showCategoryDropdown && (
                   <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60 overflow-auto">
                     <ul role="listbox" className="py-1">
-                      {mockCategories.map((category) => (
-                        <li
-                          key={category.id}
-                          role="option"
-                          aria-selected={selectedCategory === category.name}
-                          className={`px-3 py-2 cursor-pointer ${
-                            selectedCategory === category.name
-                              ? "bg-blue-50"
-                              : "hover:bg-gray-100"
-                          }`}
-                          onClick={() => handleCategorySelect(category.name)}
-                        >
-                          {category.name}
+                      {mockCategories.length > 0 ? (
+                        mockCategories.map((category) => (
+                          <li
+                            key={category.id}
+                            role="option"
+                            aria-selected={taskCategory === category.name}
+                            className={`px-3 py-2 cursor-pointer ${
+                              taskCategory === category.name
+                                ? "bg-blue-50"
+                                : "hover:bg-gray-100"
+                            }`}
+                            onClick={() => handleCategorySelect(category.name)}
+                          >
+                            {category.name}
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-3 py-2 text-gray-500">
+                          No categories available
                         </li>
-                      ))}
+                      )}
                     </ul>
                   </div>
                 )}
@@ -393,18 +516,19 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
           </div>
 
-          {/* Keep in Loop - Improved dropdown styling */}
+          {/* Keep in Loop - This field is not in your API spec for create/edit task. Consider removing or clarifying its purpose. */}
+          {/* If kept, ensure it's handled appropriately or omitted from API payload if not needed by backend. */}
           <div className="space-y-2">
             <label
               htmlFor="keepInLoop"
               className="block text-sm font-medium text-gray-700"
             >
-              Keep in Loop
+              Keep in Loop (Optional)
             </label>
             <div className="relative">
               <button
                 type="button"
-                id="keepInLoop"
+                id="keepInLoopButton"
                 onClick={() => setShowLoopDropdown(!showLoopDropdown)}
                 className="w-full flex justify-between items-center px-3 py-2 h-10 border border-gray-300 rounded-md bg-white"
                 aria-expanded={showLoopDropdown}
@@ -417,125 +541,132 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                 </span>
                 <span className="ml-1">▼</span>
               </button>
-
               {showLoopDropdown && (
                 <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60 overflow-auto">
                   <ul role="listbox" className="py-1">
-                    {mockUsers.map((user) => (
-                      <li
-                        key={user.id}
-                        role="option"
-                        aria-selected={usersInLoop.includes(user.id)}
-                        className={`px-3 py-2 cursor-pointer flex items-center ${
-                          usersInLoop.includes(user.id)
-                            ? "bg-blue-50"
-                            : "hover:bg-gray-100"
-                        }`}
-                        onClick={() => handleLoopUserSelect(user.id)}
-                      >
-                        {/* Custom checkbox with improved alignment */}
-                        <div className="mr-2 h-4 w-4 border rounded flex items-center justify-center bg-white">
-                          {usersInLoop.includes(user.id) && (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-3 w-3 text-blue-500"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <img
-                          src={user.avatar || "/placeholder.svg"}
-                          alt={user.name}
-                          className="w-6 h-6 rounded-full mr-2"
-                        />
-                        <span className="truncate">{user.name}</span>
+                    {mockUsers.length > 0 ? (
+                      mockUsers.map((user) => (
+                        <li
+                          key={user.id}
+                          role="option"
+                          aria-selected={usersInLoop.includes(user.id)}
+                          className={`px-3 py-2 cursor-pointer flex items-center ${
+                            usersInLoop.includes(user.id)
+                              ? "bg-blue-50"
+                              : "hover:bg-gray-100"
+                          }`}
+                          onClick={() => handleLoopUserSelect(user.id)}
+                        >
+                          <div className="mr-2 h-4 w-4 border rounded flex items-center justify-center bg-white">
+                            {usersInLoop.includes(user.id) && (
+                              <Check className="h-3 w-3 text-blue-500" />
+                            )}
+                          </div>
+                          <img
+                            src={user.avatar || "/placeholder.svg"}
+                            alt={user.name}
+                            className="w-6 h-6 rounded-full mr-2"
+                          />
+                          <span className="truncate">{user.name}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-3 py-2 text-gray-500">
+                        No users available
                       </li>
-                    ))}
+                    )}
                   </ul>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Priority - Improved card styling */}
+          {/* Priority */}
           <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
             <div className="flex items-center mb-3">
               <span className="mr-2 text-lg">🚩</span>
-              <span className="font-medium">Priority</span>
+              <span className="font-medium">
+                Priority <span className="text-red-500">*</span>
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                onClick={() => setSelectedPriority("high")}
-                variant={selectedPriority === "high" ? "green" : "outline"}
-                className={`flex items-center px-4 py-2 ${
-                  selectedPriority === "high"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white"
-                }`}
-              >
-                {selectedPriority === "high" && (
-                  <Check className="h-4 w-4 mr-1" />
-                )}
-                High
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setSelectedPriority("medium")}
-                variant={selectedPriority === "medium" ? "green" : "outline"}
-                className={`flex items-center px-4 py-2 ${
-                  selectedPriority === "medium"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white"
-                }`}
-              >
-                {selectedPriority === "medium" && (
-                  <Check className="h-4 w-4 mr-1" />
-                )}
-                Medium
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setSelectedPriority("low")}
-                variant={selectedPriority === "low" ? "green" : "outline"}
-                className={`flex items-center px-4 py-2 ${
-                  selectedPriority === "low"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white"
-                }`}
-              >
-                {selectedPriority === "low" && (
-                  <Check className="h-4 w-4 mr-1" />
-                )}
-                Low
-              </Button>
+              {["high", "medium", "low"].map((priority) => (
+                <Button
+                  key={priority}
+                  type="button"
+                  onClick={() => {
+                    setTaskPriority(priority);
+                    if (errors.taskPriority)
+                      setErrors((prev) => ({ ...prev, taskPriority: "" }));
+                  }}
+                  variant={taskPriority === priority ? "green" : "outline"}
+                  className={`flex items-center px-4 py-2 ${
+                    taskPriority === priority
+                      ? "bg-emerald-500 text-white"
+                      : "bg-white"
+                  }`}
+                >
+                  {taskPriority === priority && (
+                    <Check className="h-4 w-4 mr-1" />
+                  )}
+                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </Button>
+              ))}
             </div>
+            {errors.taskPriority && (
+              <p className="mt-2 text-sm text-red-500 flex items-center">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                {errors.taskPriority}
+              </p>
+            )}
           </div>
 
-          {/* Repeat - Improved toggle styling */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md shadow-sm border border-gray-100">
-            <div className="flex items-center">
+          {/* Frequency */}
+          <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
+            <div className="flex items-center mb-3">
               <span className="mr-2 text-lg">🔄</span>
-              <span className="font-medium">Repeat</span>
+              <span className="font-medium">
+                Frequency <span className="text-red-500">*</span>
+              </span>
             </div>
-            <Switch
-              checked={isRepeating}
-              onCheckedChange={setIsRepeating}
-              className="data-[state=checked]:bg-emerald-500"
-            />
+            <div className="flex flex-wrap gap-2">
+              {frequencyOptions.map((freq) => (
+                <Button
+                  key={freq.value}
+                  type="button"
+                  onClick={() => {
+                    setTaskFrequency(freq.value);
+                    if (errors.taskFrequency)
+                      setErrors((prev) => ({ ...prev, taskFrequency: "" }));
+                  }}
+                  variant={taskFrequency === freq.value ? "green" : "outline"}
+                  className={`flex items-center px-3 py-2 text-sm ${
+                    taskFrequency === freq.value
+                      ? "bg-emerald-500 text-white"
+                      : "bg-white"
+                  }`}
+                >
+                  {taskFrequency === freq.value && (
+                    <Check className="h-3 w-3 mr-1" />
+                  )}
+                  {freq.label}
+                </Button>
+              ))}
+            </div>
+            {errors.taskFrequency && (
+              <p className="mt-2 text-sm text-red-500 flex items-center">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                {errors.taskFrequency}
+              </p>
+            )}
           </div>
 
-          {/* Due Date - Improved date picker styling */}
+          {/* Due Date */}
           <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
             <div className="flex flex-col sm:flex-row sm:items-center">
-              <div className="flex items-center mb-2 sm:mb-0 sm:mr-4 sm:w-1/4">
+              <div className="flex items-center mb-2 sm:mb-0 sm:mr-4 sm:w-auto">
+                {" "}
+                {/* Adjusted width */}
                 <span className="mr-2 text-lg">📅</span>
                 <span className="font-medium">
                   Due Date <span className="text-red-500">*</span>
@@ -544,36 +675,39 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               <div className="flex-1">
                 <Input
                   type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  value={taskDueDate}
+                  onChange={(e) =>
+                    handleInputChange("taskDueDate", e.target.value)
+                  }
                   className={`h-10 border ${
-                    errors.dueDate ? "border-red-500" : "border-gray-300"
+                    errors.taskDueDate ? "border-red-500" : "border-gray-300"
                   } rounded-md bg-white px-3 py-2 w-full`}
-                  aria-invalid={errors.dueDate ? "true" : "false"}
+                  aria-invalid={errors.taskDueDate ? "true" : "false"}
                   aria-describedby={
-                    errors.dueDate ? "dueDate-error" : undefined
+                    errors.taskDueDate ? "taskDueDate-error" : undefined
                   }
                 />
-                {errors.dueDate && (
+                {errors.taskDueDate && (
                   <p
-                    id="dueDate-error"
+                    id="taskDueDate-error"
                     className="mt-1 text-sm text-red-500 flex items-center"
                   >
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.dueDate}
+                    {errors.taskDueDate}
                   </p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Attachment Options - Improved button layout */}
+          {/* Attachment Options (UI only, no API integration yet) */}
           <div className="flex flex-wrap gap-3 pt-2 justify-center sm:justify-start">
             <Button
               type="button"
               variant="outline"
               className="rounded-full p-2 h-10 w-10"
               size="icon"
+              title="Add link"
             >
               <Link className="h-5 w-5" />
             </Button>
@@ -582,6 +716,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               variant="outline"
               className="rounded-full p-2 h-10 w-10"
               size="icon"
+              title="Attach file"
             >
               <FileText className="h-5 w-5" />
             </Button>
@@ -590,6 +725,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               variant="outline"
               className="rounded-full p-2 h-10 w-10"
               size="icon"
+              title="Attach image"
             >
               <ImageIcon className="h-5 w-5" />
             </Button>
@@ -598,6 +734,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               variant="outline"
               className="rounded-full p-2 h-10 w-10"
               size="icon"
+              title="Set reminder"
             >
               <Clock className="h-5 w-5" />
             </Button>
@@ -606,12 +743,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               variant="outline"
               className="rounded-full p-2 h-10 w-10"
               size="icon"
+              title="Record audio"
             >
               <Mic className="h-5 w-5" />
             </Button>
           </div>
 
-          {/* General Error Message - Improved error styling */}
+          {/* General Error Message */}
           {errors.submit && (
             <div className="bg-red-50 p-4 rounded-md text-red-600 flex items-center border border-red-200">
               <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
@@ -619,9 +757,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
           )}
 
-          {/* Form Footer - Improved layout with divider */}
+          {/* Form Footer */}
           <div className="pt-4 mt-6 border-t border-gray-200">
-            {/* Assign More Tasks Toggle - Improved alignment */}
             <div className="flex justify-end items-center gap-3 mb-4">
               <span className="text-sm font-medium">Assign More Tasks</span>
               <Switch
@@ -631,7 +768,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               />
             </div>
 
-            {/* Submit Button - Improved styling */}
             <Button
               type="submit"
               variant="green"
@@ -660,12 +796,12 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  {task ? "Updating..." : "Assigning..."}
+                  {task ? "Updating..." : "Creating..."}
                 </>
               ) : (
                 <>
-                  <Check className="mr-2 h-5 w-5" />{" "}
-                  {task ? "Update Task" : "Assign Task"}
+                  <Check className="mr-2 h-5 w-5" />
+                  {task ? "Update Task" : "Create Task"}
                 </>
               )}
             </Button>

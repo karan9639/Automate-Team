@@ -44,9 +44,6 @@ import Checklist from "../pages/Checklist";
 import Links from "../pages/Links";
 import ReferAndEarn from "../pages/ReferAndEarn";
 import Settings from "../pages/settings/Settings";
-
-// Import the Support component
-// import Support from "../pages/Support"
 import Profile from "../pages/profile/Profile";
 import Support from "../pages/Support";
 
@@ -363,7 +360,7 @@ const AppRoutes = () => {
 
       {/* Support Route */}
       <Route
-        path="/support"
+        path={ROUTES.SUPPORT}
         element={
           <ProtectedRoute>
             <MainLayout />
