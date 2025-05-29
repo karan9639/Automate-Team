@@ -44,7 +44,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
       fullname: "",
       email: "",
       whatsappNumber: "",
-      accountType: "Member",
+      accountType: "Team Member", // Changed default to "Team Member"
       password: "",
     },
   });
@@ -177,7 +177,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
               >
                 <option value="Admin">Admin</option>
                 <option value="Manager">Manager</option>
-                <option value="Team Member">Member</option>
+                <option value="Team Member">Team Member</option>
               </select>
               {errors.accountType && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">

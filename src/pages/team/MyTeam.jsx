@@ -111,12 +111,8 @@ const MyTeam = () => {
       return false;
     }
 
-    // Account type filter - normalize to lowercase for comparison
-    if (
-      filters.accountType &&
-      memberData.accountType?.toLowerCase() !==
-        filters.accountType.toLowerCase()
-    ) {
+    // Account type filter
+    if (filters.accountType && memberData.accountType !== filters.accountType) {
       return false;
     }
 
@@ -206,11 +202,11 @@ const MyTeam = () => {
 
   // Handle download template
   const handleDownloadTemplate = () => {
-    // Create CSV template with lowercase account types
+    // Create CSV template with correct account type
     const csvContent =
       "fullname,email,whatsappNumber,accountType,password\n" +
-      "John Doe,john@example.com,9876543210,member,password123\n" +
-      "Jane Smith,jane@example.com,9876543211,manager,password456";
+      "John Doe,john@example.com,9876543210,Team Member,password123\n" +
+      "Jane Smith,jane@example.com,9876543211,Manager,password456";
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -223,12 +219,6 @@ const MyTeam = () => {
     window.URL.revokeObjectURL(url);
 
     toast.success("Template downloaded successfully");
-  };
-
-  // Helper function to capitalize first letter for display
-  const capitalizeFirst = (str) => {
-    if (!str) return str;
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
 
   const columns = [
@@ -271,10 +261,9 @@ const MyTeam = () => {
       header: "Account Type",
       render: (row) => {
         const memberData = row.newMember || row;
-        const accountType = capitalizeFirst(memberData.accountType) || "Member";
         return (
           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-            {accountType}
+            {memberData.accountType || "Team Member"}
           </span>
         );
       },
@@ -363,9 +352,9 @@ const MyTeam = () => {
             className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           >
             <option value="">All Types</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="member">Member</option>
+            <option value="Admin">Admin</option>
+            <option value="Manager">Manager</option>
+            <option value="Team Member">Team Member</option>
           </select>
 
           <button
@@ -391,7 +380,7 @@ const MyTeam = () => {
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
           {
             safeTeamMembers.filter(
-              (m) => (m.newMember || m).accountType?.toLowerCase() === "admin"
+              (m) => (m.newMember || m).accountType === "Admin"
             ).length
           }{" "}
           Admins
@@ -399,7 +388,7 @@ const MyTeam = () => {
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
           {
             safeTeamMembers.filter(
-              (m) => (m.newMember || m).accountType?.toLowerCase() === "manager"
+              (m) => (m.newMember || m).accountType === "Manager"
             ).length
           }{" "}
           Managers
@@ -407,10 +396,10 @@ const MyTeam = () => {
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
           {
             safeTeamMembers.filter(
-              (m) => (m.newMember || m).accountType?.toLowerCase() === "member"
+              (m) => (m.newMember || m).accountType === "Team Member"
             ).length
           }{" "}
-          Members
+          Team Members
         </div>
       </div>
 
@@ -420,7 +409,7 @@ const MyTeam = () => {
         </div>
       ) : filteredMembers.length === 0 ? (
         <EmptyState
-          icon={UserPlus}
+          Icon={UserPlus}
           title="No team members found"
           description={
             searchQuery || filters.accountType
