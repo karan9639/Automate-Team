@@ -7,8 +7,8 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { Switch } from "../../components/ui/switch";
-import { addTaskLocal } from "../../store/slices/taskSlice";
-import { taskApi, userApi } from "../../apiService/apiService";
+import { createTask, editTask } from "../../store/slices/taskSlice"; // Changed updateTask to editTask
+import { userApi } from "../../apiService/apiService";
 import {
   Check,
   Link,
@@ -19,7 +19,6 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { generateId } from "../../utils/helpers";
 import { toast } from "react-hot-toast";
 
 const validateTaskForm = (formData, backendSchema) => {
@@ -41,9 +40,8 @@ const validateTaskForm = (formData, backendSchema) => {
     errors.taskDescription = "Description must not exceed 500 characters";
   }
 
-  // taskAssignedTo is now a single ID string
   if (!formData.taskAssignedTo || !formData.taskAssignedTo.trim()) {
-    errors.taskAssignedTo = "A user must be assigned"; // Updated message
+    errors.taskAssignedTo = "A user must be assigned";
   }
 
   if (!formData.taskCategory || !formData.taskCategory.trim()) {
@@ -51,7 +49,7 @@ const validateTaskForm = (formData, backendSchema) => {
   }
 
   if (!formData.taskDueDate) {
-    // Due date is optional in backend schema (has default: Date.now)
+    // Due date is optional in backend schema
   } else {
     const selectedDate = new Date(formData.taskDueDate);
     const today = new Date();
@@ -100,7 +98,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskAssignedTo, setTaskAssignedTo] = useState(""); // Stores a single user ID
+  const [taskAssignedTo, setTaskAssignedTo] = useState("");
   const [taskCategory, setTaskCategory] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
   const [taskPriority, setTaskPriority] = useState(
@@ -133,7 +131,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       if (task) {
         setTaskTitle(task.taskTitle || "");
         setTaskDescription(task.taskDescription || "");
-        // task.taskAssignedTo should be a single ID string from backend
         setTaskAssignedTo(
           typeof task.taskAssignedTo === "string"
             ? task.taskAssignedTo
@@ -159,7 +156,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const resetFormFields = (keepDueDate = false) => {
     setTaskTitle("");
     setTaskDescription("");
-    setTaskAssignedTo(""); // Reset to empty string
+    setTaskAssignedTo("");
     setTaskCategory("");
     if (!keepDueDate) {
       const tomorrow = new Date();
@@ -180,7 +177,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         response.data?.data?.map((item) => item.newMember) || [];
       setAllUsers(
         fetchedUsers.map((u) => ({
-          id: u._id, // Ensure this is the MongoDB ObjectId string
+          id: u._id,
           name: u.fullname,
           avatar:
             u.avatarUrl ||
@@ -202,13 +199,14 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     const payload = {
       taskTitle: taskTitle.trim(),
       taskDescription: taskDescription.trim(),
-      taskAssignedTo: taskAssignedTo, // Now a single ID string
+      taskAssignedTo: taskAssignedTo,
       taskCategory: taskCategory.trim(),
       taskDueDate: taskDueDate
         ? new Date(taskDueDate).toISOString()
         : undefined,
       taskPriority: taskPriority,
       taskFrequency: { type: taskFrequencyType },
+      // taskCreatedBy: "currentUser_id_placeholder", // This should be set on the backend or passed from auth context
     };
 
     const validationErrors = validateTaskForm(payload, backendTaskSchema);
@@ -222,32 +220,29 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     setErrors({});
 
     try {
-      let response;
       if (task && task._id) {
-        // response = await taskApi.editTask(task._id, payload);
-        // dispatch(updateTaskLocal(response.data.data));
-        toast.success("Task editing not implemented yet.");
-        if (!assignMoreTasks) onClose();
-        else resetFormFields(true);
+        // Editing existing task
+        await dispatch(
+          editTask({ taskId: task._id, taskData: payload })
+        ).unwrap(); // Changed updateTask to editTask
+        toast.success("Task updated successfully!");
       } else {
-        response = await taskApi.createTask(payload);
-        dispatch(
-          addTaskLocal(
-            response.data.data || {
-              ...payload,
-              _id: generateId(),
-              createdAt: new Date().toISOString(),
-            }
-          )
-        );
-        toast.success(response.data.message || "Task created successfully!");
-        if (!assignMoreTasks) onClose();
-        else resetFormFields(true);
+        // Creating new task
+        await dispatch(createTask(payload)).unwrap();
+        toast.success("Task created successfully!");
+      }
+
+      if (!assignMoreTasks) {
+        onClose();
+      } else {
+        resetFormFields(true);
       }
     } catch (error) {
       console.error("Error saving task:", error);
-      const apiErrorMessage = error.response?.data?.message || error.message;
-      const errorMessage = apiErrorMessage || "Failed to save task.";
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : error.message || "Failed to save task.";
       setErrors({ submit: errorMessage });
       toast.error(errorMessage);
     } finally {
@@ -256,8 +251,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   };
 
   const handleUserSelect = (userId) => {
-    setTaskAssignedTo(userId); // Set the single selected user ID
-    setShowUserDropdown(false); // Close dropdown after selection
+    setTaskAssignedTo(userId);
+    setShowUserDropdown(false);
     if (errors.taskAssignedTo)
       setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
   };
@@ -408,7 +403,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                             }`}
                             onClick={() => handleUserSelect(user.id)}
                           >
-                            {/* Optional: Add a checkmark or other indicator for selected user */}
                             {taskAssignedTo === user.id && (
                               <Check className="h-4 w-4 mr-2 text-blue-600" />
                             )}

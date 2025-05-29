@@ -1,55 +1,60 @@
-import API from "./axiosInstance.js"
+import API from "./axiosInstance.js";
 
-const USER_BASE_URL = "/user" // This will be appended to VITE_PUBLIC_API_BASE_URL
+const USER_BASE_URL = "user"; // Removed leading slash
 
 export const userApi = {
   register: async (userData) => {
     // userData: { fullname, email, whatsappNumber, password, confirmPassword }
-    return API.post(`${USER_BASE_URL}/register`, userData)
+    return API.post(`${USER_BASE_URL}/register`, userData);
   },
 
   login: async (credentials) => {
     // credentials: { email, password }
-    return API.post(`${USER_BASE_URL}/login`, credentials)
+    return API.post(`${USER_BASE_URL}/login`, credentials);
   },
 
   changePassword: async (passwordData) => {
     // passwordData: { oldPassword, newPassword, confirmNewPassword }
-    return API.post(`${USER_BASE_URL}/change-password`, passwordData)
+    return API.post(`${USER_BASE_URL}/change-password`, passwordData);
   },
 
   logout: async () => {
-    return API.post(`${USER_BASE_URL}/logout`)
+    return API.post(`${USER_BASE_URL}/logout`);
   },
 
   refreshAccessToken: async () => {
-    return API.post(`${USER_BASE_URL}/refresh-access-token`)
+    return API.post(`${USER_BASE_URL}/refresh-access-token`);
   },
 
   addNewMember: async (memberData) => {
     // memberData: { fullname, email, whatsappNumber, password, role (optional) }
-    return API.post(`${USER_BASE_URL}/add-new-member`, memberData)
+    return API.post(`${USER_BASE_URL}/add-new-member`, memberData);
   },
 
   fetchReportingManagers: async () => {
-    return API.get(`${USER_BASE_URL}/fetch-reporting-managers`)
+    return API.get(`${USER_BASE_URL}/fetch-reporting-managers`);
   },
 
   fetchAllTeamMembers: async (params = {}) => {
-    return API.get(`${USER_BASE_URL}/fetch-all-team-members`, { params })
+    return API.get(`${USER_BASE_URL}/fetch-all-team-members`, { params });
   },
 
   deleteMember: async (memberId) => {
-    return API.delete(`${USER_BASE_URL}/delete-member/${memberId}`)
+    return API.delete(`${USER_BASE_URL}/delete-member/${memberId}`);
   },
 
   sendOtp: async (otpSendData) => {
     // otpSendData: { email } or { whatsappNumber }
-    return API.post(`${USER_BASE_URL}/send-otp`, otpSendData)
+    return API.post(`${USER_BASE_URL}/send-otp`, otpSendData);
   },
 
   verifyOtp: async (otpVerifyData) => {
-    // otpVerifyData: { email (or whatsappNumber), otp }
-    return API.post(`${USER_BASE_URL}/verify-otp`, otpVerifyData)
+    // Backend expects 'incomingOTP' field name
+    const payload = {
+      incomingOTP: otpVerifyData.otp, // Changed from 'otp' to 'incomingOTP'
+    };
+
+    console.log("Sending OTP verification with payload:", payload);
+    return API.post(`${USER_BASE_URL}/verify-otp`, payload);
   },
-}
+};
