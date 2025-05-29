@@ -1,30 +1,30 @@
 "use client"
 
 import { useState } from "react"
-import { useDispatch } from "react-redux"
 import { Card } from "../ui/card"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
 import { MoreHorizontal, Clock, CheckCircle, AlertCircle } from "lucide-react"
 import { formatDate } from "../../utils/helpers"
-import { updateTask } from "../../store/slices/taskSlice"
 
-const TaskCard = ({ task }) => {
-  const dispatch = useDispatch()
+const TaskCard = ({ task, onClick }) => {
   const [showActions, setShowActions] = useState(false)
 
   const handleStatusChange = (newStatus) => {
-    dispatch(
-      updateTask({
-        id: task.id,
-        task: { ...task, status: newStatus },
-      }),
-    )
     setShowActions(false)
   }
 
+  // Handle different API response field names
+  const taskTitle = task.taskTitle || task.title || "Untitled Task"
+  const taskDescription = task.taskDescription || task.description || ""
+  const taskStatus = task.status || task.taskStatus || "pending"
+  const taskPriority = task.taskPriority || task.priority || "medium"
+  const taskCategory = task.taskCategory || task.category || ""
+  const taskDueDate = task.taskDueDate || task.dueDate || task.due_date
+  const taskAssignees = task.taskAssignedTo || task.assignees || task.assigned_to || []
+
   const getPriorityColor = (priority) => {
-    switch (priority) {
+    switch (priority?.toLowerCase()) {
       case "high":
         return "bg-red-100 text-red-800"
       case "medium":
@@ -37,10 +37,11 @@ const TaskCard = ({ task }) => {
   }
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800"
       case "in-progress":
+      case "in progress":
         return "bg-blue-100 text-blue-800"
       case "pending":
         return "bg-yellow-100 text-yellow-800"
@@ -52,10 +53,11 @@ const TaskCard = ({ task }) => {
   }
 
   const getStatusIcon = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "completed":
         return <CheckCircle className="h-4 w-4 mr-1" />
       case "in-progress":
+      case "in progress":
         return <Clock className="h-4 w-4 mr-1" />
       case "pending":
         return <Clock className="h-4 w-4 mr-1" />
@@ -67,11 +69,32 @@ const TaskCard = ({ task }) => {
   }
 
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow">
+    <Card
+      className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={(e) => {
+        // Don't trigger onClick if clicking on the actions dropdown
+        if (!e.target.closest(".actions-dropdown")) {
+          console.log("🎯 TaskCard clicked, calling onClick handler")
+          if (onClick) {
+            onClick()
+          } else {
+            console.log("❌ No onClick handler provided to TaskCard")
+          }
+        }
+      }}
+    >
       <div className="flex justify-between items-start mb-3">
-        <h3 className="font-medium text-lg">{task.title}</h3>
-        <div className="relative">
-          <Button variant="ghost" size="sm" className="p-1 h-auto" onClick={() => setShowActions(!showActions)}>
+        <h3 className="font-medium text-lg">{taskTitle}</h3>
+        <div className="relative actions-dropdown">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 h-auto"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowActions(!showActions)
+            }}
+          >
             <MoreHorizontal className="h-5 w-5" />
           </Button>
 
@@ -80,19 +103,28 @@ const TaskCard = ({ task }) => {
               <div className="py-1">
                 <button
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => handleStatusChange("in-progress")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleStatusChange("in-progress")
+                  }}
                 >
                   Mark as In Progress
                 </button>
                 <button
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => handleStatusChange("completed")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleStatusChange("completed")
+                  }}
                 >
                   Mark as Completed
                 </button>
                 <button
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => handleStatusChange("pending")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleStatusChange("pending")
+                  }}
                 >
                   Mark as Pending
                 </button>
@@ -102,23 +134,23 @@ const TaskCard = ({ task }) => {
         </div>
       </div>
 
-      {task.description && <p className="text-gray-600 text-sm mb-3">{task.description}</p>}
+      {taskDescription && <p className="text-gray-600 text-sm mb-3">{taskDescription}</p>}
 
       <div className="flex flex-wrap gap-2 mb-3">
-        <Badge variant="outline" className={getPriorityColor(task.priority)}>
-          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+        <Badge variant="outline" className={getPriorityColor(taskPriority)}>
+          {taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)} Priority
         </Badge>
 
-        <Badge variant="outline" className={getStatusColor(task.status)}>
+        <Badge variant="outline" className={getStatusColor(taskStatus)}>
           <span className="flex items-center">
-            {getStatusIcon(task.status)}
-            {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+            {getStatusIcon(taskStatus)}
+            {taskStatus.charAt(0).toUpperCase() + taskStatus.slice(1)}
           </span>
         </Badge>
 
-        {task.category && (
+        {taskCategory && (
           <Badge variant="outline" className="bg-blue-50 text-blue-700">
-            {task.category}
+            {taskCategory}
           </Badge>
         )}
       </div>
@@ -126,18 +158,18 @@ const TaskCard = ({ task }) => {
       <div className="flex justify-between items-center text-sm text-gray-500">
         <div className="flex items-center">
           <Clock className="h-4 w-4 mr-1" />
-          <span>Due: {formatDate(task.dueDate)}</span>
+          <span>Due: {taskDueDate ? formatDate(taskDueDate) : "No due date"}</span>
         </div>
 
         <div className="flex -space-x-2">
-          {task.assignees &&
-            task.assignees.map((assignee, index) => (
+          {taskAssignees &&
+            (Array.isArray(taskAssignees) ? taskAssignees : [taskAssignees]).map((assignee, index) => (
               <div
                 key={index}
                 className="h-6 w-6 rounded-full bg-gray-300 border border-white flex items-center justify-center text-xs"
                 title={`Assignee ${assignee}`}
               >
-                {assignee.charAt(0).toUpperCase()}
+                {typeof assignee === "string" ? assignee.charAt(0).toUpperCase() : "A"}
               </div>
             ))}
         </div>
