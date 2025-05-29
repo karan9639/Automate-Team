@@ -177,7 +177,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
               >
                 <option value="Admin">Admin</option>
                 <option value="Manager">Manager</option>
-                <option value="Member">Member</option>
+                <option value="Team Member">Member</option>
               </select>
               {errors.accountType && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">

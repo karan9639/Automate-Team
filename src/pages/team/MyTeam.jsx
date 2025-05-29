@@ -30,7 +30,7 @@ import {
  */
 const MyTeam = () => {
   const dispatch = useDispatch();
-  const teamMembers = useSelector(selectAllTeamMembers);
+  const teamMembers = useSelector(selectAllTeamMembers) || []; // Ensure it's always an array
 
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -54,13 +54,20 @@ const MyTeam = () => {
     setIsLoading(true);
     try {
       const response = await userApi.fetchAllTeamMembers();
-      const members = response.data || [];
+      console.log("API Response:", response.data);
+
+      // Extract the actual data array from the nested response structure
+      const members = response.data?.data || [];
+      console.log("Extracted members:", members);
+
       dispatch(setTeamMembers(members));
     } catch (error) {
       console.error("Error fetching team members:", error);
       toast.error(
         error.response?.data?.message || "Failed to fetch team members"
       );
+      // Set empty array on error to prevent filter issues
+      dispatch(setTeamMembers([]));
     } finally {
       setIsLoading(false);
     }
@@ -71,38 +78,53 @@ const MyTeam = () => {
     setIsRefreshing(true);
     try {
       const response = await userApi.fetchAllTeamMembers();
-      const members = response.data || [];
+
+      // Extract the actual data array from the nested response structure
+      const members = response.data?.data || [];
+
       dispatch(setTeamMembers(members));
       toast.success("Team members refreshed");
     } catch (error) {
       console.error("Error refreshing team members:", error);
       toast.error("Failed to refresh team members");
+      // Set empty array on error to prevent filter issues
+      dispatch(setTeamMembers([]));
     } finally {
       setIsRefreshing(false);
     }
   };
 
+  // Ensure teamMembers is always an array before filtering
+  const safeTeamMembers = Array.isArray(teamMembers) ? teamMembers : [];
+
   // Filter members based on search query and filters
-  const filteredMembers = teamMembers.filter((member) => {
+  const filteredMembers = safeTeamMembers.filter((member) => {
+    const memberData = member.newMember || member; // Handle both structures
+
     // Search filter
     if (
       searchQuery &&
-      !member.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !member.email?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !member.whatsappNumber?.includes(searchQuery)
+      !memberData.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !memberData.email?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !memberData.whatsappNumber?.toString().includes(searchQuery)
     ) {
       return false;
     }
 
-    // Account type filter
-    if (filters.accountType && member.accountType !== filters.accountType) {
+    // Account type filter - normalize to lowercase for comparison
+    if (
+      filters.accountType &&
+      memberData.accountType?.toLowerCase() !==
+        filters.accountType.toLowerCase()
+    ) {
       return false;
     }
 
-    // Reporting manager filter
+    // Reporting manager filter (assuming reportsTo is at the top level or in newMember)
     if (
       filters.reportingManager &&
-      member.reportsTo !== filters.reportingManager
+      member.reportsTo !== filters.reportingManager &&
+      memberData.reportsTo !== filters.reportingManager
     ) {
       return false;
     }
@@ -130,9 +152,13 @@ const MyTeam = () => {
   // Handle confirm delete
   const handleConfirmDelete = async () => {
     if (selectedMember) {
+      const memberId =
+        selectedMember.newMember?._id ||
+        selectedMember._id ||
+        selectedMember.id;
       try {
-        await userApi.deleteMember(selectedMember._id || selectedMember.id);
-        dispatch(deleteTeamMember(selectedMember._id || selectedMember.id));
+        await userApi.deleteMember(memberId);
+        dispatch(deleteTeamMember(memberId));
         toast.success("Team member deleted successfully");
         setIsDeleteModalOpen(false);
         setSelectedMember(null);
@@ -149,10 +175,12 @@ const MyTeam = () => {
   const handleSaveMember = async (memberData) => {
     try {
       const response = await userApi.addNewMember(memberData);
-      const newMember = response.data;
+
+      // Extract the actual member data from the response
+      const newMemberResponse = response.data?.data || response.data;
 
       // Add to Redux store
-      dispatch(addTeamMember(newMember));
+      dispatch(addTeamMember(newMemberResponse));
 
       toast.success("Team member added successfully");
       setIsAddMemberModalOpen(false);
@@ -178,11 +206,11 @@ const MyTeam = () => {
 
   // Handle download template
   const handleDownloadTemplate = () => {
-    // Create CSV template
+    // Create CSV template with lowercase account types
     const csvContent =
       "fullname,email,whatsappNumber,accountType,password\n" +
-      "John Doe,john@example.com,9876543210,Member,password123\n" +
-      "Jane Smith,jane@example.com,9876543211,Manager,password456";
+      "John Doe,john@example.com,9876543210,member,password123\n" +
+      "Jane Smith,jane@example.com,9876543211,manager,password456";
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -197,48 +225,65 @@ const MyTeam = () => {
     toast.success("Template downloaded successfully");
   };
 
+  // Helper function to capitalize first letter for display
+  const capitalizeFirst = (str) => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
   const columns = [
     {
       key: "fullname",
       header: "User",
-      render: (row) => (
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white">
-            {row.fullname
-              ?.split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase() || "?"}
-          </div>
-          <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {row.fullname || "N/A"}
+      render: (row) => {
+        const memberData = row.newMember || row; // Handle both structures
+        return (
+          <div className="flex items-center">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+              {memberData.fullname
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "?"}
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {row.email}
+            <div className="ml-4">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {memberData.fullname || "N/A"}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                {memberData.email}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "whatsappNumber",
       header: "WhatsApp",
-      render: (row) => row.whatsappNumber || "N/A",
+      render: (row) => {
+        const memberData = row.newMember || row;
+        return memberData.whatsappNumber || "N/A";
+      },
     },
     {
       key: "accountType",
       header: "Account Type",
-      render: (row) => (
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-          {row.accountType || "Member"}
-        </span>
-      ),
+      render: (row) => {
+        const memberData = row.newMember || row;
+        const accountType = capitalizeFirst(memberData.accountType) || "Member";
+        return (
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+            {accountType}
+          </span>
+        );
+      },
     },
     {
       key: "createdAt",
       header: "Joined",
       render: (row) => {
+        // createdAt is at the top level of the row object
         if (!row.createdAt) return "N/A";
         return new Date(row.createdAt).toLocaleDateString();
       },
@@ -246,20 +291,23 @@ const MyTeam = () => {
     {
       key: "actions",
       header: "Actions",
-      render: (row) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteMember(row);
-            }}
-            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            aria-label={`Delete ${row.fullname}`}
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      ),
+      render: (row) => {
+        const memberData = row.newMember || row;
+        return (
+          <div className="flex space-x-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteMember(row); // Pass the whole row for ID extraction
+              }}
+              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              aria-label={`Delete ${memberData.fullname}`}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -315,9 +363,9 @@ const MyTeam = () => {
             className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           >
             <option value="">All Types</option>
-            <option value="Admin">Admin</option>
-            <option value="Manager">Manager</option>
-            <option value="Member">Member</option>
+            <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
+            <option value="member">Member</option>
           </select>
 
           <button
@@ -338,17 +386,31 @@ const MyTeam = () => {
       {/* Status Pills */}
       <div className="flex flex-wrap gap-2 mb-6">
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.length} Total Members
+          {safeTeamMembers.length} Total Members
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.filter((m) => m.accountType === "Admin").length} Admins
+          {
+            safeTeamMembers.filter(
+              (m) => (m.newMember || m).accountType?.toLowerCase() === "admin"
+            ).length
+          }{" "}
+          Admins
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.filter((m) => m.accountType === "Manager").length}{" "}
+          {
+            safeTeamMembers.filter(
+              (m) => (m.newMember || m).accountType?.toLowerCase() === "manager"
+            ).length
+          }{" "}
           Managers
         </div>
         <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
-          {teamMembers.filter((m) => m.accountType === "Member").length} Members
+          {
+            safeTeamMembers.filter(
+              (m) => (m.newMember || m).accountType?.toLowerCase() === "member"
+            ).length
+          }{" "}
+          Members
         </div>
       </div>
 
@@ -385,7 +447,7 @@ const MyTeam = () => {
           setSelectedMember(null);
         }}
         onSave={handleSaveMember}
-        teamMembers={teamMembers}
+        teamMembers={safeTeamMembers}
       />
 
       {/* Delete Confirmation Modal */}
@@ -394,7 +456,9 @@ const MyTeam = () => {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Team Member"
-        description={`Are you sure you want to delete ${selectedMember?.fullname}? This action cannot be undone.`}
+        description={`Are you sure you want to delete ${
+          (selectedMember?.newMember || selectedMember)?.fullname
+        }? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"
