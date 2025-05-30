@@ -118,11 +118,11 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
           <Menu size={24} />
         </button>
 
-        {isMobile && !isSidebarOpen && (
+        {/* {isMobile && !isSidebarOpen && (
           <div className="mr-3">
             <AutomateLogo />
           </div>
-        )}
+        )} */}
 
         <div className="relative">
           {/* <div
