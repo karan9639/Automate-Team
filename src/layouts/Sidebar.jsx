@@ -141,25 +141,25 @@ const Sidebar = ({
         },
       ],
     },
-    {
-      id: "attendance",
-      title: "Attendance",
-      icon: <Clock size={18} />,
-      items: [
-        {
-          title: "My Attendance",
-          path: ROUTES.ATTENDANCE.MY,
-        },
-        {
-          title: "All Attendance",
-          path: ROUTES.ATTENDANCE.ALL,
-        },
-        {
-          title: "Attendance Settings",
-          path: ROUTES.ATTENDANCE.SETTINGS,
-        },
-      ],
-    },
+    // {
+    //   id: "attendance",
+    //   title: "Attendance",
+    //   icon: <Clock size={18} />,
+    //   items: [
+    //     {
+    //       title: "My Attendance",
+    //       path: ROUTES.ATTENDANCE.MY,
+    //     },
+    //     {
+    //       title: "All Attendance",
+    //       path: ROUTES.ATTENDANCE.ALL,
+    //     },
+    //     {
+    //       title: "Attendance Settings",
+    //       path: ROUTES.ATTENDANCE.SETTINGS,
+    //     },
+    //   ],
+    // },
     // {
     //   id: "leaves",
     //   title: "Leaves",
