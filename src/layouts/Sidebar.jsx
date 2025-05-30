@@ -124,23 +124,33 @@ const Sidebar = ({
     },
     {
       id: "tasks",
-      title: "Tasks",
-      icon: <CheckSquare size={18} />,
       items: [
         {
-          title: "Task Management",
+          title: "Tasks",
+          icon: <CheckSquare size={18} />,
           path: ROUTES.TASKS.MANAGEMENT,
-        },
-        {
-          title: "Task Directory",
-          path: ROUTES.TASKS.DIRECTORY,
-        },
-        {
-          title: "Task Templates",
-          path: ROUTES.TASKS.TEMPLATES,
         },
       ],
     },
+    // {
+    //   id: "tasks",
+    //   title: "Tasks",
+    //   icon: <CheckSquare size={18} />,
+    //   items: [
+    //     {
+    //       title: "Task Management",
+    //       path: ROUTES.TASKS.MANAGEMENT,
+    //     },
+    //     {
+    //       title: "Task Directory",
+    //       path: ROUTES.TASKS.DIRECTORY,
+    //     },
+    //     {
+    //       title: "Task Templates",
+    //       path: ROUTES.TASKS.TEMPLATES,
+    //     },
+    //   ],
+    // },
     // {
     //   id: "attendance",
     //   title: "Attendance",
