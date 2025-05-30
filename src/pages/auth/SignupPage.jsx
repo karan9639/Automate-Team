@@ -9,7 +9,7 @@ import IndiaFlag from "@/components/IndiaFlag";
 import AutomateLogo from "@/components/common/AutomateLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/constants/routes";
-import { userApi } from "@/api/userApi"; // Updated import path
+import { userApi } from "@/api/userApi";
 import { toast } from "react-hot-toast";
 import {
   Eye,
@@ -18,10 +18,13 @@ import {
   ArrowLeft,
   Mail,
   CheckCircle,
+  Briefcase,
+  Users,
+  Zap,
 } from "lucide-react";
 import OtpInput from "@/components/OtpInput";
 
-// Validation schema
+// Validation schema (remains the same)
 const validateSignupForm = (formData) => {
   const errors = {};
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,7 +58,7 @@ const validateSignupForm = (formData) => {
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { login: authLogin, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth(); // Removed unused 'login'
 
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
@@ -67,7 +70,6 @@ export default function SignupPage() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // OTP related states
   const [showOtpSection, setShowOtpSection] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
@@ -84,7 +86,6 @@ export default function SignupPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Countdown timer for OTP resend
   useEffect(() => {
     let timer;
     if (countdown > 0) {
@@ -115,21 +116,16 @@ export default function SignupPage() {
       );
       return;
     }
-
     setOtpSending(true);
     setOtpError("");
-
     try {
       const response = await userApi.sendOtp({ email });
-
       if (response.data.success) {
         setOtpSent(true);
         setShowOtpSection(true);
         toast.success(
           response.data.message || "OTP sent successfully to your email."
         );
-
-        // Start countdown for resend (60 seconds)
         setResendDisabled(true);
         setCountdown(60);
       } else {
@@ -137,7 +133,6 @@ export default function SignupPage() {
         setOtpError(response.data.message || "Failed to send OTP.");
       }
     } catch (error) {
-      console.error("Send OTP error:", error);
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
@@ -154,59 +149,30 @@ export default function SignupPage() {
       setOtpError("Please enter a valid 4-digit OTP.");
       return;
     }
-
     setOtpVerifying(true);
     setOtpError("");
-
     try {
       const response = await userApi.verifyOtp({ email, otp: otpValue });
-
       if (response.data.success) {
         setOtpVerified(true);
         toast.success(response.data.message || "OTP verified successfully.");
-
-        // Proceed with registration after OTP verification
-        handleSubmitAfterOtp();
+        handleSubmitAfterOtp(); // Proceed to registration
       } else {
         toast.error(response.data.message || "Invalid OTP.");
         setOtpError(response.data.message || "Invalid OTP.");
       }
     } catch (error) {
-      console.error("Verify OTP error object:", error);
       let detailedMessage = "Failed to verify OTP. Please try again.";
       if (error.response && error.response.data) {
-        console.error("Verify OTP error response data:", error.response.data);
         const data = error.response.data;
-        if (typeof data.message === "string" && data.message.trim()) {
-          detailedMessage = data.message;
-        } else if (typeof data.error === "string" && data.error.trim()) {
-          detailedMessage = data.error;
-        } else if (typeof data.detail === "string" && data.detail.trim()) {
-          detailedMessage = data.detail;
-        } else if (typeof data === "string" && data.trim()) {
-          detailedMessage = data;
-        }
-
-        if (typeof data.errors === "object" && data.errors !== null) {
-          const fieldErrors = Object.entries(data.errors)
-            .map(
-              ([key, value]) =>
-                `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
-            )
-            .join("; ");
-          if (fieldErrors) {
-            detailedMessage += ` (${fieldErrors})`;
-          }
-        } else if (
-          Array.isArray(data) &&
-          data.every((item) => typeof item === "string")
-        ) {
-          detailedMessage = data.join("; ");
-        }
+        detailedMessage =
+          data.message ||
+          data.error ||
+          data.detail ||
+          (typeof data === "string" ? data : detailedMessage);
       } else if (error.message) {
         detailedMessage = error.message;
       }
-
       toast.error(detailedMessage);
       setOtpError(detailedMessage);
     } finally {
@@ -216,17 +182,16 @@ export default function SignupPage() {
 
   const handleSubmitAfterOtp = async () => {
     setIsLoading(true);
-
     try {
       const formData = {
         fullname,
         email,
         whatsappNumber,
         password,
-        confirmPassword,
+        confirmPassword, // Backend might not need this if password is confirmed client-side
+        otp: otpValue, // Send OTP along with registration data
       };
-      const response = await userApi.register(formData);
-
+      const response = await userApi.register(formData); // Assuming register API handles OTP verification or uses pre-verified status
       if (response.data.success) {
         toast.success(
           response.data.message || "Registration successful! Please login."
@@ -234,12 +199,9 @@ export default function SignupPage() {
         navigate(ROUTES.AUTH.LOGIN);
       } else {
         toast.error(response.data.message || "Registration failed.");
-        if (response.data.errors) {
-          setErrors(response.data.errors);
-        }
+        if (response.data.errors) setErrors(response.data.errors);
       }
     } catch (error) {
-      console.error("Signup error:", error);
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
@@ -255,20 +217,22 @@ export default function SignupPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     if (!validateForm()) {
       toast.error("Please correct the errors in the form.");
       return;
     }
-
     if (!otpVerified) {
+      // If OTP not yet verified, initiate OTP flow
       setShowOtpSection(true);
       if (!otpSent) {
+        // If OTP not even sent, send it first
         handleSendOtp();
       }
+      // If OTP sent but not verified, user needs to input OTP and click verify.
+      // The form submission will be re-triggered by handleVerifyOtp -> handleSubmitAfterOtp
       return;
     }
-
+    // If OTP is already verified (e.g., user clicked back and then submit again), proceed.
     handleSubmitAfterOtp();
   };
 
@@ -282,6 +246,7 @@ export default function SignupPage() {
   const handleBackToForm = () => {
     setShowOtpSection(false);
     setOtpError("");
+    // Do not reset otpVerified or otpSent, user might want to retry submitting with existing OTP
   };
 
   const handleOtpComplete = (otp) => {
@@ -290,32 +255,67 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-[380px] gap-8">
-          <div className="grid gap-2 text-center">
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2 font-sans">
+      {/* Left Column - Descriptive Text */}
+      <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-green-500 to-emerald-700 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-20"></div>
+        <div className="relative z-10 text-center space-y-8">
+          <Link to="/" className="inline-block">
+            <AutomateLogo className="h-16 w-auto text-white" />
+          </Link>
+          <h1 className="text-4xl font-bold tracking-tight">
+            Elevate Your Workflow with KPS Automate Task
+          </h1>
+          <p className="text-lg leading-relaxed text-green-100">
+            Transform your team's productivity with KPS Automate Task, the
+            intelligent solution for seamless project management and workflow
+            automation. Our platform offers intuitive task delegation, real-time
+            progress tracking, and insightful analytics, all designed to
+            simplify complexity and foster collaboration. Step into a more
+            efficient future where every task is a step towards success. Join
+            KPS Automate Task and redefine your team's potential.
+          </p>
+          <div className="flex justify-center space-x-6 pt-4">
+            <div className="flex flex-col items-center">
+              <Briefcase className="h-10 w-10 text-green-300 mb-2" />
+              <span className="font-medium">Project Management</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Users className="h-10 w-10 text-green-300 mb-2" />
+              <span className="font-medium">Team Collaboration</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Zap className="h-10 w-10 text-green-300 mb-2" />
+              <span className="font-medium">Workflow Automation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Signup Form */}
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+        <div className="mx-auto w-full max-w-md space-y-8">
+          {/* Logo and Title for mobile */}
+          <div className="lg:hidden text-center mb-8">
             <Link to="/" className="inline-block mx-auto">
-              <AutomateLogo />
+              <AutomateLogo className="h-12 w-auto text-green-600" />
             </Link>
-            <h1 className="text-3xl font-bold">
+          </div>
+
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
               {showOtpSection ? "Verify Your Email" : "Create an Account"}
             </h1>
-            <p className="text-balance text-muted-foreground">
+            <p className="mt-2 text-sm text-slate-600">
               {showOtpSection
-                ? "Enter the 4-digit code sent to your email"
-                : "Enter your information to get started"}
+                ? `Enter the 4-digit code sent to ${email}`
+                : "Enter your information to get started."}
             </p>
           </div>
 
           {showOtpSection ? (
-            <div className="grid gap-4">
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">
-                  We've sent a verification code to
-                </p>
-                <p className="font-medium">{email}</p>
-              </div>
-
+            // OTP Section
+            <div className="space-y-6">
               <OtpInput
                 length={4}
                 onComplete={handleOtpComplete}
@@ -323,75 +323,47 @@ export default function SignupPage() {
               />
 
               {otpError && (
-                <p className="text-sm text-red-500 flex items-center justify-center">
-                  <AlertCircle className="w-4 h-4 mr-1" />
+                <p className="text-sm text-red-600 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4 mr-1.5 flex-shrink-0" />
                   {otpError}
                 </p>
               )}
 
               {otpVerified ? (
-                <div className="flex items-center justify-center text-green-600 gap-2">
+                <div className="flex items-center justify-center text-green-600 gap-2 p-3 bg-green-50 rounded-md">
                   <CheckCircle className="w-5 h-5" />
-                  <span>Email verified successfully!</span>
+                  <span>Email verified successfully! Proceeding...</span>
                 </div>
               ) : (
-                <div className="grid gap-3">
+                <div className="space-y-4">
                   <Button
                     type="button"
                     onClick={handleVerifyOtp}
                     disabled={
                       otpVerifying || !otpValue || otpValue.length !== 4
                     }
-                    className="w-full"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white transition-colors duration-150"
                   >
-                    {otpVerifying ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Verifying...
-                      </>
-                    ) : (
-                      "Verify OTP"
-                    )}
+                    {otpVerifying ? "Verifying..." : "Verify OTP"}
                   </Button>
-
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center text-sm">
                     <button
                       type="button"
                       onClick={handleBackToForm}
-                      className="text-sm text-gray-600 hover:text-gray-900 flex items-center"
+                      className="text-slate-600 hover:text-slate-900 flex items-center group"
                     >
-                      <ArrowLeft className="w-4 h-4 mr-1" />
+                      <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
                       Back to form
                     </button>
-
                     <button
                       type="button"
                       onClick={handleSendOtp}
                       disabled={otpSending || resendDisabled}
-                      className={`text-sm ${
+                      className={`flex items-center ${
                         resendDisabled
-                          ? "text-gray-400"
+                          ? "text-slate-400 cursor-not-allowed"
                           : "text-green-600 hover:text-green-700"
-                      } flex items-center`}
+                      }`}
                     >
                       <Mail className="w-4 h-4 mr-1" />
                       {resendDisabled
@@ -403,93 +375,63 @@ export default function SignupPage() {
                   </div>
                 </div>
               )}
-
-              {otpVerified && (
-                <Button
-                  type="button"
-                  onClick={handleSubmitAfterOtp}
-                  disabled={isLoading}
-                  className="w-full mt-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Creating Account...
-                    </>
-                  ) : (
-                    "Complete Registration"
-                  )}
-                </Button>
-              )}
+              {/* The "Complete Registration" button is removed from here as handleSubmitAfterOtp is called directly after successful OTP verification */}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="grid gap-4">
-              {/* Full Name */}
-              <div className="grid gap-2">
-                <Label htmlFor="fullname">Full Name</Label>
+            // Signup Form Fields
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <Label htmlFor="fullname" className="text-slate-700">
+                  Full Name
+                </Label>
                 <Input
                   id="fullname"
                   type="text"
                   placeholder="John Doe"
                   value={fullname}
                   onChange={handleInputChange(setFullname, "fullname")}
-                  className={errors.fullname ? "border-red-500" : ""}
+                  className={`mt-1 focus:ring-green-500 focus:border-green-500 ${
+                    errors.fullname ? "border-red-500" : "border-slate-300"
+                  }`}
                   required
                 />
                 {errors.fullname && (
-                  <p className="text-xs text-red-500 flex items-center">
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     {errors.fullname}
                   </p>
                 )}
               </div>
-
-              {/* Email */}
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+              <div>
+                <Label htmlFor="email" className="text-slate-700">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={handleInputChange(setEmail, "email")}
-                  className={errors.email ? "border-red-500" : ""}
+                  className={`mt-1 focus:ring-green-500 focus:border-green-500 ${
+                    errors.email ? "border-red-500" : "border-slate-300"
+                  }`}
                   required
                 />
                 {errors.email && (
-                  <p className="text-xs text-red-500 flex items-center">
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     {errors.email}
                   </p>
                 )}
               </div>
-
-              {/* WhatsApp Number */}
-              <div className="grid gap-2">
-                <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
-                <div className="relative">
+              <div>
+                <Label htmlFor="whatsappNumber" className="text-slate-700">
+                  WhatsApp Number
+                </Label>
+                <div className="relative mt-1">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <IndiaFlag className="h-5 w-5" />
-                    <span className="ml-2 text-sm text-gray-500">+91</span>
+                    <span className="ml-2 text-sm text-slate-500">+91</span>
                   </div>
                   <Input
                     id="whatsappNumber"
@@ -500,56 +442,60 @@ export default function SignupPage() {
                       setWhatsappNumber,
                       "whatsappNumber"
                     )}
-                    className={`pl-[70px] ${
-                      errors.whatsappNumber ? "border-red-500" : ""
+                    className={`pl-[70px] focus:ring-green-500 focus:border-green-500 ${
+                      errors.whatsappNumber
+                        ? "border-red-500"
+                        : "border-slate-300"
                     }`}
                     required
                     maxLength={10}
                   />
                 </div>
                 {errors.whatsappNumber && (
-                  <p className="text-xs text-red-500 flex items-center">
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     {errors.whatsappNumber}
                   </p>
                 )}
               </div>
-
-              {/* Password */}
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
+              <div>
+                <Label htmlFor="password" className="text-slate-700">
+                  Password
+                </Label>
+                <div className="relative mt-1">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={handleInputChange(setPassword, "password")}
-                    className={errors.password ? "border-red-500" : ""}
+                    className={`focus:ring-green-500 focus:border-green-500 ${
+                      errors.password ? "border-red-500" : "border-slate-300"
+                    }`}
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-slate-400 hover:text-green-600"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </Button>
                 </div>
                 {errors.password && (
-                  <p className="text-xs text-red-500 flex items-center">
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     {errors.password}
                   </p>
                 )}
               </div>
-
-              {/* Confirm Password */}
-              <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
+              <div>
+                <Label htmlFor="confirmPassword" className="text-slate-700">
+                  Confirm Password
+                </Label>
+                <div className="relative mt-1">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
@@ -559,14 +505,18 @@ export default function SignupPage() {
                       setConfirmPassword,
                       "confirmPassword"
                     )}
-                    className={errors.confirmPassword ? "border-red-500" : ""}
+                    className={`focus:ring-green-500 focus:border-green-500 ${
+                      errors.confirmPassword
+                        ? "border-red-500"
+                        : "border-slate-300"
+                    }`}
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-slate-400 hover:text-green-600"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
@@ -577,65 +527,38 @@ export default function SignupPage() {
                   </Button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-xs text-red-500 flex items-center">
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     {errors.confirmPassword}
                   </p>
                 )}
               </div>
-
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-green-600 hover:bg-green-700 text-white transition-colors duration-150 py-2.5"
                 disabled={isLoading || otpSending}
               >
-                {isLoading || otpSending ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    {otpSending ? "Sending OTP..." : "Creating Account..."}
-                  </>
-                ) : otpVerified ? (
-                  "Create Account"
-                ) : (
-                  "Continue with Email Verification"
-                )}
+                {isLoading || otpSending
+                  ? otpSending
+                    ? "Sending OTP..."
+                    : "Processing..."
+                  : "Continue"}
               </Button>
             </form>
           )}
 
-          <div className="mt-4 text-center text-sm">
-            Already have an account?{" "}
-            <Link to={ROUTES.AUTH.LOGIN} className="underline">
-              Sign in
-            </Link>
+          <div className="mt-6 text-center text-sm">
+            <p className="text-slate-600">
+              Already have an account?{" "}
+              <Link
+                to={ROUTES.AUTH.LOGIN}
+                className="font-medium text-green-600 hover:text-green-500 hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
           </div>
         </div>
-      </div>
-      <div className="hidden bg-muted lg:block">
-        <img
-          src="/placeholder.svg?height=1080&width=1920"
-          alt="Modern office collaboration"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
       </div>
     </div>
   );

@@ -2,15 +2,20 @@
 
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Briefcase, Users, Zap } from "lucide-react";
 import { loginUser } from "@/api/authApi";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import AutomateLogo from "@/components/common/AutomateLogo";
+import { ROUTES } from "@/constants/routes";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(""); // General error for the form
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -18,8 +23,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the intended destination from location state or default to dashboard
-  const from = location.state?.from?.pathname || "/dashboard";
+  const from = location.state?.from?.pathname || ROUTES.DASHBOARD.HOME;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,67 +36,33 @@ const LoginPage = () => {
         password,
       });
 
-      console.log("API Response:", res.data); // Debug log
-
-      // Check if login was successful based on your API structure
       if (res.data?.success === true && res.data?.statusCode === 200) {
-        console.log("Login successful, processing user data...");
-
-        // Extract user data from your specific API response structure
         const apiUserData = res.data.data;
-
-        console.log("API User Data:", apiUserData); // Debug log
-
-        // Create user object matching your API response structure
         const user = {
-          id: apiUserData.id || apiUserData._id || Date.now(), // Use apiUserData.id or _id if available
+          id: apiUserData.id || apiUserData._id || Date.now(),
           email: apiUserData.email,
           fullname: apiUserData.fullname,
-          name: apiUserData.fullname, // Consistent display name
+          name: apiUserData.fullname,
           accountType: apiUserData.accountType,
-          role: apiUserData.accountType, // Map accountType to role for general use
+          role: apiUserData.accountType,
           createdAt: apiUserData.createdAt,
           updatedAt: apiUserData.updatedAt,
-          joinDate: apiUserData.createdAt, // Use createdAt as joinDate for profile display
-          // Add any other fields from apiUserData that should be in currentUser
-          // e.g., whatsappNumber: apiUserData.whatsappNumber || "",
-          // designation: apiUserData.designation || "",
-          // department: apiUserData.department || "",
-          // location: apiUserData.location || "",
-          // bio: apiUserData.bio || "",
+          joinDate: apiUserData.createdAt,
         };
-
-        console.log("Processed user object:", user); // Debug log
-
-        // For token, check if it's in the response or generate a demo one
         const token =
           res.data.token || res.data.accessToken || "demo-token-" + Date.now();
-
-        // Update authentication context with the user data
         await login(user, token);
-
-        // Clear any previous errors
-        setError("");
-
-        // Show success message
-        toast.success("Logged In Successfully");
-
-        console.log("Authentication successful, navigating to:", from);
-
-        // Navigate to dashboard
+        toast.success("Logged In Successfully!");
         navigate(from, { replace: true });
       } else {
-        // Handle API error response
-        const errorMessage = res.data?.message || "Invalid email or password";
-        setError(errorMessage);
-        toast.error(errorMessage + " ❌");
+        const errorMessage =
+          res.data?.message || "Invalid email or password. Please try again.";
+        setError(errorMessage); // Set general error
+        toast.error(errorMessage);
       }
     } catch (err) {
-      console.error("Login error:", err);
-
-      // Handle different types of errors
-      let errorMessage = "Invalid email or password";
-
+      let errorMessage =
+        "Login failed. Please check your credentials and try again.";
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.response?.data?.error) {
@@ -100,40 +70,84 @@ const LoginPage = () => {
       } else if (err.message) {
         errorMessage = err.message;
       }
-
-      setError(errorMessage);
-      toast.error(errorMessage + " ❌");
+      setError(errorMessage); // Set general error
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your account to continue
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2 font-sans">
+      {/* Left Column - Descriptive Text */}
+      <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-green-500 to-emerald-700 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-20"></div>
+        <div className="relative z-10 text-center space-y-8">
+          <Link to="/" className="inline-block">
+            <AutomateLogo className="h-16 w-auto text-white" />
+          </Link>
+          <h1 className="text-4xl font-bold tracking-tight">
+            Elevate Your Workflow with KPS Automate Task
+          </h1>
+          <p className="text-lg leading-relaxed text-green-100">
+            Transform your team's productivity with KPS Automate Task, the
+            intelligent solution for seamless project management and workflow
+            automation. Our platform offers intuitive task delegation, real-time
+            progress tracking, and insightful analytics, all designed to
+            simplify complexity and foster collaboration. Step into a more
+            efficient future where every task is a step towards success. Join
+            KPS Automate Task and redefine your team's potential.
           </p>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-800 p-3 rounded-md text-sm">
-            {error}
+          <div className="flex justify-center space-x-6 pt-4">
+            <div className="flex flex-col items-center">
+              <Briefcase className="h-10 w-10 text-green-300 mb-2" />
+              <span className="font-medium">Project Management</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Users className="h-10 w-10 text-green-300 mb-2" />
+              <span className="font-medium">Team Collaboration</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Zap className="h-10 w-10 text-green-300 mb-2" />
+              <span className="font-medium">Workflow Automation</span>
+            </div>
           </div>
-        )}
+        </div>
+      </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
+      {/* Right Column - Login Form */}
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+        <div className="mx-auto w-full max-w-md space-y-8">
+          <div className="lg:hidden text-center mb-8">
+            <Link to="/" className="inline-block mx-auto">
+              <AutomateLogo className="h-12 w-auto text-green-600" />
+            </Link>
+          </div>
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              Welcome Back!
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Sign in to continue to KPS Automate Task.
+            </p>
+          </div>
+
+          {error && (
+            <div
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm"
+              role="alert"
+            >
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <Label htmlFor="email" className="text-slate-700">
                 Email Address
-              </label>
-              <input
+              </Label>
+              <Input
                 id="email"
                 name="email"
                 type="email"
@@ -141,27 +155,25 @@ const LoginPage = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-shadow"
+                placeholder="you@example.com"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <Label htmlFor="password" className="text-slate-700">
                   Password
-                </label>
+                </Label>
                 <Link
-                  to="/forgot-password"
-                  className="text-sm text-blue-600 hover:text-blue-500"
+                  to={ROUTES.AUTH.FORGOT_PASSWORD}
+                  className="text-sm font-medium text-green-600 hover:text-green-500 hover:underline"
                 >
                   Forgot password?
                 </Link>
               </div>
-              <div className="relative">
-                <input
+              <div className="relative mt-1">
+                <Input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
@@ -169,41 +181,42 @@ const LoginPage = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-full px-3 py-2.5 pr-10 border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-shadow"
+                  placeholder="••••••••"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-slate-400 hover:text-green-600"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500"
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </Button>
               </div>
             </div>
-          </div>
 
-          <div>
-            <button
+            <Button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60 transition-colors duration-150"
             >
               {isLoading ? "Signing in..." : "Sign in"}
-            </button>
-          </div>
-        </form>
+            </Button>
+          </form>
 
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Sign up
-            </Link>
-          </p>
+          <div className="mt-6 text-center text-sm">
+            <p className="text-slate-600">
+              Don't have an account?{" "}
+              <Link
+                to={ROUTES.AUTH.SIGNUP}
+                className="font-medium text-green-600 hover:text-green-500 hover:underline"
+              >
+                Sign up
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -263,7 +263,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                   <User size={16} className="mr-2" />
                   Profile
                 </button>
-                <button
+                {/* <button
                   onClick={() => {
                     setDropdownOpen(false);
                     navigate(ROUTES.SETTINGS);
@@ -272,7 +272,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
                 >
                   <Settings size={16} className="mr-2" />
                   Settings
-                </button>
+                </button> */}
                 <button
                   onClick={(e) => handleLogout(e)}
                   disabled={isLoggingOut}

@@ -241,16 +241,16 @@ const Sidebar = ({
         },
       ],
     },
-    {
-      id: "settings",
-      items: [
-        {
-          title: "Settings",
-          icon: <Settings size={18} />,
-          path: ROUTES.SETTINGS,
-        },
-      ],
-    },
+    // {
+    //   id: "settings",
+    //   items: [
+    //     {
+    //       title: "Settings",
+    //       icon: <Settings size={18} />,
+    //       path: ROUTES.SETTINGS,
+    //     },
+    //   ],
+    // },
   ];
 
   // Handle navigation click
