@@ -3,10 +3,15 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 
+/**
+ * Component to display task distribution by status as a pie chart
+ */
 const TaskDistributionChart = ({ tasks = [] }) => {
   const [hoveredSegment, setHoveredSegment] = useState(null);
 
+  // Map legacy statuses to new ones
   const taskCounts = {
+    Pending: tasks.filter((task) => task.status === "To Do").length,
     "In Progress": tasks.filter((task) => task.status === "In Progress").length,
     Completed: tasks.filter(
       (task) => task.status === "Done" || task.status === "Completed"
@@ -14,6 +19,15 @@ const TaskDistributionChart = ({ tasks = [] }) => {
     Overdue: tasks.filter((task) => {
       const dueDate = new Date(task.dueDate);
       const today = new Date();
+      // Note: For more accurate overdue calculation, consider normalizing 'today' and 'dueDate' to the start of the day.
+      // Also, ensure tasks counted as Overdue are not also counted in other categories like Pending or In Progress
+      // if those statuses should be mutually exclusive with Overdue.
+      // The current logic might count an "In Progress" task also as "Overdue".
+      // A more robust approach would be to categorize hierarchically:
+      // 1. Completed?
+      // 2. Else, Overdue (and not completed)?
+      // 3. Else, In Progress (and not completed, not overdue)?
+      // 4. Else, Pending (and not completed, not overdue, not in progress)?
       return (
         task.status !== "Done" && task.status !== "Completed" && dueDate < today
       );
@@ -26,6 +40,7 @@ const TaskDistributionChart = ({ tasks = [] }) => {
   );
 
   const statusColors = {
+    Pending: "#f59e0b", // amber-500
     "In Progress": "#3b82f6", // blue-500
     Completed: "#10b981", // emerald-500
     Overdue: "#ef4444", // red-500
@@ -33,7 +48,7 @@ const TaskDistributionChart = ({ tasks = [] }) => {
 
   if (totalTasks === 0) {
     return (
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full">
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full w-full">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Task Distribution
         </h3>
@@ -45,12 +60,12 @@ const TaskDistributionChart = ({ tasks = [] }) => {
   }
 
   const segments = Object.entries(taskCounts)
-    .filter(([, count]) => count > 0)
+    .filter(([, count]) => count > 0) // Only include segments with count > 0
     .map(([status, count]) => ({
       status,
       count,
-      percentage: (count / totalTasks) * 100,
-      angle: (count / totalTasks) * 360,
+      percentage: totalTasks > 0 ? (count / totalTasks) * 100 : 0,
+      angle: totalTasks > 0 ? (count / totalTasks) * 360 : 0,
       color: statusColors[status],
     }));
 
@@ -62,20 +77,21 @@ const TaskDistributionChart = ({ tasks = [] }) => {
   ) => {
     const centerX = 100;
     const centerY = 100;
-    const startRad = (startAngle - 90) * (Math.PI / 180);
-    const endRad = (endAngle - 90) * (Math.PI / 180);
 
-    const x1 = centerX + radius * Math.cos(startRad);
-    const y1 = centerY + radius * Math.sin(startRad);
-    const x2 = centerX + radius * Math.cos(endRad);
-    const y2 = centerY + radius * Math.sin(endRad);
+    const startAngleRad = (startAngle - 90) * (Math.PI / 180);
+    const endAngleRad = (endAngle - 90) * (Math.PI / 180);
+
+    const x1 = centerX + radius * Math.cos(startAngleRad);
+    const y1 = centerY + radius * Math.sin(startAngleRad);
+    const x2 = centerX + radius * Math.cos(endAngleRad);
+    const y2 = centerY + radius * Math.sin(endAngleRad);
 
     const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
 
-    const x3 = centerX + innerRadius * Math.cos(endRad);
-    const y3 = centerY + innerRadius * Math.sin(endRad);
-    const x4 = centerX + innerRadius * Math.cos(startRad);
-    const y4 = centerY + innerRadius * Math.sin(startRad);
+    const x3 = centerX + innerRadius * Math.cos(endAngleRad);
+    const y3 = centerY + innerRadius * Math.sin(endAngleRad);
+    const x4 = centerX + innerRadius * Math.cos(startAngleRad);
+    const y4 = centerY + innerRadius * Math.sin(startAngleRad);
 
     return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
   };
@@ -88,22 +104,21 @@ const TaskDistributionChart = ({ tasks = [] }) => {
         Task Distribution
       </h3>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        {/* Pie Chart */}
-        <div className="relative w-full md:w-1/2 flex justify-center">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        {/* Pie Chart Section */}
+        <div className="relative w-full md:w-1/2 flex justify-center items-center py-4 md:py-0">
           <svg
             width="200"
             height="200"
             viewBox="0 0 200 200"
-            className="transform -rotate-90"
+            className="transform -rotate-90" // SVG itself maintains fixed size based on its attributes
           >
             {segments.map((segment) => {
               const path = createPieSegment(
                 currentAngle,
-                currentAngle + segment.angle,
-                80,
-                25
+                currentAngle + segment.angle
               );
+              // const segmentAngle = currentAngle; // This variable was unused
               currentAngle += segment.angle;
 
               return (
@@ -115,7 +130,7 @@ const TaskDistributionChart = ({ tasks = [] }) => {
                     strokeWidth="2"
                     className={`transition-all duration-200 cursor-pointer ${
                       hoveredSegment === segment.status
-                        ? "opacity-80 scale-[1.02]"
+                        ? "opacity-80 scale-[1.03]"
                         : ""
                     }`}
                     onMouseEnter={() => setHoveredSegment(segment.status)}
@@ -126,17 +141,20 @@ const TaskDistributionChart = ({ tasks = [] }) => {
             })}
           </svg>
 
-          {/* Hover Tooltip */}
-          {hoveredSegment && (
+          {/* Tooltip */}
+          {hoveredSegment && taskCounts[hoveredSegment] !== undefined && (
             <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-gray-900 text-white px-2 py-1 rounded text-sm whitespace-nowrap z-10">
               {hoveredSegment}: {taskCounts[hoveredSegment]} (
-              {Math.round((taskCounts[hoveredSegment] / totalTasks) * 100)}%)
+              {totalTasks > 0
+                ? Math.round((taskCounts[hoveredSegment] / totalTasks) * 100)
+                : 0}
+              %)
             </div>
           )}
         </div>
 
-        {/* Legend */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full md:w-1/2">
+        {/* Legend Section */}
+        <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
           {segments.map((segment) => (
             <div
               key={segment.status}
@@ -155,7 +173,8 @@ const TaskDistributionChart = ({ tasks = [] }) => {
                   {segment.status}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {segment.count} ({Math.round(segment.percentage)}%)
+                  {segment.count} (
+                  {totalTasks > 0 ? Math.round(segment.percentage) : 0}%)
                 </div>
               </div>
             </div>
