@@ -300,8 +300,7 @@ const Profile = () => {
                       name="joinDate"
                       type="date"
                       value={profileData.joinDate}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled
                       className="mt-1"
                     />
                   </div>
