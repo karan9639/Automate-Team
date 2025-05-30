@@ -179,21 +179,21 @@ const Sidebar = ({
         },
       ],
     },
-    {
-      id: "events",
-      title: "Events",
-      icon: <Calendar size={18} />,
-      items: [
-        {
-          title: "Events",
-          path: ROUTES.EVENTS.MAIN,
-        },
-        {
-          title: "Holidays",
-          path: ROUTES.EVENTS.HOLIDAYS,
-        },
-      ],
-    },
+    // {
+    //   id: "events",
+    //   title: "Events",
+    //   icon: <Calendar size={18} />,
+    //   items: [
+    //     {
+    //       title: "Events",
+    //       path: ROUTES.EVENTS.MAIN,
+    //     },
+    //     {
+    //       title: "Holidays",
+    //       path: ROUTES.EVENTS.HOLIDAYS,
+    //     },
+    //   ],
+    // },
     {
       id: "team",
       items: [
