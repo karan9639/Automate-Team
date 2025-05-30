@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../../components/ui/card";
-import { CheckCircle, Clock, AlertCircle, Users, List } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, List } from "lucide-react";
 
 const KPICards = ({ kpis }) => {
   const cards = [
@@ -40,17 +40,10 @@ const KPICards = ({ kpis }) => {
       description: "Tasks past due date",
       color: "bg-red-50 text-red-600 border-red-200",
     },
-    {
-      title: "Active Users",
-      value: kpis.activeUsers,
-      icon: <Users className="h-5 w-5 text-purple-600" />,
-      description: "Team members with tasks",
-      color: "bg-purple-50 text-purple-600 border-purple-200",
-    },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card, index) => (
         <Card
           key={index}
