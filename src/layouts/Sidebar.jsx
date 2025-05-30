@@ -204,33 +204,33 @@ const Sidebar = ({
         },
       ],
     },
-    {
-      id: "tools",
-      title: "Tools",
-      icon: <Settings size={18} />,
-      items: [
-        {
-          title: "Checklist",
-          icon: <CheckSquare size={18} />,
-          path: ROUTES.CHECKLIST,
-        },
-        {
-          title: "Links",
-          icon: <LinkIcon size={18} />,
-          path: ROUTES.LINKS,
-        },
-        {
-          title: "Mobile App",
-          icon: <Smartphone size={18} />,
-          path: ROUTES.MOBILE_APP,
-        },
-        {
-          title: "Refer & Earn",
-          icon: <Gift size={18} />,
-          path: ROUTES.REFER_EARN,
-        },
-      ],
-    },
+    // {
+    //   id: "tools",
+    //   title: "Tools",
+    //   icon: <Settings size={18} />,
+    //   items: [
+    //     {
+    //       title: "Checklist",
+    //       icon: <CheckSquare size={18} />,
+    //       path: ROUTES.CHECKLIST,
+    //     },
+    //     {
+    //       title: "Links",
+    //       icon: <LinkIcon size={18} />,
+    //       path: ROUTES.LINKS,
+    //     },
+    //     {
+    //       title: "Mobile App",
+    //       icon: <Smartphone size={18} />,
+    //       path: ROUTES.MOBILE_APP,
+    //     },
+    //     {
+    //       title: "Refer & Earn",
+    //       icon: <Gift size={18} />,
+    //       path: ROUTES.REFER_EARN,
+    //     },
+    //   ],
+    // },
     {
       id: "support",
       items: [
