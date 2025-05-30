@@ -160,25 +160,25 @@ const Sidebar = ({
         },
       ],
     },
-    {
-      id: "leaves",
-      title: "Leaves",
-      icon: <Calendar size={18} />,
-      items: [
-        {
-          title: "My Leaves",
-          path: ROUTES.LEAVES.MY,
-        },
-        {
-          title: "All Leaves",
-          path: ROUTES.LEAVES.ALL,
-        },
-        {
-          title: "Approvals",
-          path: ROUTES.LEAVES.APPROVALS,
-        },
-      ],
-    },
+    // {
+    //   id: "leaves",
+    //   title: "Leaves",
+    //   icon: <Calendar size={18} />,
+    //   items: [
+    //     {
+    //       title: "My Leaves",
+    //       path: ROUTES.LEAVES.MY,
+    //     },
+    //     {
+    //       title: "All Leaves",
+    //       path: ROUTES.LEAVES.ALL,
+    //     },
+    //     {
+    //       title: "Approvals",
+    //       path: ROUTES.LEAVES.APPROVALS,
+    //     },
+    //   ],
+    // },
     // {
     //   id: "events",
     //   title: "Events",
