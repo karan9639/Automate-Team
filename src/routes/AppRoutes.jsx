@@ -134,10 +134,13 @@ const AppRoutes = () => {
         path={ROUTES.AUTH.FORGOT_PASSWORD}
         element={
           <AuthRoute>
+            {" "}
+            {/* ForgotPasswordPage should typically be public, adjust if needed */}
             <ForgotPasswordPage />
           </AuthRoute>
         }
       />
+      
 
       {/* Root redirect */}
       <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />

@@ -13,9 +13,10 @@ export const userApi = {
     return API.post(`${USER_BASE_URL}/login`, credentials);
   },
 
-  changePassword: async (passwordData) => {
+  changePassword: async (data) => {
     // passwordData: { oldPassword, newPassword, confirmNewPassword }
-    return API.post(`${USER_BASE_URL}/change-password`, passwordData);
+    return API.post(`${USER_BASE_URL}/change-password`, data);
+    
   },
 
   logout: async () => {
@@ -68,7 +69,7 @@ export const userApi = {
       }
     // Backend expects 'incomingOTP' field name
     const payload = {
-      // incomingEmail: otpVerifyData.email,
+      incomingEmail: otpVerifyData.email,
       incomingOTP: otpAsNumber, // Changed from 'otp' to 'incomingOTP'
     };
 

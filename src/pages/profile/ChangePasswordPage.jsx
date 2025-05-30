@@ -1,60 +1,75 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import AutomateLogo from "@/components/common/AutomateLogo";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import OtpInput from "@/components/OtpInput";
 import { userApi } from "@/api/userApi";
+import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, AlertCircle, ArrowLeft, Mail } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Mail,
+  ArrowLeft,
+  KeyRound,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 
-// Validation schema
-const validateForgotPasswordForm = (formData, step) => {
+const validateChangePasswordForm = (formData) => {
   const errors = {};
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!formData.currentPassword)
+    errors.currentPassword = "Current password is required.";
 
-  if (step === 1 || step === "all") {
-    if (!formData.email.trim()) errors.email = "Email is required";
-    else if (!emailRegex.test(formData.email.trim()))
-      errors.email = "Invalid email format";
+  if (!formData.newPassword) errors.newPassword = "New password is required.";
+  else if (formData.newPassword.length < 6)
+    errors.newPassword = "New password must be at least 6 characters.";
 
-    if (!formData.newPassword) errors.newPassword = "New password is required";
-    else if (formData.newPassword.length < 6)
-      errors.newPassword = "Password must be at least 6 characters";
+  if (!formData.confirmNewPassword)
+    errors.confirmNewPassword = "Confirm new password is required.";
+  else if (formData.newPassword !== formData.confirmNewPassword)
+    errors.confirmNewPassword = "New passwords do not match.";
 
-    if (!formData.confirmNewPassword)
-      errors.confirmNewPassword = "Confirm new password is required";
-    else if (formData.newPassword !== formData.confirmNewPassword)
-      errors.confirmNewPassword = "Passwords do not match";
-  }
   return errors;
 };
 
-export default function ForgotPasswordPage() {
+export default function ChangePasswordPage() {
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false); // General loading state
+  const [isLoading, setIsLoading] = useState(false); // Combined loading state
   const [otpSending, setOtpSending] = useState(false);
-  const [otpVerifying, setOtpVerifying] = useState(false);
   const [passwordChanging, setPasswordChanging] = useState(false);
 
-  // OTP related states
   const [showOtpSection, setShowOtpSection] = useState(false);
-  const [otpSent, setOtpSent] = useState(false); // To track if OTP has been sent for the current email
   const [otpValue, setOtpValue] = useState("");
   const [otpError, setOtpError] = useState("");
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser) {
+      navigate(ROUTES.AUTH.LOGIN);
+    }
+  }, [currentUser, navigate]);
 
   useEffect(() => {
     let timer;
@@ -74,8 +89,8 @@ export default function ForgotPasswordPage() {
   };
 
   const validateForm = () => {
-    const formData = { email, newPassword, confirmNewPassword };
-    const validationErrors = validateForgotPasswordForm(formData, 1);
+    const formData = { currentPassword, newPassword, confirmNewPassword };
+    const validationErrors = validateChangePasswordForm(formData);
     setErrors(validationErrors);
     return Object.keys(validationErrors).length === 0;
   };
@@ -87,11 +102,11 @@ export default function ForgotPasswordPage() {
     }
     setOtpSending(true);
     setOtpError("");
+    setIsLoading(true);
     try {
-      const response = await userApi.sendOtp({ email });
+      const response = await userApi.sendOtp({ email: currentUser.email });
       if (response.data.success) {
         toast.success(response.data.message || "OTP sent to your email.");
-        setOtpSent(true);
         setShowOtpSection(true);
         setResendDisabled(true);
         setCountdown(60);
@@ -107,129 +122,144 @@ export default function ForgotPasswordPage() {
       setOtpError(errorMessage);
     } finally {
       setOtpSending(false);
+      setIsLoading(false);
     }
   };
 
-  const handleVerifyAndChangePassword = async () => {
+  const handleChangePasswordWithOtp = async () => {
     if (!otpValue || otpValue.length !== 4) {
       setOtpError("Please enter a valid 4-digit OTP.");
       return;
     }
-    setOtpVerifying(true); // Use otpVerifying for the combined process
     setPasswordChanging(true);
     setOtpError("");
+    setIsLoading(true);
 
     try {
-      // Step 1: Verify OTP
-      const verifyResponse = await userApi.verifyOtp({ email, otp: otpValue });
-      if (!verifyResponse.data.success) {
-        toast.error(verifyResponse.data.message || "Invalid OTP.");
-        setOtpError(verifyResponse.data.message || "Invalid OTP.");
-        setOtpVerifying(false);
-        setPasswordChanging(false);
-        return;
-      }
-
-      toast.success("OTP verified successfully. Changing password...");
-
-      // Step 2: Change Password
+      // Backend should verify OTP again with the change password request or use a sessionized OTP.
+      // The flow implies OTP is part of the changePassword payload for verification.
       const changePasswordPayload = {
-        email,
+        email: currentUser.email,
+        currentPassword,
         incomingPassword: newPassword, // Changed from newPassword to incomingPassword
-        // No currentPassword for forgot password
         otp: otpValue,
       };
-      const changePasswordResponse = await userApi.changePassword(
-        changePasswordPayload
-      );
+      const response = await userApi.changePassword(changePasswordPayload);
 
-      if (changePasswordResponse.data.success) {
+      if (response.data.success) {
         toast.success(
-          changePasswordResponse.data.message ||
-            "Password changed successfully! Please login."
+          response.data.message ||
+            "Password changed successfully! Please log in again for security."
         );
-        setShowOtpSection(false);
-        setEmail("");
-        setNewPassword("");
-        setConfirmNewPassword("");
-        setOtpValue("");
+        await logout(); // Log out user for security
         navigate(ROUTES.AUTH.LOGIN);
       } else {
         toast.error(
-          changePasswordResponse.data.message || "Failed to change password."
+          response.data.message ||
+            "Failed to change password. Check OTP or current password."
         );
+        setOtpError(response.data.message || "Password change failed."); // Show error near OTP if relevant
       }
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "An error occurred. Please try again.";
       toast.error(errorMessage);
-      setOtpError(errorMessage); // Show error in OTP section if it's related, or a general toast
+      setOtpError(errorMessage);
     } finally {
-      setOtpVerifying(false);
       setPasswordChanging(false);
+      setIsLoading(false);
     }
   };
 
   const handleOtpComplete = (otp) => {
     setOtpValue(otp);
-    setOtpError(""); // Clear OTP error when user types
+    setOtpError("");
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (showOtpSection) {
-      handleVerifyAndChangePassword();
+      handleChangePasswordWithOtp();
     } else {
       handleSendOtp();
     }
   };
 
-  return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-[380px] gap-8">
-          <div className="grid gap-2 text-center">
-            <Link to="/" className="inline-block mx-auto">
-              <AutomateLogo />
-            </Link>
-            <h1 className="text-3xl font-bold">
-              {showOtpSection ? "Verify & Reset Password" : "Forgot Password"}
-            </h1>
-            <p className="text-balance text-muted-foreground">
-              {showOtpSection
-                ? `Enter the OTP sent to ${email} and confirm reset.`
-                : "Enter your email and new password to reset it."}
-            </p>
-          </div>
+  if (!currentUser) return <p>Loading user data...</p>; // Or a spinner
 
-          <form onSubmit={handleSubmit} className="grid gap-4">
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center">
+            <KeyRound className="w-6 h-6 mr-2 text-blue-600" />
+            Change Password
+          </CardTitle>
+          <CardDescription>
+            {showOtpSection
+              ? `An OTP has been sent to ${currentUser.email}. Please enter it below.`
+              : "Update your password below. An OTP will be sent to your email for verification."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
             {!showOtpSection && (
               <>
-                <div className="grid gap-2">
+                <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
-                    value={email}
-                    onChange={handleInputChange(setEmail, "email")}
-                    className={errors.email ? "border-red-500" : ""}
-                    required
-                    disabled={otpSending}
+                    value={currentUser.email}
+                    disabled
+                    className="mt-1 bg-gray-100"
                   />
-                  {errors.email && (
-                    <p className="text-xs text-red-500 flex items-center">
-                      <AlertCircle className="w-3 h-3 mr-1" /> {errors.email}
+                </div>
+                <div>
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="currentPassword"
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={handleInputChange(
+                        setCurrentPassword,
+                        "currentPassword"
+                      )}
+                      className={errors.currentPassword ? "border-red-500" : ""}
+                      required
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                      onClick={() =>
+                        setShowCurrentPassword(!showCurrentPassword)
+                      }
+                      disabled={isLoading}
+                    >
+                      {showCurrentPassword ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </Button>
+                  </div>
+                  {errors.currentPassword && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      {errors.currentPassword}
                     </p>
                   )}
                 </div>
-                <div className="grid gap-2">
+                <div>
                   <Label htmlFor="newPassword">New Password</Label>
-                  <div className="relative">
+                  <div className="relative mt-1">
                     <Input
                       id="newPassword"
                       type={showNewPassword ? "text" : "password"}
-                      placeholder="••••••••"
                       value={newPassword}
                       onChange={handleInputChange(
                         setNewPassword,
@@ -237,7 +267,7 @@ export default function ForgotPasswordPage() {
                       )}
                       className={errors.newPassword ? "border-red-500" : ""}
                       required
-                      disabled={otpSending}
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -245,7 +275,7 @@ export default function ForgotPasswordPage() {
                       size="icon"
                       className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      disabled={otpSending}
+                      disabled={isLoading}
                     >
                       {showNewPassword ? (
                         <EyeOff size={16} />
@@ -255,21 +285,20 @@ export default function ForgotPasswordPage() {
                     </Button>
                   </div>
                   {errors.newPassword && (
-                    <p className="text-xs text-red-500 flex items-center">
-                      <AlertCircle className="w-3 h-3 mr-1" />{" "}
+                    <p className="text-xs text-red-500 mt-1 flex items-center">
+                      <AlertCircle className="w-3 h-3 mr-1" />
                       {errors.newPassword}
                     </p>
                   )}
                 </div>
-                <div className="grid gap-2">
+                <div>
                   <Label htmlFor="confirmNewPassword">
                     Confirm New Password
                   </Label>
-                  <div className="relative">
+                  <div className="relative mt-1">
                     <Input
                       id="confirmNewPassword"
                       type={showConfirmNewPassword ? "text" : "password"}
-                      placeholder="••••••••"
                       value={confirmNewPassword}
                       onChange={handleInputChange(
                         setConfirmNewPassword,
@@ -279,7 +308,7 @@ export default function ForgotPasswordPage() {
                         errors.confirmNewPassword ? "border-red-500" : ""
                       }
                       required
-                      disabled={otpSending}
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -289,7 +318,7 @@ export default function ForgotPasswordPage() {
                       onClick={() =>
                         setShowConfirmNewPassword(!showConfirmNewPassword)
                       }
-                      disabled={otpSending}
+                      disabled={isLoading}
                     >
                       {showConfirmNewPassword ? (
                         <EyeOff size={16} />
@@ -299,8 +328,8 @@ export default function ForgotPasswordPage() {
                     </Button>
                   </div>
                   {errors.confirmNewPassword && (
-                    <p className="text-xs text-red-500 flex items-center">
-                      <AlertCircle className="w-3 h-3 mr-1" />{" "}
+                    <p className="text-xs text-red-500 mt-1 flex items-center">
+                      <AlertCircle className="w-3 h-3 mr-1" />
                       {errors.confirmNewPassword}
                     </p>
                   )}
@@ -317,61 +346,52 @@ export default function ForgotPasswordPage() {
 
             {showOtpSection && (
               <>
-                <div className="text-center mb-2">
-                  <p className="text-sm">
-                    An OTP has been sent to <strong>{email}</strong>.
-                  </p>
-                  <p className="text-sm">
-                    Please enter it below to reset your password.
-                  </p>
-                </div>
                 <OtpInput
                   length={4}
                   onComplete={handleOtpComplete}
-                  disabled={otpVerifying || passwordChanging}
+                  disabled={passwordChanging || isLoading}
                 />
                 {otpError && (
-                  <p className="text-sm text-red-500 flex items-center justify-center">
+                  <p className="text-sm text-red-500 flex items-center justify-center mt-2">
                     <AlertCircle className="w-4 h-4 mr-1" /> {otpError}
                   </p>
                 )}
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full mt-4"
                   disabled={
-                    otpVerifying ||
                     passwordChanging ||
+                    isLoading ||
                     !otpValue ||
                     otpValue.length !== 4
                   }
                 >
-                  {otpVerifying || passwordChanging
-                    ? "Verifying & Resetting..."
-                    : "Verify OTP & Reset Password"}
+                  {passwordChanging
+                    ? "Changing Password..."
+                    : "Verify OTP & Change Password"}
                 </Button>
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-center mt-3">
                   <button
                     type="button"
                     onClick={() => {
                       setShowOtpSection(false);
-                      setOtpSent(false);
                       setOtpError("");
                       setOtpValue("");
                     }}
                     className="text-sm text-gray-600 hover:text-gray-900 flex items-center"
-                    disabled={otpVerifying || passwordChanging}
+                    disabled={passwordChanging || isLoading}
                   >
                     <ArrowLeft className="w-4 h-4 mr-1" />
-                    Back to form
+                    Edit Details
                   </button>
                   <button
                     type="button"
-                    onClick={handleSendOtp} // Resend OTP to the same email
+                    onClick={handleSendOtp}
                     disabled={
                       otpSending ||
                       resendDisabled ||
-                      otpVerifying ||
-                      passwordChanging
+                      passwordChanging ||
+                      isLoading
                     }
                     className={`text-sm ${
                       resendDisabled
@@ -389,22 +409,9 @@ export default function ForgotPasswordPage() {
                 </div>
               </>
             )}
-            <div className="mt-4 text-center text-sm">
-              Remembered your password?{" "}
-              <Link to={ROUTES.AUTH.LOGIN} className="underline">
-                Sign in
-              </Link>
-            </div>
           </form>
-        </div>
-      </div>
-      <div className="hidden bg-muted lg:block">
-        <img
-          src="/placeholder.svg?height=1080&width=1920"
-          alt="Secure password reset"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
