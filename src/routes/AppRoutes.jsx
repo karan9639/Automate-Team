@@ -45,6 +45,7 @@ import Links from "../pages/Links";
 import ReferAndEarn from "../pages/ReferAndEarn";
 import Settings from "../pages/settings/Settings";
 import Profile from "../pages/profile/Profile";
+import ChangePasswordPage from "../pages/profile/ChangePasswordPage"; // Import new page
 import Support from "../pages/Support";
 
 // Loading Component
@@ -57,29 +58,17 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Protected route component - NOW INSIDE AppRoutes where AuthProvider is available
+// Protected route component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
-
-  console.log(
-    "ProtectedRoute: isAuthenticated =",
-    isAuthenticated,
-    "loading =",
-    loading
-  );
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
-    console.log("ProtectedRoute: User not authenticated, redirecting to login");
     return <Navigate to={ROUTES.AUTH.LOGIN} replace />;
   }
-
-  console.log(
-    "ProtectedRoute: User authenticated, rendering protected content"
-  );
   return children;
 };
 
@@ -87,25 +76,13 @@ const ProtectedRoute = ({ children }) => {
 const AuthRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  console.log(
-    "AuthRoute: isAuthenticated =",
-    isAuthenticated,
-    "loading =",
-    loading
-  );
-
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (isAuthenticated) {
-    console.log(
-      "AuthRoute: User already authenticated, redirecting to dashboard"
-    );
     return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
-
-  console.log("AuthRoute: User not authenticated, showing auth page");
   return children;
 };
 
@@ -140,237 +117,53 @@ const AppRoutes = () => {
           </AuthRoute>
         }
       />
-      
 
       {/* Root redirect */}
       <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
 
       {/* Protected routes with MainLayout */}
       <Route
-        path={ROUTES.DASHBOARD}
         element={
+          // Grouping protected routes under MainLayout more effectively
           <ProtectedRoute>
             <MainLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dashboard />} />
-      </Route>
-
-      {/* Task Routes */}
-      <Route
-        path={ROUTES.TASKS.MANAGEMENT}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<TaskManagement />} />
-      </Route>
-
-      <Route
-        path={ROUTES.TASKS.DIRECTORY}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<TaskDirectory />} />
-      </Route>
-
-      <Route
-        path={ROUTES.TASKS.TEMPLATES}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<TaskTemplates />} />
-      </Route>
-
-      {/* Attendance Routes */}
-      <Route
-        path={ROUTES.ATTENDANCE.MY}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MyAttendance />} />
-      </Route>
-
-      <Route
-        path={ROUTES.ATTENDANCE.ALL}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AllAttendance />} />
-      </Route>
-
-      <Route
-        path={ROUTES.ATTENDANCE.SETTINGS}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AttendanceSettings />} />
-      </Route>
-
-      {/* Leave Routes */}
-      <Route
-        path={ROUTES.LEAVES.MY}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MyLeaves />} />
-      </Route>
-
-      <Route
-        path={ROUTES.LEAVES.ALL}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AllLeaves />} />
-      </Route>
-
-      <Route
-        path={ROUTES.LEAVES.APPROVALS}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Approvals />} />
-      </Route>
-
-      {/* Event Routes */}
-      <Route
-        path={ROUTES.EVENTS.MAIN}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Events />} />
-      </Route>
-
-      <Route
-        path={ROUTES.EVENTS.HOLIDAYS}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Holidays />} />
-      </Route>
-
-      {/* Team Routes */}
-      <Route
-        path={ROUTES.TEAM.MY_TEAM}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MyTeam />} />
-      </Route>
-
-      {/* Other Routes */}
-      <Route
-        path={ROUTES.MOBILE_APP}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MobileApp />} />
-      </Route>
-
-      <Route
-        path={ROUTES.CHECKLIST}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Checklist />} />
-      </Route>
-
-      <Route
-        path={ROUTES.LINKS}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Links />} />
-      </Route>
-
-      <Route
-        path={ROUTES.REFER_EARN}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<ReferAndEarn />} />
-      </Route>
-
-      <Route
-        path={ROUTES.SETTINGS}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Settings />} />
-      </Route>
-
-      <Route
-        path={ROUTES.PROFILE}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Profile />} />
-      </Route>
-
-      {/* Support Route */}
-      <Route
-        path={ROUTES.SUPPORT}
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Support />} />
+        <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+        {/* Task Routes */}
+        <Route path={ROUTES.TASKS.MANAGEMENT} element={<TaskManagement />} />
+        <Route path={ROUTES.TASKS.DIRECTORY} element={<TaskDirectory />} />
+        <Route path={ROUTES.TASKS.TEMPLATES} element={<TaskTemplates />} />
+        {/* Attendance Routes */}
+        <Route path={ROUTES.ATTENDANCE.MY} element={<MyAttendance />} />
+        <Route path={ROUTES.ATTENDANCE.ALL} element={<AllAttendance />} />
+        <Route
+          path={ROUTES.ATTENDANCE.SETTINGS}
+          element={<AttendanceSettings />}
+        />
+        {/* Leave Routes */}
+        <Route path={ROUTES.LEAVES.MY} element={<MyLeaves />} />
+        <Route path={ROUTES.LEAVES.ALL} element={<AllLeaves />} />
+        <Route path={ROUTES.LEAVES.APPROVALS} element={<Approvals />} />
+        {/* Event Routes */}
+        <Route path={ROUTES.EVENTS.MAIN} element={<Events />} />
+        <Route path={ROUTES.EVENTS.HOLIDAYS} element={<Holidays />} />
+        {/* Team Routes */}
+        <Route path={ROUTES.TEAM.MY_TEAM} element={<MyTeam />} />
+        {/* Other Routes */}
+        <Route path={ROUTES.MOBILE_APP} element={<MobileApp />} />
+        <Route path={ROUTES.CHECKLIST} element={<Checklist />} />
+        <Route path={ROUTES.LINKS} element={<Links />} />
+        <Route path={ROUTES.REFER_EARN} element={<ReferAndEarn />} />
+        <Route path={ROUTES.SETTINGS} element={<Settings />} />
+        <Route path={ROUTES.PROFILE} element={<Profile />} />
+        {/* THIS IS THE NEWLY ADDED ROUTE */}
+        <Route
+          path={ROUTES.PROFILE_CHANGE_PASSWORD}
+          element={<ChangePasswordPage />}
+        />
+        <Route path={ROUTES.SUPPORT} element={<Support />} />
       </Route>
 
       {/* 404 route */}
