@@ -323,13 +323,13 @@ const MyTeam = () => {
             <UserPlus size={18} />
             <span>Add Member</span>
           </button>
-          <button
+          {/* <button
             onClick={handleUploadUsers}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
           >
             <Upload size={18} />
             <span>Upload Users</span>
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -354,7 +354,7 @@ const MyTeam = () => {
             <option value="">All Types</option>
             <option value="Admin">Admin</option>
             <option value="Manager">Manager</option>
-            <option value="Member">Member</option>
+            <option value="Team Member">Member</option>
           </select>
 
           <button
