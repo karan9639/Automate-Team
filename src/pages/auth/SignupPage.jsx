@@ -293,7 +293,7 @@ export default function SignupPage() {
       </div>
 
       {/* Right Column - Signup Form */}
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50 h-screen">
         <div className="mx-auto w-full max-w-md space-y-8">
           {/* Logo and Title for mobile */}
           <div className="lg:hidden text-center mb-8">
@@ -309,7 +309,7 @@ export default function SignupPage() {
             <p className="mt-2 text-sm text-slate-600">
               {showOtpSection
                 ? `Enter the 4-digit code sent to ${email}`
-                : "Enter your information to get started."}
+                : "Join KPS Automate and elevate your business today."}
             </p>
           </div>
 

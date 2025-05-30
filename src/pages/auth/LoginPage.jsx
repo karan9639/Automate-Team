@@ -116,7 +116,7 @@ const LoginPage = () => {
       </div>
 
       {/* Right Column - Login Form */}
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50 h-screen">
         <div className="mx-auto w-full max-w-md space-y-8">
           <div className="lg:hidden text-center mb-8">
             <Link to="/" className="inline-block mx-auto">
