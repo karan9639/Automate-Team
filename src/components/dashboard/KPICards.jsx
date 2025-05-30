@@ -9,36 +9,35 @@ const KPICards = ({ kpis }) => {
       icon: <List className="h-5 w-5 text-blue-600" />,
       description: "Total number of tasks",
       color: "bg-blue-50 text-blue-600 border-blue-200",
+      delegated: kpis.totalDelegatedTasks,
+      mine: kpis.totalMyTasks,
     },
     {
       title: "Completed",
       value: kpis.completedTasks,
-      percentage: kpis.totalTasks
-        ? Math.round((kpis.completedTasks / kpis.totalTasks) * 100)
-        : 0,
       icon: <CheckCircle className="h-5 w-5 text-green-600" />,
       description: "Tasks marked as done",
       color: "bg-green-50 text-green-600 border-green-200",
+      delegated: kpis.completedDelegatedTasks,
+      mine: kpis.completedMyTasks,
     },
     {
       title: "In Progress",
       value: kpis.inProgressTasks,
-      percentage: kpis.totalTasks
-        ? Math.round((kpis.inProgressTasks / kpis.totalTasks) * 100)
-        : 0,
       icon: <Clock className="h-5 w-5 text-yellow-600" />,
       description: "Tasks currently in progress",
       color: "bg-yellow-50 text-yellow-600 border-yellow-200",
+      delegated: kpis.inProgressDelegatedTasks,
+      mine: kpis.inProgressMyTasks,
     },
     {
       title: "Overdue",
       value: kpis.overdueTasks,
-      percentage: kpis.totalTasks
-        ? Math.round((kpis.overdueTasks / kpis.totalTasks) * 100)
-        : 0,
       icon: <AlertCircle className="h-5 w-5 text-red-600" />,
       description: "Tasks past due date",
       color: "bg-red-50 text-red-600 border-red-200",
+      delegated: kpis.overdueDelegatedTasks,
+      mine: kpis.overdueMyTasks,
     },
   ];
 
@@ -57,15 +56,16 @@ const KPICards = ({ kpis }) => {
                 <p className="text-sm font-medium text-gray-500">
                   {card.title}
                 </p>
-                <div className="flex items-baseline mt-1">
-                  <h3 className="text-2xl font-bold">{card.value}</h3>
-                  {card.percentage !== undefined && (
-                    <span className="ml-2 text-sm text-gray-500">
-                      {card.percentage}%
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
                 <p className="text-xs text-gray-500 mt-1">{card.description}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Assigned :{" "}
+                  <span className="font-medium">{card.delegated ?? 0}</span>
+                </p>
+                <p className="text-xs text-gray-500">
+                  My tasks :{" "}
+                  <span className="font-medium">{card.mine ?? 0}</span>
+                </p>
               </div>
               <div className={`p-2 rounded-full ${card.color}`}>
                 {card.icon}
