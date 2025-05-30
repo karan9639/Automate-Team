@@ -126,14 +126,6 @@ const TaskDistributionChart = ({ tasks = [] }) => {
             })}
           </svg>
 
-          {/* Center Text */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-gray-900">
-              {totalTasks}
-            </span>
-            <span className="text-sm text-gray-500">Total Tasks</span>
-          </div>
-
           {/* Hover Tooltip */}
           {hoveredSegment && (
             <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-gray-900 text-white px-2 py-1 rounded text-sm whitespace-nowrap z-10">
