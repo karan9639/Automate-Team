@@ -87,12 +87,6 @@ const ProtectedRoute = ({ children }) => {
 const AuthRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  console.log(
-    "AuthRoute: isAuthenticated =",
-    isAuthenticated,
-    "loading =",
-    loading
-  );
 
   if (loading) {
     return <LoadingSpinner />;
@@ -105,7 +99,7 @@ const AuthRoute = ({ children }) => {
     return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
-  console.log("AuthRoute: User not authenticated, showing auth page");
+  
   return children;
 };
 
