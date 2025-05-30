@@ -734,7 +734,7 @@ const Dashboard = () => {
             Dashboard
           </h1>
           <p className="text-gray-600 mt-1">
-            Welcome back! Here's what's happening with your projects.
+            Welcome back! Here's what's happening with your Automate Tasks.
           </p>
           {(dateFilter.startDate || dateFilter.endDate) && (
             <p className="text-sm text-blue-600 mt-1">
