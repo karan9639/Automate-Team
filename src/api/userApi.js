@@ -49,9 +49,27 @@ export const userApi = {
   },
 
   verifyOtp: async (otpVerifyData) => {
+      // otpVerifyData is expected to be an object like { email: "user@example.com", otp: "1234" }
+  
+      const otpString = otpVerifyData.otp
+      let otpAsNumber
+  
+      if (typeof otpString === "string" && /^\d+$/.test(otpString)) {
+        otpAsNumber = Number.parseInt(otpString, 10)
+      } else if (typeof otpString === "number") {
+        otpAsNumber = otpString // Already a number
+      } else {
+        // Handle cases where OTP might not be a numeric string or already a number
+        console.error("Invalid OTP format received for parsing:", otpString)
+        // You might want to throw an error or return a promise rejection here
+        // For now, let's proceed with NaN which will likely fail backend validation
+        // and provide a clear signal.
+        otpAsNumber = Number.NaN
+      }
     // Backend expects 'incomingOTP' field name
     const payload = {
-      incomingOTP: otpVerifyData.otp, // Changed from 'otp' to 'incomingOTP'
+      // incomingEmail: otpVerifyData.email,
+      incomingOTP: otpAsNumber, // Changed from 'otp' to 'incomingOTP'
     };
 
     console.log("Sending OTP verification with payload:", payload);

@@ -1,487 +1,463 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { createSelector } from "@reduxjs/toolkit";
-import { toast } from "react-hot-toast";
+import { useState, useEffect } from "react";
 import {
-  Plus,
-  Trash2,
   UserPlus,
+  Upload,
+  Trash2,
   Search,
   Filter,
-  MoreHorizontal,
-  X,
+  RefreshCw,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
+import ConfirmModal from "../../components/common/ConfirmModal";
+import EmptyState from "../../components/common/EmptyState";
+import DataTable from "../../components/common/DataTable";
+import AddMemberModal from "../../components/modals/AddMemberModal";
+import UploadUsersModal from "../../components/modals/UploadUsersModal";
+import { userApi } from "../../apiService/apiService";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import EmptyState from "@/components/common/EmptyState";
-import ConfirmModal from "@/components/common/ConfirmModal";
-import AddMemberModal from "@/components/modals/AddMemberModal";
-import { userApi } from "@/api/userApi";
-import {
-  selectAllTeamMembers,
   setTeamMembers,
-  deleteTeamMember,
   addTeamMember,
-} from "@/store/slices/teamSlice";
+  deleteTeamMember,
+  selectAllTeamMembers,
+} from "../../store/slices/teamSlice";
 
-// Memoized selector for team members
-const selectFilteredTeamMembers = createSelector(
-  [
-    selectAllTeamMembers,
-    (_, searchTerm) => searchTerm,
-    (_, __, filterType) => filterType,
-  ],
-  (teamMembers, searchTerm, filterType) => {
-    let filtered = teamMembers || [];
-
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (member) =>
-          member.fullname?.toLowerCase().includes(term) ||
-          member.email?.toLowerCase().includes(term) ||
-          member.whatsappNumber?.includes(term)
-      );
-    }
-
-    // Filter by account type
-    if (filterType && filterType !== "All") {
-      filtered = filtered.filter((member) => member.accountType === filterType);
-    }
-
-    return filtered;
-  }
-);
-
+/**
+ * My Team page component
+ * Displays and manages team members
+ */
 const MyTeam = () => {
   const dispatch = useDispatch();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("All");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const prevTeamMembersLengthRef = useRef(0);
+  const teamMembers = useSelector(selectAllTeamMembers) || []; // Ensure it's always an array
 
-  // Get team members from Redux store
-  const teamMembers = useSelector((state) =>
-    selectFilteredTeamMembers(state, searchTerm, filterType)
-  );
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [filters, setFilters] = useState({
+    accountType: "",
+    reportingManager: "",
+  });
 
   // Fetch team members on component mount
-  const fetchTeamMembersData = useCallback(async () => {
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
+
+  // Fetch team members from API
+  const fetchTeamMembers = async () => {
     setIsLoading(true);
     try {
       const response = await userApi.fetchAllTeamMembers();
-      // console.log("API Response for fetchAllTeamMembers:", response.data); // For debugging
+      console.log("API Response:", response.data);
 
-      if (response.data && response.data.success) {
-        const members = response.data.data || [];
-        // console.log("Extracted members:", members); // For debugging
-        dispatch(setTeamMembers(members));
-      } else {
-        // console.error("Failed to fetch team members, API success false:", response.data?.message); // For debugging
-        toast.error(
-          response.data?.message ||
-            "Failed to fetch team members: API indicated failure"
-        );
-        dispatch(setTeamMembers([])); // Clear members or set to empty on failure
-      }
+      // Extract the actual data array from the nested response structure
+      const members = response.data?.data || [];
+      console.log("Extracted members:", members);
+
+      dispatch(setTeamMembers(members));
     } catch (error) {
       console.error("Error fetching team members:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to load team members. Please try again.";
-      toast.error(errorMessage);
-      dispatch(setTeamMembers([])); // Clear members or set to empty on error
+      toast.error(
+        error.response?.data?.message || "Failed to fetch team members"
+      );
+      // Set empty array on error to prevent filter issues
+      dispatch(setTeamMembers([]));
     } finally {
       setIsLoading(false);
     }
-  }, [dispatch]);
+  };
 
-  useEffect(() => {
-    fetchTeamMembersData();
-  }, [fetchTeamMembersData]);
+  // Refresh team members
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await userApi.fetchAllTeamMembers();
 
-  // Monitor changes in team members array
-  useEffect(() => {
-    if (teamMembers) {
-      const currentLength = teamMembers.length;
-      const prevLength = prevTeamMembersLengthRef.current;
+      // Extract the actual data array from the nested response structure
+      const members = response.data?.data || [];
 
-      if (prevLength > 0 && currentLength < prevLength) {
-        console.log(
-          "Team member was removed. Previous count:",
-          prevLength,
-          "Current count:",
-          currentLength
-        );
-      } else if (currentLength > prevLength) {
-        console.log(
-          "Team member was added or list was initially loaded. Previous count:",
-          prevLength,
-          "Current count:",
-          currentLength
+      dispatch(setTeamMembers(members));
+      toast.success("Team members refreshed");
+    } catch (error) {
+      console.error("Error refreshing team members:", error);
+      toast.error("Failed to refresh team members");
+      // Set empty array on error to prevent filter issues
+      dispatch(setTeamMembers([]));
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Ensure teamMembers is always an array before filtering
+  const safeTeamMembers = Array.isArray(teamMembers) ? teamMembers : [];
+
+  // Filter members based on search query and filters
+  const filteredMembers = safeTeamMembers.filter((member) => {
+    const memberData = member.newMember || member; // Handle both structures
+
+    // Search filter
+    if (
+      searchQuery &&
+      !memberData.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !memberData.email?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !memberData.whatsappNumber?.toString().includes(searchQuery)
+    ) {
+      return false;
+    }
+
+    // Account type filter
+    if (filters.accountType && memberData.accountType !== filters.accountType) {
+      return false;
+    }
+
+    // Reporting manager filter (assuming reportsTo is at the top level or in newMember)
+    if (
+      filters.reportingManager &&
+      member.reportsTo !== filters.reportingManager &&
+      memberData.reportsTo !== filters.reportingManager
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Handle add member
+  const handleAddMember = () => {
+    setSelectedMember(null);
+    setIsAddMemberModalOpen(true);
+  };
+
+  // Handle upload users
+  const handleUploadUsers = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  // Handle delete member
+  const handleDeleteMember = (member) => {
+    setSelectedMember(member);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
+    if (selectedMember) {
+      const memberId =
+        selectedMember.newMember?._id ||
+        selectedMember._id ||
+        selectedMember.id;
+      try {
+        await userApi.deleteMember(memberId);
+        dispatch(deleteTeamMember(memberId));
+        toast.success("Team member deleted successfully");
+        setIsDeleteModalOpen(false);
+        setSelectedMember(null);
+      } catch (error) {
+        console.error("Error deleting member:", error);
+        toast.error(
+          error.response?.data?.message || "Failed to delete team member"
         );
       }
-
-      prevTeamMembersLengthRef.current = currentLength;
     }
-  }, [teamMembers]);
+  };
 
-  const handleAddMember = async (memberData) => {
+  // Handle save member (add new member via API)
+  const handleSaveMember = async (memberData) => {
     try {
       const response = await userApi.addNewMember(memberData);
 
-      if (response.data.success) {
-        const newMember = response.data.data;
-        dispatch(addTeamMember(newMember));
-        toast.success("Team member added successfully");
+      // Extract the actual member data from the response
+      const newMemberResponse = response.data?.data || response.data;
 
-        // Refresh the team members list to ensure we have the latest data
-        fetchTeamMembersData();
-        return true;
-      } else {
-        toast.error(response.data.message || "Failed to add team member");
-        return false;
-      }
+      // Add to Redux store
+      dispatch(addTeamMember(newMemberResponse));
+
+      toast.success("Team member added successfully");
+      setIsAddMemberModalOpen(false);
+
+      // Refresh the list to ensure sync
+      fetchTeamMembers();
     } catch (error) {
-      console.error("Error adding team member:", error);
+      console.error("Error adding member:", error);
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to add team member";
+        error.response?.data?.message || "Failed to add team member";
       toast.error(errorMessage);
-      throw error;
+      throw error; // Re-throw to handle in modal
     }
   };
 
-  const handleDeleteClick = (memberId) => {
-    setSelectedMemberId(memberId);
-    setIsConfirmDeleteOpen(true);
+  // Handle filter change
+  const handleFilterChange = (filterType, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterType]: value,
+    }));
   };
 
-  const handleConfirmDelete = async () => {
-    if (!selectedMemberId) return;
+  // Handle download template
+  const handleDownloadTemplate = () => {
+    // Create CSV template
+    const csvContent =
+      "fullname,email,whatsappNumber,accountType,password\n" +
+      "John Doe,john@example.com,9876543210,Member,password123\n" +
+      "Jane Smith,jane@example.com,9876543211,Manager,password456";
 
-    try {
-      const response = await userApi.deleteMember(selectedMemberId);
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "team_members_template.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 
-      if (response.data.success) {
-        dispatch(deleteTeamMember(selectedMemberId));
-        toast.success("Team member deleted successfully");
-        // Refresh the team members list
-        fetchTeamMembersData();
-      } else {
-        toast.error(response.data.message || "Failed to delete team member");
-      }
-    } catch (error) {
-      console.error(
-        "Error deleting member:",
-        error,
-        "Member ID:",
-        selectedMemberId
-      );
-
-      // Check if it's a 404 error with "not found" message, which could mean the member was already deleted
-      if (
-        error.response?.status === 404 &&
-        error.response?.data?.message?.includes("not found")
-      ) {
-        toast.warning("Member was already removed or not found");
-        dispatch(deleteTeamMember(selectedMemberId));
-        // Refresh the team members list
-        fetchTeamMembersData();
-      } else {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to delete team member";
-        toast.error(errorMessage);
-      }
-    } finally {
-      setIsConfirmDeleteOpen(false);
-      setSelectedMemberId(null);
-    }
+    toast.success("Template downloaded successfully");
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm("");
-  };
-
-  const handleClearFilter = () => {
-    setFilterType("All");
-  };
-
-  const getInitials = (name) => {
-    if (!name) return "??";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  const getAvatarColor = (name) => {
-    if (!name) return "bg-gray-400";
-    const colors = [
-      "bg-red-500",
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-yellow-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-indigo-500",
-      "bg-teal-500",
-    ];
-    const index =
-      name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-      colors.length;
-    return colors[index];
-  };
-
-  const renderAccountTypeBadge = (accountType) => {
-    switch (accountType) {
-      case "Admin":
+  const columns = [
+    {
+      key: "fullname",
+      header: "User",
+      render: (row) => {
+        const memberData = row.newMember || row; // Handle both structures
         return (
-          <Badge className="bg-red-500 hover:bg-red-600">{accountType}</Badge>
+          <div className="flex items-center">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+              {memberData.fullname
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "?"}
+            </div>
+            <div className="ml-4">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {memberData.fullname || "N/A"}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                {memberData.email}
+              </div>
+            </div>
+          </div>
         );
-      case "Manager":
+      },
+    },
+    {
+      key: "whatsappNumber",
+      header: "WhatsApp",
+      render: (row) => {
+        const memberData = row.newMember || row;
+        return memberData.whatsappNumber || "N/A";
+      },
+    },
+    {
+      key: "accountType",
+      header: "Account Type",
+      render: (row) => {
+        const memberData = row.newMember || row;
         return (
-          <Badge className="bg-blue-500 hover:bg-blue-600">{accountType}</Badge>
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+            {memberData.accountType || "Member"}
+          </span>
         );
-      case "Team Member":
+      },
+    },
+    {
+      key: "createdAt",
+      header: "Joined",
+      render: (row) => {
+        // createdAt is at the top level of the row object
+        if (!row.createdAt) return "N/A";
+        return new Date(row.createdAt).toLocaleDateString();
+      },
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (row) => {
+        const memberData = row.newMember || row;
         return (
-          <Badge className="bg-green-500 hover:bg-green-600">
-            {accountType}
-          </Badge>
+          <div className="flex space-x-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteMember(row); // Pass the whole row for ID extraction
+              }}
+              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              aria-label={`Delete ${memberData.fullname}`}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
         );
-      default:
-        return (
-          <Badge className="bg-gray-500 hover:bg-gray-600">
-            {accountType || "Unknown"}
-          </Badge>
-        );
-    }
-  };
+      },
+    },
+  ];
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold mb-2">My Team</h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Manage your team members and their access
-          </p>
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight">My Team</h1>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          >
+            <RefreshCw
+              size={18}
+              className={isRefreshing ? "animate-spin" : ""}
+            />
+            <span>Refresh</span>
+          </button>
+          <button
+            onClick={handleAddMember}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+          >
+            <UserPlus size={18} />
+            <span>Add Member</span>
+          </button>
+          <button
+            onClick={handleUploadUsers}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+          >
+            <Upload size={18} />
+            <span>Upload Users</span>
+          </button>
         </div>
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          className="mt-4 md:mt-0 bg-green-600 hover:bg-green-700"
-        >
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Team Member
-        </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
         <div className="relative flex-1">
-          <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-            size={18}
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search team members..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           />
-          <Input
-            placeholder="Search by name, email or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-10"
-          />
-          {searchTerm && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={18} />
-            </button>
-          )}
         </div>
 
-        <div className="relative">
+        <div className="flex flex-wrap gap-2">
           <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="w-full md:w-48 h-10 pl-10 pr-4 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+            value={filters.accountType}
+            onChange={(e) => handleFilterChange("accountType", e.target.value)}
+            className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           >
-            <option value="All">All Types</option>
+            <option value="">All Types</option>
             <option value="Admin">Admin</option>
             <option value="Manager">Manager</option>
-            <option value="Team Member">Team Member</option>
+            <option value="Member">Member</option>
           </select>
-          <Filter
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-            size={18}
-          />
-          {filterType !== "All" && (
-            <button
-              onClick={handleClearFilter}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={18} />
-            </button>
-          )}
+
+          <button
+            onClick={() =>
+              setFilters({
+                accountType: "",
+                reportingManager: "",
+              })
+            }
+            className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-white"
+          >
+            <Filter size={18} />
+            <span className="sr-only md:not-sr-only">Clear Filters</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Status Pills */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
+          {safeTeamMembers.length} Total Members
+        </div>
+        <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
+          {
+            safeTeamMembers.filter(
+              (m) => (m.newMember || m).accountType === "Admin"
+            ).length
+          }{" "}
+          Admins
+        </div>
+        <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
+          {
+            safeTeamMembers.filter(
+              (m) => (m.newMember || m).accountType === "Manager"
+            ).length
+          }{" "}
+          Managers
+        </div>
+        <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full dark:bg-gray-700 dark:text-gray-200">
+          {
+            safeTeamMembers.filter(
+              (m) => (m.newMember || m).accountType === "Team Member"
+            ).length
+          }{" "}
+          Members
         </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, index) => (
-            <Card key={index} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-                    <div>
-                      <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                      <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  <div className="h-3 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
         </div>
-      ) : teamMembers && teamMembers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teamMembers.map((member) => (
-            <Card key={member._id || member.id} className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-4">
-                    <Avatar
-                      className={`h-12 w-12 ${getAvatarColor(member.fullname)}`}
-                    >
-                      <AvatarImage
-                        src={member.profilePicture || "/placeholder.svg"}
-                        alt={member.fullname}
-                      />
-                      <AvatarFallback>
-                        {getInitials(member.fullname)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle className="text-lg">
-                        {member.fullname}
-                      </CardTitle>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {member.email}
-                      </p>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-5 w-5" />
-                        <span className="sr-only">Actions</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        className="text-red-600 dark:text-red-400 cursor-pointer"
-                        onClick={() =>
-                          handleDeleteClick(member._id || member.id)
-                        }
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Account Type
-                    </span>
-                    {renderAccountTypeBadge(member.accountType)}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      WhatsApp
-                    </span>
-                    <span className="text-sm">+91 {member.whatsappNumber}</span>
-                  </div>
-                  {member.joinedAt && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Joined
-                      </span>
-                      <span className="text-sm">
-                        {new Date(member.joinedAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
+      ) : filteredMembers.length === 0 ? (
         <EmptyState
-          icon={<Plus className="h-12 w-12 text-gray-400" />}
+          Icon={UserPlus}
           title="No team members found"
           description={
-            searchTerm || filterType !== "All"
-              ? "Try adjusting your search or filter criteria"
-              : "Add your first team member to get started"
+            searchQuery || filters.accountType
+              ? "Try adjusting your filters or search query."
+              : "Add team members to your organization."
           }
-          actionLabel="Add Team Member"
-          onAction={() => setIsAddModalOpen(true)}
+          actionLabel="Add Member"
+          onAction={handleAddMember}
+          className="bg-white dark:bg-gray-800 rounded-lg border p-8 dark:border-gray-700"
+        />
+      ) : (
+        <DataTable
+          data={filteredMembers}
+          columns={columns}
+          className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700"
         />
       )}
 
       {/* Add Member Modal */}
       <AddMemberModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSave={handleAddMember}
-        teamMembers={teamMembers}
+        isOpen={isAddMemberModalOpen}
+        onClose={() => {
+          setIsAddMemberModalOpen(false);
+          setSelectedMember(null);
+        }}
+        onSave={handleSaveMember}
+        teamMembers={safeTeamMembers}
       />
 
-      {/* Confirm Delete Modal */}
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
-        isOpen={isConfirmDeleteOpen}
-        onClose={() => setIsConfirmDeleteOpen(false)}
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Team Member"
-        description="Are you sure you want to delete this team member? This action cannot be undone."
-        confirmLabel="Delete"
-        confirmVariant="destructive"
+        description={`Are you sure you want to delete ${
+          (selectedMember?.newMember || selectedMember)?.fullname
+        }? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+      />
+
+      {/* Upload Users Modal */}
+      <UploadUsersModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onDownloadTemplate={handleDownloadTemplate}
       />
     </div>
   );
