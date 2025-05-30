@@ -125,7 +125,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
         )}
 
         <div className="relative">
-          <div
+          {/* <div
             className="flex items-center bg-gray-800 text-gray-400 rounded-md px-3 py-1.5 cursor-pointer"
             onClick={() => setSearchOpen(true)}
           >
@@ -133,7 +133,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
             <span className="ml-2 text-sm hidden md:inline">
               Search (CTRL/CMD+K)
             </span>
-          </div>
+          </div> */}
 
           <AnimatePresence>
             {searchOpen && (
@@ -177,13 +177,13 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
 
       <div className="flex items-center space-x-2">
         <div className="relative notifications-dropdown">
-          <button
+          {/* <button
             className="p-1.5 text-gray-400 rounded-md hover:bg-gray-800 hover:text-white relative"
             onClick={() => setNotificationsOpen(!notificationsOpen)}
           >
             <Bell size={20} />
             <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          </button> */}
 
           <AnimatePresence>
             {notificationsOpen && (

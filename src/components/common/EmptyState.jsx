@@ -30,11 +30,13 @@ const EmptyState = ({
         <div className="mb-4 text-gray-400">
           <IconToRender size={48} />
         </div>
-      ) : IconProp ? ( // If IconProp was provided but IconToRender is not a function, show an error or placeholder
-        <div className="mb-4 text-red-500 text-xs">
-          <p>(Invalid Icon)</p>
-        </div>
-      ) : null}
+      ) : 
+      // IconProp ? ( // If IconProp was provided but IconToRender is not a function, show an error or placeholder
+      //   <div className="mb-4 text-red-500 text-xs">
+      //     <p>(Invalid Icon)</p>
+      //   </div>
+      // ) : 
+      null}
       <h3 className="text-xl font-semibold mb-2">{title}</h3>
       <p className="text-gray-500 mb-6">{description}</p>
       {actionLabel && onAction && (
