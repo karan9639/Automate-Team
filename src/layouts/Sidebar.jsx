@@ -241,16 +241,16 @@ const Sidebar = ({
     //     },
     //   ],
     // },
-    {
-      id: "support",
-      items: [
-        {
-          title: "Support",
-          icon: <HelpCircle size={18} />,
-          path: ROUTES.SUPPORT,
-        },
-      ],
-    },
+    // {
+    //   id: "support",
+    //   items: [
+    //     {
+    //       title: "Support",
+    //       icon: <HelpCircle size={18} />,
+    //       path: ROUTES.SUPPORT,
+    //     },
+    //   ],
+    // },
     // {
     //   id: "settings",
     //   items: [
