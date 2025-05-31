@@ -13,6 +13,7 @@ const TaskCard = ({ task, onClick, onStatusChange }) => {
   const [showActions, setShowActions] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [currentTask, setCurrentTask] = useState(task) // Local state for task updates
+  const [originalTask, setOriginalTask] = useState(null) // Store original state for rollback
 
   // Debug task ID extraction
   const extractTaskId = (task) => {
@@ -42,7 +43,9 @@ const TaskCard = ({ task, onClick, onStatusChange }) => {
 
   const handleStatusChange = async (newStatus) => {
     setShowActions(false)
-    setIsUpdatingStatus(true)
+
+    // Store toast ID for potential dismissal on error
+    let optimisticToastId = null
 
     try {
       // Extract task ID with enhanced debugging
@@ -53,33 +56,43 @@ const TaskCard = ({ task, onClick, onStatusChange }) => {
         throw new Error("Task ID not found")
       }
 
-      console.log(`🔄 Changing task status to: ${newStatus} for task ID: ${taskId}`)
+      // STEP 1: Store original state for potential rollback
+      setOriginalTask({ ...currentTask })
 
-      // Call the API to change task status with direct status string
+      // STEP 2: Optimistic UI Update - Update immediately
+      console.log(`🚀 Optimistically updating status to: ${newStatus}`)
+      setCurrentTask((prev) => ({
+        ...prev,
+        taskStatus: newStatus,
+        status: newStatus,
+      }))
+
+      // STEP 3: Show immediate success toast (optimistic)
+      optimisticToastId = toast.success("Task status updated successfully")
+
+      // STEP 4: Set loading state (for button disable/loading indicators)
+      setIsUpdatingStatus(true)
+
+      console.log(`🔄 Making API call to change task status to: ${newStatus} for task ID: ${taskId}`)
+
+      // STEP 5: Make the API call in the background
       const response = await changeTaskStatus(taskId, newStatus)
 
       console.log("✅ Task status updated successfully:", response.data)
 
-      // Update local task state with the response data
+      // STEP 6: Update with actual server response (if different from optimistic update)
       if (response.data && response.data.data) {
         setCurrentTask((prev) => ({
           ...prev,
           ...response.data.data,
           taskStatus: response.data.data.taskStatus || newStatus,
         }))
-      } else {
-        // Fallback: update just the status if full data isn't returned
-        setCurrentTask((prev) => ({
-          ...prev,
-          taskStatus: newStatus,
-          status: newStatus,
-        }))
       }
 
-      // Show success toast
-      toast.success("Task status updated successfully")
+      // STEP 7: Clear original task since update was successful
+      setOriginalTask(null)
 
-      // Call parent callback to refresh the task list if provided
+      // STEP 8: Call parent callback to refresh the task list if provided
       if (onStatusChange) {
         onStatusChange(taskId, response.data)
       }
@@ -88,6 +101,18 @@ const TaskCard = ({ task, onClick, onStatusChange }) => {
       console.error("❌ Error response:", error.response?.data)
       console.error("❌ Error status:", error.response?.status)
 
+      // STEP 9: Dismiss optimistic success toast if it exists
+      if (optimisticToastId) {
+        toast.dismiss(optimisticToastId)
+      }
+
+      // STEP 10: Rollback optimistic update on error
+      if (originalTask) {
+        console.log("🔄 Rolling back optimistic update due to API error")
+        setCurrentTask(originalTask)
+        setOriginalTask(null)
+      }
+
       // Show error message
       const errorMessage = error.response?.data?.message || error.message || "Failed to update task status"
       console.error("Error:", errorMessage)
@@ -95,6 +120,7 @@ const TaskCard = ({ task, onClick, onStatusChange }) => {
       // Show error toast
       toast.error(`Failed to update task status: ${errorMessage}`)
     } finally {
+      // STEP 11: Always clear loading state
       setIsUpdatingStatus(false)
     }
   }
@@ -245,7 +271,7 @@ const TaskCard = ({ task, onClick, onStatusChange }) => {
           {taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)} Priority
         </Badge>
 
-        <Badge variant="outline" className={getStatusColor(taskStatus)}>
+        <Badge variant="outline" className={`${getStatusColor(taskStatus)} ${isUpdatingStatus ? "opacity-75" : ""}`}>
           <span className="flex items-center">
             {getStatusIcon(taskStatus)}
             {getStatusDisplayText(taskStatus)}
