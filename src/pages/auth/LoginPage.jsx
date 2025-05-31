@@ -15,7 +15,7 @@ import { ROUTES } from "@/constants/routes";
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); // General error for the form
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -37,27 +37,34 @@ const LoginPage = () => {
       });
 
       if (res.data?.success === true && res.data?.statusCode === 200) {
-        const apiUserData = res.data.data;
+        const apiUserData = res.data.data; // This is the object containing all user details
+
+        // Ensure all fields from apiUserData are included in the user object for AuthContext
+        // The simplest way is to spread apiUserData and then add/override specific fields if needed.
         const user = {
-          id: apiUserData.id || apiUserData._id || Date.now(),
-          email: apiUserData.email,
-          fullname: apiUserData.fullname,
-          name: apiUserData.fullname,
-          accountType: apiUserData.accountType,
-          role: apiUserData.accountType,
-          createdAt: apiUserData.createdAt,
-          updatedAt: apiUserData.updatedAt,
-          joinDate: apiUserData.createdAt,
+          ...apiUserData, // Spread all fields from the API response's data object
+          id: apiUserData.id || apiUserData._id || apiUserData.email, // Use email as a fallback ID if not present
+          name: apiUserData.fullname, // Keep 'name' if used elsewhere, though 'fullname' is primary
+          role: apiUserData.accountType, // Keep 'role' if used elsewhere, though 'accountType' is primary
+          joinDate: apiUserData.createdAt, // Standardize joinDate from createdAt
         };
+
+        // Remove any fields from user object that are not part of your desired user model for the context, if necessary.
+        // For example, if your API returns extra temporary fields.
+        // In this case, we want to keep everything.
+
         const token =
           res.data.token || res.data.accessToken || "demo-token-" + Date.now();
-        await login(user, token);
+
+        console.log("LoginPage: User object being sent to AuthContext:", user);
+        await login(user, token); // Pass the complete user object
+
         toast.success("Logged In Successfully!");
         navigate(from, { replace: true });
       } else {
         const errorMessage =
           res.data?.message || "Invalid email or password. Please try again.";
-        setError(errorMessage); // Set general error
+        setError(errorMessage);
         toast.error(errorMessage);
       }
     } catch (err) {
@@ -70,7 +77,7 @@ const LoginPage = () => {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      setError(errorMessage); // Set general error
+      setError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

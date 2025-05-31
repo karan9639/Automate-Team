@@ -16,7 +16,6 @@ export const userApi = {
   changePassword: async (data) => {
     // passwordData: { oldPassword, newPassword, confirmNewPassword }
     return API.post(`${USER_BASE_URL}/change-password`, data);
-    
   },
 
   logout: async () => {
@@ -50,23 +49,23 @@ export const userApi = {
   },
 
   verifyOtp: async (otpVerifyData) => {
-      // otpVerifyData is expected to be an object like { email: "user@example.com", otp: "1234" }
-  
-      const otpString = otpVerifyData.otp
-      let otpAsNumber
-  
-      if (typeof otpString === "string" && /^\d+$/.test(otpString)) {
-        otpAsNumber = Number.parseInt(otpString, 10)
-      } else if (typeof otpString === "number") {
-        otpAsNumber = otpString // Already a number
-      } else {
-        // Handle cases where OTP might not be a numeric string or already a number
-        console.error("Invalid OTP format received for parsing:", otpString)
-        // You might want to throw an error or return a promise rejection here
-        // For now, let's proceed with NaN which will likely fail backend validation
-        // and provide a clear signal.
-        otpAsNumber = Number.NaN
-      }
+    // otpVerifyData is expected to be an object like { email: "user@example.com", otp: "1234" }
+
+    const otpString = otpVerifyData.otp;
+    let otpAsNumber;
+
+    if (typeof otpString === "string" && /^\d+$/.test(otpString)) {
+      otpAsNumber = Number.parseInt(otpString, 10);
+    } else if (typeof otpString === "number") {
+      otpAsNumber = otpString; // Already a number
+    } else {
+      // Handle cases where OTP might not be a numeric string or already a number
+      console.error("Invalid OTP format received for parsing:", otpString);
+      // You might want to throw an error or return a promise rejection here
+      // For now, let's proceed with NaN which will likely fail backend validation
+      // and provide a clear signal.
+      otpAsNumber = Number.NaN;
+    }
     // Backend expects 'incomingOTP' field name
     const payload = {
       incomingEmail: otpVerifyData.email,
@@ -75,5 +74,11 @@ export const userApi = {
 
     console.log("Sending OTP verification with payload:", payload);
     return API.post(`${USER_BASE_URL}/verify-otp`, payload);
+  },
+
+  updateUserProfile: async (profileData) => {
+    // profileData should contain fields like:
+    // { fullname, whatsappNumber, bio, department, designation, location }
+    return API.put(`${USER_BASE_URL}/edit-profile`, profileData);
   },
 };

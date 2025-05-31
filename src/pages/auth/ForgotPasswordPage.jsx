@@ -186,7 +186,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-screen">
         <div className="mx-auto grid w-[380px] gap-8">
           <div className="grid gap-2 text-center">
             <Link to="/" className="inline-block mx-auto">

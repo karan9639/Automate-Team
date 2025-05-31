@@ -1,6 +1,9 @@
+// No changes needed to Profile.jsx from the previous version.
+// Its useEffect hook correctly populates profileData from currentUser.
+// The previous version is:
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -13,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar } from "@/components/ui/avatar"; // Assuming shadcn/ui avatar is available
+import { Avatar } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   User,
@@ -30,23 +33,44 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { ROUTES } from "@/constants/routes";
+import { userApi } from "../../api/userApi";
 
 const Profile = () => {
-  const { currentUser, updateUser } = useAuth(); // Assuming updateUser exists in AuthContext
+  const { currentUser, updateUser } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+
   const [profileData, setProfileData] = useState({
-    fullname: currentUser?.fullname || "",
-    email: currentUser?.email || "",
-    whatsappNumber: currentUser?.whatsappNumber || "", // Assuming it comes from API or can be updated
-    designation: currentUser?.designation || "",
-    department: currentUser?.department || "",
-    location: currentUser?.location || "",
-    joinDate: currentUser?.joinDate
-      ? new Date(currentUser.joinDate).toISOString().split("T")[0]
-      : "", // Format for input type date
-    bio: currentUser?.bio || "",
+    fullname: "",
+    email: "",
+    whatsappNumber: "",
+    designation: "",
+    department: "",
+    location: "",
+    joinDate: "",
+    bio: "",
   });
+
+  useEffect(() => {
+    if (currentUser) {
+      console.log(
+        "Profile.jsx: currentUser detected in useEffect:",
+        currentUser
+      ); // Key log
+      setProfileData({
+        fullname: currentUser.fullname || "",
+        email: currentUser.email || "",
+        whatsappNumber: currentUser.whatsappNumber || "",
+        designation: currentUser.designation || "",
+        department: currentUser.department || "",
+        location: currentUser.location || "",
+        joinDate: currentUser.createdAt
+          ? new Date(currentUser.createdAt).toISOString().split("T")[0]
+          : "",
+        bio: currentUser.bio || "",
+      });
+    }
+  }, [currentUser]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -57,51 +81,86 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    // Basic validation example (can be expanded)
     if (!profileData.fullname.trim()) {
       toast.error("Full name cannot be empty.");
       return;
     }
     try {
-      // Simulate API call to update profile
-      // In a real app, you would call something like:
-      // const updatedUser = await userApi.updateUserProfile(profileData);
-      // And then update the context:
-      // updateUser(updatedUser.data); // Assuming updateUser in AuthContext updates localStorage and state
+      const updatePayload = {
+        fullname: profileData.fullname,
+        whatsappNumber: profileData.whatsappNumber,
+        bio: profileData.bio,
+        department: profileData.department,
+        designation: profileData.designation,
+        location: profileData.location,
+      };
 
-      // For now, just update context locally if updateUser supports it
-      if (updateUser) {
-        updateUser(profileData); // This should ideally persist to backend and then update context
+      Object.keys(updatePayload).forEach((key) => {
+        if (updatePayload[key] === null || updatePayload[key] === undefined) {
+          delete updatePayload[key];
+        }
+      });
+
+      const response = await userApi.updateUserProfile(updatePayload);
+
+      if (response.data && response.data.success) {
+        const updatedUserDataFromServer =
+          response.data.data || response.data.user || {};
+        const fullyUpdatedUser = {
+          ...currentUser,
+          ...updatePayload,
+          ...updatedUserDataFromServer,
+        };
+        fullyUpdatedUser.email = currentUser.email;
+        if (currentUser.createdAt && !fullyUpdatedUser.createdAt) {
+          fullyUpdatedUser.createdAt = currentUser.createdAt;
+        }
+        if (currentUser.accountType && !fullyUpdatedUser.accountType) {
+          fullyUpdatedUser.accountType = currentUser.accountType;
+        }
+
+        if (updateUser) {
+          updateUser(fullyUpdatedUser);
+        }
+        toast.success(response.data.message || "Profile updated successfully!");
+        setIsEditing(false);
+      } else {
+        toast.error(
+          response.data.message || "Failed to update profile. Please try again."
+        );
       }
-      toast.success("Profile updated successfully");
-      setIsEditing(false);
     } catch (error) {
       console.error("Profile update error:", error);
-      toast.error(error.response?.data?.message || "Failed to update profile");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "An unexpected error occurred."
+      );
     }
   };
 
   const handleCancel = () => {
-    setProfileData({
-      // Reset to original currentUser data
-      fullname: currentUser?.fullname || "",
-      email: currentUser?.email || "",
-      whatsappNumber: currentUser?.whatsappNumber || "",
-      designation: currentUser?.designation || "",
-      department: currentUser?.department || "",
-      location: currentUser?.location || "",
-      joinDate: currentUser?.joinDate
-        ? new Date(currentUser.joinDate).toISOString().split("T")[0]
-        : "",
-      bio: currentUser?.bio || "",
-    });
+    if (currentUser) {
+      setProfileData({
+        fullname: currentUser.fullname || "",
+        email: currentUser.email || "",
+        whatsappNumber: currentUser.whatsappNumber || "",
+        designation: currentUser.designation || "",
+        department: currentUser.department || "",
+        location: currentUser.location || "",
+        joinDate: currentUser.createdAt
+          ? new Date(currentUser.createdAt).toISOString().split("T")[0]
+          : "",
+        bio: currentUser.bio || "",
+      });
+    }
     setIsEditing(false);
   };
 
   const getUserInitial = () => {
     return (
       profileData.fullname?.charAt(0).toUpperCase() ||
-      currentUser?.name?.charAt(0).toUpperCase() ||
+      currentUser?.fullname?.charAt(0).toUpperCase() ||
       "U"
     );
   };
@@ -124,7 +183,6 @@ const Profile = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Profile Summary Card */}
         <Card className="lg:col-span-1">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
@@ -132,8 +190,6 @@ const Profile = () => {
                 <div className="w-full h-full rounded-full bg-blue-500 flex items-center justify-center text-white">
                   {getUserInitial()}
                 </div>
-                {/* <AvatarImage src={currentUser.avatarUrl || `https://avatar.vercel.sh/${currentUser.email}.png`} alt={profileData.fullname} />
-              <AvatarFallback>{getUserInitial()}</AvatarFallback> */}
               </Avatar>
               <h2 className="text-xl font-semibold">
                 {profileData.fullname || "User"}
@@ -178,7 +234,6 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Profile Details & Security */}
         <Card className="lg:col-span-2">
           <Tabs defaultValue="personal" className="w-full">
             <CardHeader className="border-b">
@@ -301,7 +356,7 @@ const Profile = () => {
                       type="date"
                       value={profileData.joinDate}
                       disabled
-                      className="mt-1"
+                      className="mt-1 bg-gray-100"
                     />
                   </div>
                 </div>
@@ -311,7 +366,6 @@ const Profile = () => {
         </Card>
       </div>
 
-      {/* Security Settings Card */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
@@ -333,7 +387,6 @@ const Profile = () => {
         </CardContent>
       </Card>
 
-      {/* Additional Info Cards - can be kept or removed based on preference */}
       <div className="grid gap-6 lg:grid-cols-3 mt-6">
         <Card>
           <CardHeader>
@@ -363,15 +416,6 @@ const Profile = () => {
                     month: "long",
                     day: "numeric",
                   })
-                : currentUser?.createdAt
-                ? new Date(currentUser.createdAt).toLocaleDateString(
-                    undefined,
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }
-                  )
                 : "N/A"}
             </p>
           </CardContent>
