@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Import useEffect
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -13,16 +13,16 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDate } from "../../utils/helpers";
-import { changeTaskStatus, deleteTask } from "../../api/tasksApi"; // Updated import
+import { changeTaskStatus, deleteTask } from "../../api/tasksApi";
 import toast from "react-hot-toast";
 
 const TaskCard = ({ task, onClick, onStatusChange, onTaskDeleted }) => {
-  // Added onTaskDeleted prop
   const [showActions, setShowActions] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // State for delete loading
+  const [isDeleting, setIsDeleting] = useState(false);
   const [currentTask, setCurrentTask] = useState(task);
   const [originalTask, setOriginalTask] = useState(null);
+  const [isVisible, setIsVisible] = useState(true); // For optimistic hide
 
   const extractTaskId = (taskToExtract) => {
     const possibleIds = [
@@ -38,23 +38,39 @@ const TaskCard = ({ task, onClick, onStatusChange, onTaskDeleted }) => {
     return taskId;
   };
 
-  const taskId = extractTaskId(currentTask); // Extract taskId once
+  const taskId = extractTaskId(currentTask);
+
+  // useEffect to manage the "Deleting..." toast
+  useEffect(() => {
+    let deleteToastId = null;
+    if (isDeleting && !isVisible) {
+      // Show toast only when optimistically hidden and deleting
+      deleteToastId = toast.loading("Deleting task...");
+    }
+    return () => {
+      if (deleteToastId) {
+        toast.dismiss(deleteToastId);
+      }
+    };
+  }, [isDeleting, isVisible]); // Depend on isDeleting and isVisible
 
   const handleStatusChange = async (newStatus) => {
+    // ... (status change logic remains the same)
     setShowActions(false);
     if (!taskId) {
       toast.error("Task ID not found. Cannot update status.");
       return;
     }
 
-    let optimisticToastId = null;
+    const optimisticToastId = null;
     setOriginalTask({ ...currentTask });
     setCurrentTask((prev) => ({
       ...prev,
       taskStatus: newStatus,
       status: newStatus,
     }));
-    optimisticToastId = toast.success("Task status updated optimistically");
+    // Not showing optimistic toast for status change to avoid too many toasts
+    // optimisticToastId = toast.success("Task status updated optimistically")
     setIsUpdatingStatus(true);
 
     try {
@@ -67,13 +83,13 @@ const TaskCard = ({ task, onClick, onStatusChange, onTaskDeleted }) => {
         }));
       }
       setOriginalTask(null);
-      if (optimisticToastId) toast.dismiss(optimisticToastId); // Dismiss optimistic
-      toast.success("Task status updated successfully!"); // Show final success
+      // if (optimisticToastId) toast.dismiss(optimisticToastId)
+      toast.success("Task status updated successfully!");
       if (onStatusChange) {
-        onStatusChange(taskId, response.data);
+        onStatusChange(taskId, response.data.data || response.data); // Pass updated task data
       }
     } catch (error) {
-      if (optimisticToastId) toast.dismiss(optimisticToastId);
+      // if (optimisticToastId) toast.dismiss(optimisticToastId)
       if (originalTask) {
         setCurrentTask(originalTask);
         setOriginalTask(null);
@@ -95,29 +111,28 @@ const TaskCard = ({ task, onClick, onStatusChange, onTaskDeleted }) => {
       return;
     }
 
-    // Optional: Add a confirmation dialog here
-    // if (!confirm("Are you sure you want to delete this task?")) {
-    //   return;
-    // }
-
     setIsDeleting(true);
-    const toastId = toast.loading("Deleting task...");
+    setIsVisible(false); // Optimistically hide the card
+
+    // The useEffect will handle showing the "Deleting task..." toast
 
     try {
       await deleteTask(taskId);
-      toast.success("Task deleted successfully!", { id: toastId });
+      toast.success("Task deleted successfully!"); // Success toast will replace the loading one if timed right, or appear after.
       if (onTaskDeleted) {
-        onTaskDeleted(taskId); // Notify parent component
+        onTaskDeleted(taskId); // Notify parent to remove from its actual list
       }
+      // Card remains invisible and will be unmounted by parent
     } catch (error) {
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
         "Failed to delete task";
-      toast.error(`Error: ${errorMessage}`, { id: toastId });
+      toast.error(`Delete failed: ${errorMessage}. Task restored.`);
+      setIsVisible(true); // Rollback: make the card visible again
       console.error("Error deleting task:", error);
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false); // This will also trigger the useEffect to dismiss the loading toast if it's still there
     }
   };
 
@@ -197,6 +212,10 @@ const TaskCard = ({ task, onClick, onStatusChange, onTaskDeleted }) => {
     }
   };
 
+  if (!isVisible) {
+    return null; // Card is "removed" from UI optimistically
+  }
+
   return (
     <Card
       className="p-4 hover:shadow-md transition-shadow cursor-pointer"
@@ -219,7 +238,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onTaskDeleted }) => {
             }}
             disabled={isUpdatingStatus || isDeleting}
           >
-            {isDeleting ? (
+            {isDeleting && isVisible ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <MoreHorizontal className="h-5 w-5" />

@@ -589,11 +589,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           {/* Attachment Options (UI only) */}
           <div className="flex flex-wrap gap-3 pt-2 justify-center sm:justify-start">
             {[
-              { icon: Link, title: "Add link" },
-              { icon: FileText, title: "Attach file" },
+              // { icon: Link, title: "Add link" },
+              // { icon: FileText, title: "Attach file" },
               { icon: ImageIcon, title: "Attach image" },
-              { icon: Clock, title: "Set reminder" },
-              { icon: Mic, title: "Record audio" },
+              // { icon: Clock, title: "Set reminder" },
+              // { icon: Mic, title: "Record audio" },
             ].map((item, index) => (
               <Button
                 key={index}
