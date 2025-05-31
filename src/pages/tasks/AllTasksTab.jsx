@@ -1,243 +1,229 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Button } from "../../components/ui/button";
-import { PlusCircle, AlertCircle, RefreshCw } from "lucide-react";
-import TaskCard from "../../components/tasks/TaskCard";
-import TaskDetailModal from "../../components/tasks/TaskDetailModal";
-import TaskSearchAndFilter from "../../components/tasks/TaskSearchAndFilter";
-import AssignTaskModal from "../../components/modals/AssignTaskModal";
-import EmptyState from "../../components/common/EmptyState";
+import { useState, useEffect, useCallback } from "react";
 import {
-  fetchAllTasks,
-  selectAllTasks,
-  selectTaskLoading,
-  selectTaskErrors,
-  clearErrors,
-} from "../../store/slices/taskSlice";
+  Calendar,
+  PlusCircle,
+  Loader2,
+  AlertTriangle,
+  Search,
+  ListFilter,
+  LayoutGrid,
+  LayoutList,
+} from "lucide-react";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import EmptyState from "../../components/common/EmptyState";
+import TaskCard from "../../components/tasks/TaskCard";
+import TaskTable from "../../components/TaskTable"; // Assuming you have this
+import AssignTaskModal from "../../components/modals/AssignTaskModal";
+import { taskApi } from "../../api/taskApi";
+import toast from "react-hot-toast";
+import TaskDetailModal from "../../components/tasks/TaskDetailModal"; // Import TaskDetailModal
 
 const AllTasksTab = () => {
-  const dispatch = useDispatch();
-  const allTasks = useSelector(selectAllTasks);
-  const loading = useSelector(selectTaskLoading);
-  const errors = useSelector(selectTaskErrors);
-
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
-  const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
-  const [editingTask, setEditingTask] = useState(null);
-  const [filteredTasks, setFilteredTasks] = useState([]);
-  const [isFiltered, setIsFiltered] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTask, setSelectedTask] = useState(null); // For TaskDetailModal
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // For TaskDetailModal
+
+  const fetchAllTasks = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await taskApi.getAllTasks();
+      const tasksData =
+        response.data?.data || response.data?.tasks || response.data || [];
+
+      const uniqueTasks = [];
+      const taskIds = new Set();
+      if (Array.isArray(tasksData)) {
+        tasksData.forEach((task) => {
+          const taskId = task._id || task.id;
+          if (taskId && !taskIds.has(taskId)) {
+            uniqueTasks.push(task);
+            taskIds.add(taskId);
+          } else if (!taskId) {
+            console.warn("Task without a valid ID found in AllTasks:", task);
+          }
+        });
+      }
+      setTasks(uniqueTasks);
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || err.message || "Failed to load tasks.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setTasks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    dispatch(fetchAllTasks());
-  }, [dispatch]);
+    fetchAllTasks();
+  }, [fetchAllTasks]);
 
-  useEffect(() => {
-    if (!isFiltered) {
-      setFilteredTasks(allTasks);
-    }
-  }, [allTasks, isFiltered]);
-
-  const handleRefresh = () => {
-    dispatch(clearErrors());
-    dispatch(fetchAllTasks());
+  const handleTaskCreated = () => {
+    fetchAllTasks();
   };
 
-  const handleViewTask = (task) => {
-    setSelectedTaskId(task._id);
-    setIsTaskDetailModalOpen(true);
+  const handleTaskStatusChanged = (taskId, updatedTaskData) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        (task._id || task.id) === taskId
+          ? {
+              ...task,
+              ...updatedTaskData.data,
+              taskStatus: updatedTaskData.data.taskStatus || task.taskStatus,
+            }
+          : task
+      )
+    );
   };
 
-  const handleEditTask = (task) => {
-    setEditingTask(task);
-    setIsAssignTaskModalOpen(true);
+  const handleTaskDeleted = (deletedTaskId) => {
+    setTasks((prevTasks) =>
+      prevTasks.filter((task) => (task._id || task.id) !== deletedTaskId)
+    );
   };
 
-  const handleDeleteTask = (task) => {
-    console.log("Delete task:", task._id);
+  const handleTaskClick = (task) => {
+    setSelectedTask(task);
+    setIsDetailModalOpen(true);
   };
 
-  const handleSearchFilterResults = (results, type) => {
-    if (type === "clear") {
-      setFilteredTasks(allTasks);
-      setIsFiltered(false);
-    } else {
-      setFilteredTasks(results);
-      setIsFiltered(true);
-    }
-  };
-
-  const getTaskCountByStatus = (status) => {
-    const tasks = isFiltered ? filteredTasks : allTasks;
-    return tasks.filter(
-      (task) => task.taskStatus?.toLowerCase() === status.toLowerCase()
-    ).length;
-  };
-
-  const getOverdueCount = () => {
-    const tasks = isFiltered ? filteredTasks : allTasks;
-    return tasks.filter((task) => {
-      if (!task.taskDueDate || task.taskStatus?.toLowerCase() === "completed")
-        return false;
-      return new Date(task.taskDueDate) < new Date();
-    }).length;
-  };
-
-  const displayTasks = isFiltered ? filteredTasks : allTasks;
+  const filteredTasks = tasks.filter(
+    (task) =>
+      (task.taskTitle || task.title || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (task.taskDescription || task.description || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">All Tasks</h2>
-          <p className="text-gray-600">
-            Complete overview of all tasks in the system
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={loading.allTasks}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${loading.allTasks ? "animate-spin" : ""}`}
+    <div>
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+        <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Search tasks..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            Refresh
+          </div>
+          <Button variant="outline" className="hidden sm:flex">
+            <ListFilter className="h-4 w-4 mr-2" /> Filters
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setViewMode("grid")}
+            aria-label="Grid view"
+          >
+            <LayoutGrid className="h-5 w-5" />
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setViewMode("list")}
+            aria-label="List view"
+          >
+            <LayoutList className="h-5 w-5" />
           </Button>
           <Button
             onClick={() => setIsAssignTaskModalOpen(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
           >
-            <PlusCircle className="h-4 w-4" />
-            New Task
+            <PlusCircle className="mr-2 h-4 w-4" /> Create Task
           </Button>
         </div>
       </div>
 
-      {/* Status Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-gray-900">
-            {displayTasks.length}
-          </div>
-          <div className="text-sm text-gray-600">Total Tasks</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-red-600">
-            {getOverdueCount()}
-          </div>
-          <div className="text-sm text-gray-600">Overdue</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-yellow-600">
-            {getTaskCountByStatus("Pending")}
-          </div>
-          <div className="text-sm text-gray-600">Pending</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-blue-600">
-            {getTaskCountByStatus("In Progress")}
-          </div>
-          <div className="text-sm text-gray-600">In Progress</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-green-600">
-            {getTaskCountByStatus("Completed")}
-          </div>
-          <div className="text-sm text-gray-600">Completed</div>
-        </div>
-      </div>
-
-      {/* Search and Filter */}
-      <TaskSearchAndFilter onResultsChange={handleSearchFilterResults} />
-
-      {/* Error Display */}
-      {errors.allTasks && (
-        <div className="p-4 bg-red-50 text-red-600 rounded-md flex items-center">
-          <AlertCircle className="h-5 w-5 mr-2" />
-          <span>Error loading tasks: {errors.allTasks}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            className="ml-auto"
-          >
-            Retry
-          </Button>
+      {isLoading && (
+        <div className="flex justify-center items-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <p className="ml-2">Loading all tasks...</p>
         </div>
       )}
 
-      {/* Tasks List */}
-      {loading.allTasks ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      {!isLoading && error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center">
+          <AlertTriangle className="h-5 w-5 mr-2" />
+          <p>Error: {error}</p>
         </div>
-      ) : displayTasks.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayTasks.map((task) => (
-            <TaskCard
-              key={task._id}
-              task={task}
-              onView={handleViewTask}
-              onEdit={handleEditTask}
-              onDelete={handleDeleteTask}
-              showAssignee={true}
+      )}
+
+      {!isLoading && !error && filteredTasks.length > 0 && (
+        <>
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredTasks.map((task) => (
+                <TaskCard
+                  key={task._id || task.id}
+                  task={task}
+                  onClick={() => handleTaskClick(task)}
+                  onStatusChange={handleTaskStatusChanged}
+                  onTaskDeleted={handleTaskDeleted}
+                />
+              ))}
+            </div>
+          ) : (
+            <TaskTable
+              tasks={filteredTasks}
+              onTaskClick={handleTaskClick}
+              onStatusChange={handleTaskStatusChanged}
+              onTaskDeleted={handleTaskDeleted}
             />
-          ))}
-        </div>
-      ) : (
+          )}
+        </>
+      )}
+
+      {!isLoading && !error && filteredTasks.length === 0 && (
         <EmptyState
-          icon={
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-16 w-16 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-              />
-            </svg>
-          }
-          title={isFiltered ? "No Tasks Found" : "No Tasks Available"}
+          icon={<Calendar className="h-16 w-16 text-gray-400" />}
+          title="No Tasks Found"
           description={
-            isFiltered
-              ? "No tasks match your search or filter criteria."
-              : "There are no tasks in the system yet."
+            searchTerm
+              ? "No tasks match your search criteria."
+              : "There are no tasks in the system yet. Try creating one!"
           }
           className="py-16"
         />
       )}
 
-      {/* Modals */}
       <AssignTaskModal
         isOpen={isAssignTaskModalOpen}
-        onClose={() => {
-          setIsAssignTaskModalOpen(false);
-          setEditingTask(null);
-        }}
-        task={editingTask}
+        onClose={() => setIsAssignTaskModalOpen(false)}
+        onTaskCreated={handleTaskCreated}
       />
-
-      <TaskDetailModal
-        isOpen={isTaskDetailModalOpen}
-        onClose={() => {
-          setIsTaskDetailModalOpen(false);
-          setSelectedTaskId(null);
-        }}
-        taskId={selectedTaskId}
-        onEdit={handleEditTask}
-        onDelete={handleDeleteTask}
-      />
+      {selectedTask && (
+        <TaskDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedTask(null);
+          }}
+          task={selectedTask}
+          onTaskUpdated={() => {
+            fetchAllTasks(); // Refetch tasks if updated from detail modal
+            handleTaskStatusChanged(selectedTask._id || selectedTask.id, {
+              data: selectedTask,
+            }); // Optimistic update for status
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -15,18 +15,17 @@ import { Button } from "../../components/ui/button";
 import EmptyState from "../../components/common/EmptyState";
 import AssignTaskModal from "../../components/modals/AssignTaskModal";
 import TaskCard from "../../components/tasks/TaskCard";
-import { taskApi } from "../../api/taskApi";
-import { toast } from "react-hot-toast";
+import { taskApi } from "../../api/taskApi"; // Ensure this is the correct path to your taskApi
+import toast from "react-hot-toast";
 
 const MyTasksTab = () => {
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("this-week");
+  const [activeFilter, setActiveFilter] = useState("this-week"); // Example filter state
 
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Status filters (counts can be dynamic later)
   const [statusFilters, setStatusFilters] = useState([
     {
       id: "overdue",
@@ -72,44 +71,115 @@ const MyTasksTab = () => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log("Fetching my tasks...");
-      const response = await taskApi.getAssignedToMeTasks();
-      console.log("My tasks API response:", response);
-
-      // Handle different response structures
+      const response = await taskApi.getAssignedToMeTasks(); // Using the specific API endpoint
       const tasksData =
         response.data?.data || response.data?.tasks || response.data || [];
-      setTasks(Array.isArray(tasksData) ? tasksData : []);
 
-      // Update status counts
+      // Ensure tasksData is always an array and has unique keys
+      const uniqueTasks = [];
+      const taskIds = new Set();
+      if (Array.isArray(tasksData)) {
+        tasksData.forEach((task) => {
+          const taskId = task._id || task.id; // Prefer _id, fallback to id
+          if (taskId && !taskIds.has(taskId)) {
+            uniqueTasks.push(task);
+            taskIds.add(taskId);
+          } else if (!taskId) {
+            // Handle tasks without a proper ID if necessary, or log a warning
+            console.warn("Task without a valid ID found:", task);
+            // For now, we'll add it with a temporary key if needed for rendering,
+            // but ideally, all tasks should have a stable ID.
+            // uniqueTasks.push({ ...task, tempKey: `temp-${uniqueTasks.length}` });
+          }
+        });
+      }
+
+      setTasks(uniqueTasks);
+
       const newStatusCounts = [...statusFilters];
       newStatusCounts.forEach((sf) => {
-        sf.count = tasksData.filter(
-          (t) => t.taskStatus?.toLowerCase().replace(/\s+/g, "-") === sf.id
+        sf.count = uniqueTasks.filter(
+          (t) =>
+            (t.taskStatus?.toLowerCase().replace(/\s+/g, "-") ||
+              t.status?.toLowerCase().replace(/\s+/g, "-")) === sf.id
         ).length;
       });
       setStatusFilters(newStatusCounts);
     } catch (err) {
-      console.error("Failed to fetch my tasks:", err);
       const errorMessage =
         err.response?.data?.message ||
         err.message ||
-        "Failed to load your tasks. Please try again.";
+        "Failed to load your tasks.";
       setError(errorMessage);
       toast.error(errorMessage);
-      setTasks([]);
+      setTasks([]); // Clear tasks on error
     } finally {
       setIsLoading(false);
     }
-  }, [activeFilter]);
+  }, [activeFilter]); // Re-fetch if activeFilter changes, if it's used in API call
 
   useEffect(() => {
     fetchMyTasks();
   }, [fetchMyTasks]);
 
   const handleTaskCreated = () => {
-    console.log("Task created, refreshing my tasks...");
-    fetchMyTasks();
+    fetchMyTasks(); // Refetch tasks when a new one is created
+  };
+
+  const handleTaskStatusChanged = (taskId, updatedTaskData) => {
+    // Option 1: Refetch all tasks
+    // fetchMyTasks();
+
+    // Option 2: Update the specific task in the local state
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        (task._id || task.id) === taskId
+          ? {
+              ...task,
+              ...updatedTaskData.data,
+              taskStatus: updatedTaskData.data.taskStatus || task.taskStatus,
+            }
+          : task
+      )
+    );
+    // Also, re-calculate status counts if not refetching
+    const newStatusCounts = [...statusFilters];
+    const currentTasks = tasks.map((task) =>
+      (task._id || task.id) === taskId
+        ? {
+            ...task,
+            ...updatedTaskData.data,
+            taskStatus: updatedTaskData.data.taskStatus || task.taskStatus,
+          }
+        : task
+    );
+    newStatusCounts.forEach((sf) => {
+      sf.count = currentTasks.filter(
+        (t) =>
+          (t.taskStatus?.toLowerCase().replace(/\s+/g, "-") ||
+            t.status?.toLowerCase().replace(/\s+/g, "-")) === sf.id
+      ).length;
+    });
+    setStatusFilters(newStatusCounts);
+  };
+
+  const handleTaskDeleted = (deletedTaskId) => {
+    setTasks((prevTasks) =>
+      prevTasks.filter((task) => (task._id || task.id) !== deletedTaskId)
+    );
+    // Also, re-calculate status counts
+    const newStatusCounts = [...statusFilters];
+    const remainingTasks = tasks.filter(
+      (task) => (task._id || task.id) !== deletedTaskId
+    );
+    newStatusCounts.forEach((sf) => {
+      sf.count = remainingTasks.filter(
+        (t) =>
+          (t.taskStatus?.toLowerCase().replace(/\s+/g, "-") ||
+            t.status?.toLowerCase().replace(/\s+/g, "-")) === sf.id
+      ).length;
+    });
+    setStatusFilters(newStatusCounts);
   };
 
   return (
@@ -122,7 +192,6 @@ const MyTasksTab = () => {
           >
             <PlusCircle className="mr-2 h-4 w-4" /> Assign Task
           </Button>
-
           <div className="flex flex-wrap gap-2 ml-0 sm:ml-4">
             {dateFilters.map((filter) => (
               <Button
@@ -140,7 +209,6 @@ const MyTasksTab = () => {
             ))}
           </div>
         </div>
-
         <Button variant="outline" className="flex items-center">
           <Filter className="h-4 w-4 mr-2" /> Filter
         </Button>
@@ -178,7 +246,12 @@ const MyTasksTab = () => {
       {!isLoading && !error && tasks.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {tasks.map((task) => (
-            <TaskCard key={task._id || task.id} task={task} />
+            <TaskCard
+              key={task._id || task.id || `task-${task.tempKey}`} // Use _id or id, fallback for safety
+              task={task}
+              onStatusChange={handleTaskStatusChanged}
+              onTaskDeleted={handleTaskDeleted} // Pass the delete handler
+            />
           ))}
         </div>
       )}
@@ -187,7 +260,7 @@ const MyTasksTab = () => {
         <EmptyState
           icon={<Calendar className="h-16 w-16 text-gray-400" />}
           title="No Tasks Here"
-          description="It seems that you don't have any tasks assigned to you."
+          description="It seems that you don't have any tasks assigned to you for the selected filter."
           className="py-16"
         />
       )}
