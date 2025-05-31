@@ -828,18 +828,12 @@ const Dashboard = () => {
 
       {/* Main Dashboard Content */}
 
-      {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <TaskDistributionChart tasks={filteredTasks} />
-        </div>
-
-        <div className="lg:col-span-2">
-          <UserActivityFeed activities={activities} />
-        </div>
-      </div> */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-3">
           <TaskDistributionChart tasks={filteredTasks} />
+        </div>
+        <div className="lg:col-span-3">
+          <UserActivityFeed activities={activities} />
         </div>
       </div>
 
