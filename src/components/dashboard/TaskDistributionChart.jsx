@@ -1,29 +1,128 @@
 "use client"
 
 import PropTypes from "prop-types"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { totalTaskCounting } from "@/api/dashboardApi"
 
 /**
  * Component to display task distribution by status as a pie chart
  */
 const TaskDistributionChart = ({ tasks = [] }) => {
   const [hoveredSegment, setHoveredSegment] = useState(null)
+  const [taskStats, setTaskStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Use the actual task counts from your KPICards data
-  const taskCounts = {
-    Pending: 3,
-    "In Progress": 1,
-    Completed: 5,
-    Overdue: 1,
+  useEffect(() => {
+    const fetchTaskStats = async () => {
+      try {
+        setLoading(true)
+        const response = await totalTaskCounting()
+        console.log("📊 Task Distribution Chart - API response:", response.data)
+        setTaskStats(response.data.data || response.data)
+        setError(null)
+      } catch (err) {
+        console.error("Error fetching task distribution data:", err)
+        setError("Failed to load task distribution")
+        // Use fallback data if API fails
+        setTaskStats(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTaskStats()
+  }, [])
+
+  // Process task data from API or use fallback data
+  const processTaskData = () => {
+    // If we have API data, use it
+    if (taskStats) {
+      const createdByMe = taskStats.tasksCreatedByMe || { counts: {}, totalCount: 0 }
+      const assignedToMe = taskStats.tasksAssignedToMe || { counts: {}, totalCount: 0 }
+
+      // Helper function to get status counts across different possible field names
+      const getStatusCount = (counts, statusNames) => {
+        return statusNames.reduce((total, name) => total + (counts[name] || 0), 0)
+      }
+
+      // Calculate task counts by status
+      const completedTasks =
+        getStatusCount(createdByMe.counts, ["Completed", "completed", "Done", "done"]) +
+        getStatusCount(assignedToMe.counts, ["Completed", "completed", "Done", "done"])
+
+      const inProgressTasks =
+        getStatusCount(createdByMe.counts, ["In Progress", "in-progress", "InProgress", "in_progress"]) +
+        getStatusCount(assignedToMe.counts, ["In Progress", "in-progress", "InProgress", "in_progress"])
+
+      const pendingTasks =
+        getStatusCount(createdByMe.counts, ["Pending", "pending", "To Do", "to-do", "todo"]) +
+        getStatusCount(assignedToMe.counts, ["Pending", "pending", "To Do", "to-do", "todo"])
+
+      const overdueTasks =
+        getStatusCount(createdByMe.counts, ["Overdue", "overdue"]) +
+        getStatusCount(assignedToMe.counts, ["Overdue", "overdue"])
+
+      // Log the extracted data for debugging
+      console.log("📊 Task Distribution - Processed data:", {
+        completedTasks,
+        inProgressTasks,
+        pendingTasks,
+        overdueTasks,
+        rawCreatedByMe: createdByMe.counts,
+        rawAssignedToMe: assignedToMe.counts,
+      })
+
+      return {
+        Completed: completedTasks,
+        "In Progress": inProgressTasks,
+        Pending: pendingTasks,
+        Overdue: overdueTasks,
+      }
+    }
+
+    // Fallback to the data shown in the KPI cards from the screenshot
+    return {
+      Completed: 4, // 40%
+      "In Progress": 2, // 20%
+      Pending: 3, // 30%
+      Overdue: 1, // 10%
+    }
   }
 
+  const taskCounts = processTaskData()
+
+  // Calculate total tasks
   const totalTasks = Object.values(taskCounts).reduce((sum, count) => sum + count, 0)
 
+  // Status colors - matching the KPICards colors
   const statusColors = {
-    Pending: "#ea580c", // orange-600 - matching KPICards
-    "In Progress": "#ca8a04", // yellow-600 - matching KPICards
-    Completed: "#16a34a", // green-600 - matching KPICards
-    Overdue: "#dc2626", // red-600 - matching KPICards
+    Completed: "#16a34a", // green-600
+    "In Progress": "#ca8a04", // yellow-600
+    Pending: "#ea580c", // orange-600
+    Overdue: "#dc2626", // red-600
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full w-full">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Distribution</h3>
+        <div className="flex items-center justify-center h-48">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-violet-500 rounded-full animate-spin"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-full w-full">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Distribution</h3>
+        <div className="flex items-center justify-center h-48 text-red-500">
+          <p>{error}</p>
+        </div>
+      </div>
+    )
   }
 
   if (totalTasks === 0) {
@@ -37,6 +136,7 @@ const TaskDistributionChart = ({ tasks = [] }) => {
     )
   }
 
+  // Calculate angles for pie chart
   const segments = Object.entries(taskCounts)
     .filter(([, count]) => count > 0) // Only include segments with count > 0
     .map(([status, count]) => ({
