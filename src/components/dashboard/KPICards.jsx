@@ -39,13 +39,32 @@ const KPICards = ({ kpis }) => {
       const createdByMe = taskStats.tasksCreatedByMe || { counts: {}, totalCount: 0 }
       const assignedToMe = taskStats.tasksAssignedToMe || { counts: {}, totalCount: 0 }
 
-      // Calculate totals for each status
-      const pendingTasks = (createdByMe.counts.Pending || 0) + (assignedToMe.counts.Pending || 0)
-      const completedTasks = (createdByMe.counts.Completed || 0) + (assignedToMe.counts.Completed || 0)
+      // Calculate totals for each status - handle multiple possible field names
+      const getStatusCount = (counts, statusNames) => {
+        return statusNames.reduce((total, name) => total + (counts[name] || 0), 0)
+      }
+
+      const pendingTasks =
+        getStatusCount(createdByMe.counts, ["Pending", "pending"]) +
+        getStatusCount(assignedToMe.counts, ["Pending", "pending"])
+
+      const completedTasks =
+        getStatusCount(createdByMe.counts, ["Completed", "completed"]) +
+        getStatusCount(assignedToMe.counts, ["Completed", "completed"])
+
       const inProgressTasks =
-        (createdByMe.counts["In Progress"] || createdByMe.counts["in-progress"] || 0) +
-        (assignedToMe.counts["In Progress"] || assignedToMe.counts["in-progress"] || 0)
-      const overdueTasks = (createdByMe.counts.Overdue || 0) + (assignedToMe.counts.Overdue || 0)
+        getStatusCount(createdByMe.counts, ["In Progress", "in-progress", "InProgress", "in_progress"]) +
+        getStatusCount(assignedToMe.counts, ["In Progress", "in-progress", "InProgress", "in_progress"])
+
+      const overdueTasks =
+        getStatusCount(createdByMe.counts, ["Overdue", "overdue"]) +
+        getStatusCount(assignedToMe.counts, ["Overdue", "overdue"])
+
+      // Add detailed logging to see what status fields are actually available
+      console.log("📊 Available status fields in createdByMe:", Object.keys(createdByMe.counts || {}))
+      console.log("📊 Available status fields in assignedToMe:", Object.keys(assignedToMe.counts || {}))
+      console.log("📊 Raw counts - createdByMe:", createdByMe.counts)
+      console.log("📊 Raw counts - assignedToMe:", assignedToMe.counts)
 
       // Calculate total tasks
       const totalTasks = createdByMe.totalCount + assignedToMe.totalCount
@@ -60,9 +79,11 @@ const KPICards = ({ kpis }) => {
         {
           title: "Total Tasks",
           value: totalTasks,
-          icon: <List className="h-5 w-5 text-blue-600" />,
+          icon: <List className="h-5 w-5 text-violet-600" />,
           description: "Total number of tasks",
-          color: "bg-blue-50 text-blue-600 border-blue-200",
+          color: "bg-violet-50 text-violet-600 border-violet-200",
+          valueColor: "text-violet-600",
+          percentageColor: "text-violet-400",
           breakdown: {
             assignedToMe: assignedToMe.totalCount,
             createdByMe: createdByMe.totalCount,
@@ -75,9 +96,11 @@ const KPICards = ({ kpis }) => {
           icon: <CheckCircle className="h-5 w-5 text-green-600" />,
           description: "Tasks marked as done",
           color: "bg-green-50 text-green-600 border-green-200",
+          valueColor: "text-green-600",
+          percentageColor: "text-green-400",
           breakdown: {
-            assignedToMe: assignedToMe.counts.Completed || 0,
-            createdByMe: createdByMe.counts.Completed || 0,
+            assignedToMe: getStatusCount(assignedToMe.counts, ["Completed", "completed"]),
+            createdByMe: getStatusCount(createdByMe.counts, ["Completed", "completed"]),
           },
         },
         {
@@ -87,9 +110,21 @@ const KPICards = ({ kpis }) => {
           icon: <Clock className="h-5 w-5 text-yellow-600" />,
           description: "Tasks currently in progress",
           color: "bg-yellow-50 text-yellow-600 border-yellow-200",
+          valueColor: "text-yellow-600",
+          percentageColor: "text-yellow-400",
           breakdown: {
-            assignedToMe: assignedToMe.counts["In Progress"] || assignedToMe.counts["in-progress"] || 0,
-            createdByMe: createdByMe.counts["In Progress"] || createdByMe.counts["in-progress"] || 0,
+            assignedToMe: getStatusCount(assignedToMe.counts, [
+              "In Progress",
+              "in-progress",
+              "InProgress",
+              "in_progress",
+            ]),
+            createdByMe: getStatusCount(createdByMe.counts, [
+              "In Progress",
+              "in-progress",
+              "InProgress",
+              "in_progress",
+            ]),
           },
         },
         {
@@ -99,9 +134,11 @@ const KPICards = ({ kpis }) => {
           icon: <AlertCircle className="h-5 w-5 text-orange-600" />,
           description: "Tasks awaiting action",
           color: "bg-orange-50 text-orange-600 border-orange-200",
+          valueColor: "text-orange-600",
+          percentageColor: "text-orange-400",
           breakdown: {
-            assignedToMe: assignedToMe.counts.Pending || 0,
-            createdByMe: createdByMe.counts.Pending || 0,
+            assignedToMe: getStatusCount(assignedToMe.counts, ["Pending", "pending"]),
+            createdByMe: getStatusCount(createdByMe.counts, ["Pending", "pending"]),
           },
         },
         {
@@ -111,9 +148,11 @@ const KPICards = ({ kpis }) => {
           icon: <AlertCircle className="h-5 w-5 text-red-600" />,
           description: "Tasks past due date",
           color: "bg-red-50 text-red-600 border-red-200",
+          valueColor: "text-red-600",
+          percentageColor: "text-red-400",
           breakdown: {
-            assignedToMe: assignedToMe.counts.Overdue || 0,
-            createdByMe: createdByMe.counts.Overdue || 0,
+            assignedToMe: getStatusCount(assignedToMe.counts, ["Overdue", "overdue"]),
+            createdByMe: getStatusCount(createdByMe.counts, ["Overdue", "overdue"]),
           },
         },
       ]
@@ -124,9 +163,11 @@ const KPICards = ({ kpis }) => {
       {
         title: "Total Tasks",
         value: kpis.totalTasks,
-        icon: <List className="h-5 w-5 text-blue-600" />,
+        icon: <List className="h-5 w-5 text-violet-600" />,
         description: "Total number of tasks",
-        color: "bg-blue-50 text-blue-600 border-blue-200",
+        color: "bg-violet-50 text-violet-600 border-violet-200",
+        valueColor: "text-violet-600",
+        percentageColor: "text-violet-400",
       },
       {
         title: "Completed",
@@ -135,6 +176,8 @@ const KPICards = ({ kpis }) => {
         icon: <CheckCircle className="h-5 w-5 text-green-600" />,
         description: "Tasks marked as done",
         color: "bg-green-50 text-green-600 border-green-200",
+        valueColor: "text-green-600",
+        percentageColor: "text-green-400",
       },
       {
         title: "In Progress",
@@ -143,6 +186,8 @@ const KPICards = ({ kpis }) => {
         icon: <Clock className="h-5 w-5 text-yellow-600" />,
         description: "Tasks currently in progress",
         color: "bg-yellow-50 text-yellow-600 border-yellow-200",
+        valueColor: "text-yellow-600",
+        percentageColor: "text-yellow-400",
       },
       {
         title: "Pending",
@@ -151,6 +196,8 @@ const KPICards = ({ kpis }) => {
         icon: <AlertCircle className="h-5 w-5 text-orange-600" />,
         description: "Tasks awaiting action",
         color: "bg-orange-50 text-orange-600 border-orange-200",
+        valueColor: "text-orange-600",
+        percentageColor: "text-orange-400",
       },
       {
         title: "Overdue",
@@ -159,6 +206,8 @@ const KPICards = ({ kpis }) => {
         icon: <AlertCircle className="h-5 w-5 text-red-600" />,
         description: "Tasks past due date",
         color: "bg-red-50 text-red-600 border-red-200",
+        valueColor: "text-red-600",
+        percentageColor: "text-red-400",
       },
     ]
   }
@@ -215,9 +264,11 @@ const KPICards = ({ kpis }) => {
                 <div>
                   <p className="text-sm font-medium text-gray-500">{card.title}</p>
                   <div className="flex items-baseline mt-1">
-                    <h3 className="text-2xl font-bold">{card.value}</h3>
+                    <h3 className={`text-2xl font-bold ${card.valueColor}`}>{card.value}</h3>
                     {card.percentage !== undefined && (
-                      <span className="ml-2 text-sm text-gray-500">{card.percentage}%</span>
+                      <span className={`ml-2 text-sm ${card.percentageColor || "text-gray-500"}`}>
+                        {card.percentage}%
+                      </span>
                     )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">{card.description}</p>
