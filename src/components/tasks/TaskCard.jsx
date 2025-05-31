@@ -1,73 +1,172 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { MoreHorizontal, Clock, CheckCircle, AlertCircle } from "lucide-react";
-import { formatDate } from "../../utils/helpers";
+import { useState } from "react"
+import { Card } from "../ui/card"
+import { Button } from "../ui/button"
+import { Badge } from "../ui/badge"
+import { MoreHorizontal, Clock, CheckCircle, AlertCircle } from "lucide-react"
+import { formatDate } from "../../utils/helpers"
+import { changeTaskStatus } from "../../api/tasksApi"
+import toast from "react-hot-toast"
 
-const TaskCard = ({ task, onClick }) => {
-  const [showActions, setShowActions] = useState(false);
+const TaskCard = ({ task, onClick, onStatusChange }) => {
+  const [showActions, setShowActions] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [currentTask, setCurrentTask] = useState(task) // Local state for task updates
 
-  const handleStatusChange = (newStatus) => {
-    setShowActions(false);
-  };
+  // Debug task ID extraction
+  const extractTaskId = (task) => {
+    // Try different possible ID fields
+    const possibleIds = [task._id, task.id, task.taskId, task.task_id]
 
-  // Handle different API response field names
-  const taskTitle = task.taskTitle || task.title || "Untitled Task";
-  const taskDescription = task.taskDescription || task.description || "";
-  const taskStatus = task.status || task.taskStatus || "pending";
-  const taskPriority = task.taskPriority || task.priority || "medium";
-  const taskCategory = task.taskCategory || task.category || "";
-  const taskDueDate = task.taskDueDate || task.dueDate || task.due_date;
-  const taskAssignees =
-    task.taskAssignedTo || task.assignees || task.assigned_to || [];
+    // Log all possible IDs for debugging
+    console.log("🔍 Possible task IDs:", {
+      _id: task._id,
+      id: task.id,
+      taskId: task.taskId,
+      task_id: task.task_id,
+    })
+
+    // Find the first non-null ID
+    const taskId = possibleIds.find((id) => id !== undefined && id !== null)
+
+    // Handle MongoDB ObjectId format if present
+    if (taskId && typeof taskId === "object" && taskId.$oid) {
+      console.log("📌 Found MongoDB ObjectId:", taskId.$oid)
+      return taskId.$oid
+    }
+
+    console.log("📌 Using task ID:", taskId)
+    return taskId
+  }
+
+  const handleStatusChange = async (newStatus) => {
+    setShowActions(false)
+    setIsUpdatingStatus(true)
+
+    try {
+      // Extract task ID with enhanced debugging
+      const taskId = extractTaskId(currentTask)
+
+      if (!taskId) {
+        console.error("❌ Task ID not found in task object:", currentTask)
+        throw new Error("Task ID not found")
+      }
+
+      console.log(`🔄 Changing task status to: ${newStatus} for task ID: ${taskId}`)
+
+      // Call the API to change task status with direct status string
+      const response = await changeTaskStatus(taskId, newStatus)
+
+      console.log("✅ Task status updated successfully:", response.data)
+
+      // Update local task state with the response data
+      if (response.data && response.data.data) {
+        setCurrentTask((prev) => ({
+          ...prev,
+          ...response.data.data,
+          taskStatus: response.data.data.taskStatus || newStatus,
+        }))
+      } else {
+        // Fallback: update just the status if full data isn't returned
+        setCurrentTask((prev) => ({
+          ...prev,
+          taskStatus: newStatus,
+          status: newStatus,
+        }))
+      }
+
+      // Show success toast
+      toast.success("Task status updated successfully")
+
+      // Call parent callback to refresh the task list if provided
+      if (onStatusChange) {
+        onStatusChange(taskId, response.data)
+      }
+    } catch (error) {
+      console.error("❌ Error updating task status:", error)
+      console.error("❌ Error response:", error.response?.data)
+      console.error("❌ Error status:", error.response?.status)
+
+      // Show error message
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update task status"
+      console.error("Error:", errorMessage)
+
+      // Show error toast
+      toast.error(`Failed to update task status: ${errorMessage}`)
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  // Handle different API response field names using currentTask (which gets updated)
+  const taskTitle = currentTask.taskTitle || currentTask.title || "Untitled Task"
+  const taskDescription = currentTask.taskDescription || currentTask.description || ""
+  const taskStatus = currentTask.status || currentTask.taskStatus || "pending"
+  const taskPriority = currentTask.taskPriority || currentTask.priority || "medium"
+  const taskCategory = currentTask.taskCategory || currentTask.category || ""
+  const taskDueDate = currentTask.taskDueDate || currentTask.dueDate || currentTask.due_date
+  const taskAssignees = currentTask.taskAssignedTo || currentTask.assignees || currentTask.assigned_to || []
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800"
       case "medium":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800"
       case "low":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800"
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800"
     }
-  };
+  }
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800"
       case "in-progress":
       case "in progress":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800"
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800"
       case "overdue":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800"
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800"
     }
-  };
+  }
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
-        return <CheckCircle className="h-4 w-4 mr-1" />;
+        return <CheckCircle className="h-4 w-4 mr-1" />
       case "in-progress":
       case "in progress":
-        return <Clock className="h-4 w-4 mr-1" />;
+        return <Clock className="h-4 w-4 mr-1" />
       case "pending":
-        return <Clock className="h-4 w-4 mr-1" />;
+        return <Clock className="h-4 w-4 mr-1" />
       case "overdue":
-        return <AlertCircle className="h-4 w-4 mr-1" />;
+        return <AlertCircle className="h-4 w-4 mr-1" />
       default:
-        return null;
+        return null
     }
-  };
+  }
+
+  const getStatusDisplayText = (status) => {
+    switch (status?.toLowerCase()) {
+      case "in-progress":
+        return "In Progress"
+      case "completed":
+        return "Completed"
+      case "pending":
+        return "Pending"
+      case "overdue":
+        return "Overdue"
+      default:
+        return status?.charAt(0).toUpperCase() + status?.slice(1) || "Unknown"
+    }
+  }
 
   return (
     <Card
@@ -75,11 +174,11 @@ const TaskCard = ({ task, onClick }) => {
       onClick={(e) => {
         // Don't trigger onClick if clicking on the actions dropdown
         if (!e.target.closest(".actions-dropdown")) {
-          console.log("🎯 TaskCard clicked, calling onClick handler");
+          console.log("🎯 TaskCard clicked, calling onClick handler")
           if (onClick) {
-            onClick();
+            onClick()
           } else {
-            console.log("❌ No onClick handler provided to TaskCard");
+            console.log("❌ No onClick handler provided to TaskCard")
           }
         }
       }}
@@ -92,9 +191,10 @@ const TaskCard = ({ task, onClick }) => {
             size="sm"
             className="p-1 h-auto"
             onClick={(e) => {
-              e.stopPropagation();
-              setShowActions(!showActions);
+              e.stopPropagation()
+              setShowActions(!showActions)
             }}
+            disabled={isUpdatingStatus}
           >
             <MoreHorizontal className="h-5 w-5" />
           </Button>
@@ -103,31 +203,34 @@ const TaskCard = ({ task, onClick }) => {
             <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
               <div className="py-1">
                 <button
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleStatusChange("in-progress");
+                    e.stopPropagation()
+                    handleStatusChange("in-progress")
                   }}
+                  disabled={isUpdatingStatus}
                 >
-                  Mark as In Progress
+                  {isUpdatingStatus ? "Updating..." : "Mark as In Progress"}
                 </button>
                 <button
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleStatusChange("completed");
+                    e.stopPropagation()
+                    handleStatusChange("completed")
                   }}
+                  disabled={isUpdatingStatus}
                 >
-                  Mark as Completed
+                  {isUpdatingStatus ? "Updating..." : "Mark as Completed"}
                 </button>
                 <button
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleStatusChange("pending");
+                    e.stopPropagation()
+                    handleStatusChange("pending")
                   }}
+                  disabled={isUpdatingStatus}
                 >
-                  Mark as Pending
+                  {isUpdatingStatus ? "Updating..." : "Mark as Pending"}
                 </button>
               </div>
             </div>
@@ -135,20 +238,17 @@ const TaskCard = ({ task, onClick }) => {
         </div>
       </div>
 
-      {taskDescription && (
-        <p className="text-gray-600 text-sm mb-3">{taskDescription}</p>
-      )}
+      {taskDescription && <p className="text-gray-600 text-sm mb-3">{taskDescription}</p>}
 
       <div className="flex flex-wrap gap-2 mb-3">
         <Badge variant="outline" className={getPriorityColor(taskPriority)}>
-          {taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)}{" "}
-          Priority
+          {taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)} Priority
         </Badge>
 
         <Badge variant="outline" className={getStatusColor(taskStatus)}>
           <span className="flex items-center">
             {getStatusIcon(taskStatus)}
-            {taskStatus.charAt(0).toUpperCase() + taskStatus.slice(1)}
+            {getStatusDisplayText(taskStatus)}
           </span>
         </Badge>
 
@@ -162,31 +262,24 @@ const TaskCard = ({ task, onClick }) => {
       <div className="flex justify-between items-center text-sm text-gray-500">
         <div className="flex items-center">
           <Clock className="h-4 w-4 mr-1" />
-          <span>
-            Due: {taskDueDate ? formatDate(taskDueDate) : "No due date"}
-          </span>
+          <span>Due: {taskDueDate ? formatDate(taskDueDate) : "No due date"}</span>
         </div>
 
         <div className="flex -space-x-2">
           {taskAssignees &&
-            (Array.isArray(taskAssignees)
-              ? taskAssignees
-              : [taskAssignees]
-            ).map((assignee, index) => (
+            (Array.isArray(taskAssignees) ? taskAssignees : [taskAssignees]).map((assignee, index) => (
               <div
                 key={index}
                 className="h-6 w-6 rounded-full bg-gray-300 border border-white flex items-center justify-center text-xs"
                 title={`Assignee ${assignee}`}
               >
-                {typeof assignee === "string"
-                  ? assignee.charAt(0).toUpperCase()
-                  : "A"}
+                {typeof assignee === "string" ? assignee.charAt(0).toUpperCase() : "A"}
               </div>
             ))}
         </div>
       </div>
     </Card>
-  );
-};
+  )
+}
 
-export default TaskCard;
+export default TaskCard
