@@ -787,7 +787,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <Card className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -860,7 +860,7 @@ const Dashboard = () => {
         <div className="xl:col-span-1">
           <TaskComments task={selectedTask} onAddComment={handleAddComment} />
         </div>
-      </div>
+      </div> */}
 
       <DateFilterModal
         isOpen={isDateFilterOpen}
