@@ -20,6 +20,8 @@ const createTaskComment = async (taskId, commentData) =>
 const fetchTaskComments = async (taskId) =>
   API.get(`comment/fetch-comments/${taskId}`);
 
+const setOverDue = async () => API.patch("task/set-overdue-status")
+
 export {
   myTask,
   deligatedTask,
@@ -30,4 +32,8 @@ export {
   changeTaskStatus,
   createTaskComment,
   fetchTaskComments,
+  setOverDue
 };
+
+
+
