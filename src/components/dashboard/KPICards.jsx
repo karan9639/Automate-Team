@@ -5,7 +5,6 @@ import { Card, CardContent } from "../../components/ui/card"
 import { CheckCircle, Clock, AlertCircle, List } from "lucide-react"
 import { totalTaskCounting } from "@/api/dashboardApi"
 
-
 const KPICards = ({ kpis }) => {
   const [taskStats, setTaskStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -15,7 +14,7 @@ const KPICards = ({ kpis }) => {
     const fetchTaskStats = async () => {
       try {
         setLoading(true)
-        const response = await totalTaskCounting();
+        const response = await totalTaskCounting()
         console.log("📊 Dashboard task stats API response:", response.data)
         setTaskStats(response.data.data || response.data)
         setError(null)
@@ -65,8 +64,8 @@ const KPICards = ({ kpis }) => {
           description: "Total number of tasks",
           color: "bg-blue-50 text-blue-600 border-blue-200",
           breakdown: {
-            assigned: assignedToMe.totalCount,
-            myTasks: createdByMe.totalCount,
+            assignedToMe: assignedToMe.totalCount,
+            createdByMe: createdByMe.totalCount,
           },
         },
         {
@@ -77,8 +76,8 @@ const KPICards = ({ kpis }) => {
           description: "Tasks marked as done",
           color: "bg-green-50 text-green-600 border-green-200",
           breakdown: {
-            assigned: assignedToMe.counts.Completed || 0,
-            myTasks: createdByMe.counts.Completed || 0,
+            assignedToMe: assignedToMe.counts.Completed || 0,
+            createdByMe: createdByMe.counts.Completed || 0,
           },
         },
         {
@@ -89,8 +88,8 @@ const KPICards = ({ kpis }) => {
           description: "Tasks currently in progress",
           color: "bg-yellow-50 text-yellow-600 border-yellow-200",
           breakdown: {
-            assigned: assignedToMe.counts["In Progress"] || assignedToMe.counts["in-progress"] || 0,
-            myTasks: createdByMe.counts["In Progress"] || createdByMe.counts["in-progress"] || 0,
+            assignedToMe: assignedToMe.counts["In Progress"] || assignedToMe.counts["in-progress"] || 0,
+            createdByMe: createdByMe.counts["In Progress"] || createdByMe.counts["in-progress"] || 0,
           },
         },
         {
@@ -101,8 +100,8 @@ const KPICards = ({ kpis }) => {
           description: "Tasks awaiting action",
           color: "bg-orange-50 text-orange-600 border-orange-200",
           breakdown: {
-            assigned: assignedToMe.counts.Pending || 0,
-            myTasks: createdByMe.counts.Pending || 0,
+            assignedToMe: assignedToMe.counts.Pending || 0,
+            createdByMe: createdByMe.counts.Pending || 0,
           },
         },
         {
@@ -113,8 +112,8 @@ const KPICards = ({ kpis }) => {
           description: "Tasks past due date",
           color: "bg-red-50 text-red-600 border-red-200",
           breakdown: {
-            assigned: assignedToMe.counts.Overdue || 0,
-            myTasks: createdByMe.counts.Overdue || 0,
+            assignedToMe: assignedToMe.counts.Overdue || 0,
+            createdByMe: createdByMe.counts.Overdue || 0,
           },
         },
       ]
@@ -228,12 +227,12 @@ const KPICards = ({ kpis }) => {
                     <div className="mt-2 pt-2 border-t border-gray-100">
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className="text-gray-500">Assigned:</span>{" "}
-                          <span className="font-medium">{card.breakdown.assigned}</span>
+                          <span className="text-gray-500">Assigned to me:</span>{" "}
+                          <span className="font-medium">{card.breakdown.assignedToMe}</span>
                         </div>
                         <div>
-                          <span className="text-gray-500">My tasks:</span>{" "}
-                          <span className="font-medium">{card.breakdown.myTasks}</span>
+                          <span className="text-gray-500">Created by me:</span>{" "}
+                          <span className="font-medium">{card.breakdown.createdByMe}</span>
                         </div>
                       </div>
                     </div>
