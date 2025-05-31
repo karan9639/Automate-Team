@@ -14,6 +14,8 @@ const changeTaskStatus = async (taskId, newStatus) => {
 
 const deleteTask = async (taskId) => API.delete(`task/delete-task/${taskId}`);
 
+const setOverDue = async () => API.patch("task/set-overdue-status")
+
 export {
   myTask,
   deligatedTask,
@@ -22,4 +24,8 @@ export {
   editTask,
   changeTaskStatus,
   deleteTask,
+  setOverDue
 };
+
+
+
