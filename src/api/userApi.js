@@ -81,4 +81,8 @@ export const userApi = {
     // { fullname, whatsappNumber, bio, department, designation, location }
     return API.put(`${USER_BASE_URL}/edit-profile`, profileData);
   },
+
+  fetchActivities: async (params = {}) => {
+    return API.get(`${USER_BASE_URL}/activities`, { params });
+  },
 };

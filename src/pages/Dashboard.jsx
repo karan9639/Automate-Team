@@ -22,8 +22,10 @@ import GenerateReportModal from "../components/dashboard/GenerateReportModal";
 import ConfirmDeleteModal from "../components/dashboard/ConfirmDeleteModal";
 import TaskFilters from "../components/dashboard/TaskFilters";
 import AssignTaskModal from "../components/modals/AssignTaskModal";
+import { userApi } from "../api/userApi";
+import toast from "react-hot-toast";
 
-// Dummy data for dashboard
+// Dummy data for dashboard (Tasks and Users)
 const DUMMY_TASKS = [
   {
     id: 1,
@@ -174,48 +176,12 @@ const DUMMY_USERS = [
   { id: "user5", name: "Alex Brown", email: "alex@example.com" },
 ];
 
-const DUMMY_ACTIVITIES = [
-  {
-    id: 1,
-    user: "John Doe",
-    action: "created task",
-    task: "Implement user authentication",
-    timestamp: "2024-01-27T10:30:00Z",
-  },
-  {
-    id: 2,
-    user: "Jane Smith",
-    action: "completed task",
-    task: "Design dashboard UI",
-    timestamp: "2024-01-27T09:15:00Z",
-  },
-  {
-    id: 3,
-    user: "Mike Johnson",
-    action: "commented on",
-    task: "Database optimization",
-    timestamp: "2024-01-27T08:45:00Z",
-  },
-  {
-    id: 4,
-    user: "Sarah Wilson",
-    action: "updated task",
-    task: "API documentation",
-    timestamp: "2024-01-26T16:20:00Z",
-  },
-  {
-    id: 5,
-    user: "Alex Brown",
-    action: "started task",
-    task: "Mobile app testing",
-    timestamp: "2024-01-26T14:10:00Z",
-  },
-];
-
 const Dashboard = () => {
   const [tasks, setTasks] = useState(DUMMY_TASKS);
-  const [users, setUsers] = useState(DUMMY_USERS);
-  const [activities, setActivities] = useState(DUMMY_ACTIVITIES);
+  const [users, setUsers] = useState(DUMMY_USERS); // Keep this if needed for other parts
+  const [activities, setActivities] = useState([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [activitiesError, setActivitiesError] = useState(null);
   const [filteredTasks, setFilteredTasks] = useState(DUMMY_TASKS);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -309,19 +275,95 @@ const Dashboard = () => {
       } else if (endDate) {
         return taskDate <= endDate;
       }
-
       return true;
     });
   };
 
+  // Fetch activities from API
+  useEffect(() => {
+    const fetchActivitiesData = async () => {
+      setActivitiesLoading(true);
+      setActivitiesError(null);
+      try {
+        const response = await userApi.fetchActivities();
+        if (
+          response.data &&
+          response.data.success &&
+          Array.isArray(response.data.data)
+        ) {
+          const fetchedActivities = response.data.data.map((activity) => {
+            const fullMessage = activity.message; // e.g., "Prashant created task: Machine no. 50 Repair"
+            const messageType = activity.messageType; // e.g., "task_created"
+
+            const userNameMatch = fullMessage.match(/^([^\s]+)/);
+            // Use the name from the message, or "User" if parsing fails.
+            // Ideally, resolve activity.user (ID) to a name if a user store is available.
+            const userName = userNameMatch ? userNameMatch[0] : "User";
+
+            let actionDescription = messageType.replace(/_/g, " "); // Fallback e.g. "task created"
+            let targetName = null;
+
+            let actionAndTargetDetails = fullMessage;
+            if (fullMessage.toLowerCase().startsWith(userName.toLowerCase())) {
+              actionAndTargetDetails = fullMessage
+                .substring(userName.length)
+                .trim();
+            }
+
+            const colonIndex = actionAndTargetDetails.indexOf(":");
+            if (colonIndex > -1) {
+              actionDescription = actionAndTargetDetails
+                .substring(0, colonIndex)
+                .trim();
+              targetName = actionAndTargetDetails
+                .substring(colonIndex + 1)
+                .trim();
+            } else {
+              actionDescription = actionAndTargetDetails.trim();
+            }
+            if (!actionDescription && messageType) {
+              actionDescription = messageType.replace(/_/g, " ");
+            }
+
+            return {
+              id: activity._id,
+              user: userName,
+              action: actionDescription,
+              task: targetName, // This will be used as the target/task name in UserActivityFeed
+              timestamp: activity.createdAt,
+              messageType: messageType,
+            };
+          });
+          setActivities(fetchedActivities);
+        } else {
+          const errorMsg =
+            response.data?.message || "Failed to fetch activities structure.";
+          setActivitiesError(errorMsg);
+          toast.error(errorMsg);
+          setActivities([]);
+        }
+      } catch (error) {
+        console.error("Error fetching activities:", error);
+        const errorMessage =
+          error.response?.data?.message ||
+          error.message ||
+          "An error occurred while fetching activities.";
+        setActivitiesError(errorMessage);
+        toast.error(errorMessage);
+        setActivities([]);
+      } finally {
+        setActivitiesLoading(false);
+        if (isRefreshing) setIsRefreshing(false);
+      }
+    };
+
+    fetchActivitiesData();
+  }, [isRefreshing]);
+
   // Filter tasks based on all criteria
   useEffect(() => {
     let filtered = tasks;
-
-    // Apply date filter first
     filtered = applyDateFilter(filtered, dateFilter);
-
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
         (task) =>
@@ -330,8 +372,6 @@ const Dashboard = () => {
           task.assignedUser.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Apply status filter
     if (statusFilter !== "All") {
       if (statusFilter === "Overdue") {
         const now = new Date();
@@ -349,27 +389,18 @@ const Dashboard = () => {
         filtered = filtered.filter((task) => task.status === statusFilter);
       }
     }
-
-    // Apply user filter
     if (userFilter !== "All") {
       filtered = filtered.filter((task) => task.assignedUser === userFilter);
     }
-
-    // Apply priority filter
     if (priorityFilter !== "All") {
       filtered = filtered.filter((task) => task.priority === priorityFilter);
     }
-
-    // Apply category filter
     if (categoryFilter !== "All") {
       filtered = filtered.filter((task) => task.category === categoryFilter);
     }
-
-    // Apply frequency filter
     if (frequencyFilter !== "All") {
       filtered = filtered.filter((task) => task.frequency === frequencyFilter);
     }
-
     setFilteredTasks(filtered);
   }, [
     searchQuery,
@@ -382,28 +413,27 @@ const Dashboard = () => {
     tasks,
   ]);
 
-  // Get unique values for filter dropdowns
   const uniqueUsers = [...new Set(tasks.map((task) => task.assignedUser))];
   const uniqueCategories = [...new Set(tasks.map((task) => task.category))];
   const uniqueFrequencies = [...new Set(tasks.map((task) => task.frequency))];
 
-  // Handle creating new task
   const handleCreateTask = () => {
     setEditingTask(null);
     setIsTaskFormOpen(true);
   };
 
-  // Handle editing task
   const handleEditTask = (task) => {
     setEditingTask(task);
     setIsTaskFormOpen(true);
   };
 
-  // Handle task form submission
   const handleTaskSubmit = async (taskData) => {
     try {
+      let activityAction = "";
+      let taskNameForActivity = "";
+      let messageType = "";
+
       if (editingTask) {
-        // Update existing task
         const updatedTask = {
           ...editingTask,
           ...taskData,
@@ -411,29 +441,16 @@ const Dashboard = () => {
             users.find((u) => u.id === taskData.assignedUserId)?.name ||
             taskData.assignedUser,
         };
-
         setTasks((prevTasks) =>
           prevTasks.map((task) =>
             task.id === editingTask.id ? updatedTask : task
           )
         );
-
-        // Add activity for task update
-        const newActivity = {
-          id: Date.now(),
-          user: "Current User",
-          action: "updated task",
-          task: updatedTask.name,
-          timestamp: new Date().toISOString(),
-        };
-        setActivities((prev) => [newActivity, ...prev]);
-
-        // Update selected task if it's the one being edited
-        if (selectedTask?.id === editingTask.id) {
-          setSelectedTask(updatedTask);
-        }
+        activityAction = "updated task";
+        taskNameForActivity = updatedTask.name;
+        messageType = "task_edited";
+        if (selectedTask?.id === editingTask.id) setSelectedTask(updatedTask);
       } else {
-        // Create new task
         const newTask = {
           id: generateTaskId(),
           ...taskData,
@@ -444,20 +461,21 @@ const Dashboard = () => {
           completedAt: null,
           comments: [],
         };
-
         setTasks((prevTasks) => [...prevTasks, newTask]);
-
-        // Add activity for task creation
-        const newActivity = {
-          id: Date.now(),
-          user: "Current User",
-          action: "created task",
-          task: newTask.name,
-          timestamp: new Date().toISOString(),
-        };
-        setActivities((prev) => [newActivity, ...prev]);
+        activityAction = "created task";
+        taskNameForActivity = newTask.name;
+        messageType = "task_created";
       }
 
+      const newActivity = {
+        id: Date.now().toString(),
+        user: "Current User", // Replace with actual logged-in user
+        action: activityAction,
+        task: taskNameForActivity,
+        timestamp: new Date().toISOString(),
+        messageType: messageType,
+      };
+      setActivities((prev) => [newActivity, ...prev]);
       setIsTaskFormOpen(false);
       setEditingTask(null);
       return { success: true };
@@ -467,36 +485,28 @@ const Dashboard = () => {
     }
   };
 
-  // Handle task deletion
   const handleDeleteTask = (task) => {
     setTaskToDelete(task);
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm task deletion
   const handleConfirmDelete = async () => {
     try {
       if (taskToDelete) {
         setTasks((prevTasks) =>
           prevTasks.filter((task) => task.id !== taskToDelete.id)
         );
-
-        // Add activity for task deletion
         const newActivity = {
-          id: Date.now(),
+          id: Date.now().toString(),
           user: "Current User",
           action: "deleted task",
           task: taskToDelete.name,
           timestamp: new Date().toISOString(),
+          messageType: "task_deleted",
         };
         setActivities((prev) => [newActivity, ...prev]);
-
-        // Clear selected task if it's the one being deleted
-        if (selectedTask?.id === taskToDelete.id) {
-          setSelectedTask(null);
-        }
+        if (selectedTask?.id === taskToDelete.id) setSelectedTask(null);
       }
-
       setIsDeleteModalOpen(false);
       setTaskToDelete(null);
       return { success: true };
@@ -506,37 +516,29 @@ const Dashboard = () => {
     }
   };
 
-  // Handle task status change
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
       const updatedTask = tasks.find((task) => task.id === taskId);
-      if (!updatedTask) return;
+      if (!updatedTask) return { success: false, error: "Task not found" };
 
       const taskUpdate = {
         ...updatedTask,
         status: newStatus,
         completedAt: newStatus === "Done" ? new Date().toISOString() : null,
       };
-
       setTasks((prevTasks) =>
         prevTasks.map((task) => (task.id === taskId ? taskUpdate : task))
       );
-
-      // Add activity for status change
       const newActivity = {
-        id: Date.now(),
+        id: Date.now().toString(),
         user: "Current User",
         action: `marked task as ${newStatus.toLowerCase()}`,
         task: updatedTask.name,
         timestamp: new Date().toISOString(),
+        messageType: "task_edited", // Or a more specific "task_status_changed"
       };
       setActivities((prev) => [newActivity, ...prev]);
-
-      // Update selected task if it's the one being updated
-      if (selectedTask?.id === taskId) {
-        setSelectedTask(taskUpdate);
-      }
-
+      if (selectedTask?.id === taskId) setSelectedTask(taskUpdate);
       return { success: true };
     } catch (error) {
       console.error("Error updating task status:", error);
@@ -544,59 +546,44 @@ const Dashboard = () => {
     }
   };
 
-  // Handle date filter application
   const handleDateFilterApply = (filter) => {
     setDateFilter(filter);
     setIsDateFilterOpen(false);
   };
 
-  // Handle date filter clear
   const handleDateFilterClear = () => {
-    setDateFilter({
-      startDate: null,
-      endDate: null,
-      filterType: "dueDate",
-    });
+    setDateFilter({ startDate: null, endDate: null, filterType: "dueDate" });
     setIsDateFilterOpen(false);
   };
 
-  // Handle report generation
   const handleGenerateReport = async (reportConfig) => {
     try {
-      const reportData = {
-        ...reportConfig,
-        tasks: filteredTasks,
-        kpis,
-        taskDistribution,
-        activities,
-        generatedAt: new Date().toISOString(),
-      };
-
-      const dataStr = JSON.stringify(reportData, null, 2);
+      // ... report generation logic ...
+      const dataStr = JSON.stringify(
+        { ...reportConfig, tasks: filteredTasks, kpis, activities },
+        null,
+        2
+      );
       const dataUri =
         "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-
       const exportFileDefaultName = `dashboard-report-${
         new Date().toISOString().split("T")[0]
       }.json`;
-
       const linkElement = document.createElement("a");
       linkElement.setAttribute("href", dataUri);
       linkElement.setAttribute("download", exportFileDefaultName);
       linkElement.click();
-
       setIsGenerateReportOpen(false);
 
       const newActivity = {
-        id: Date.now(),
+        id: Date.now().toString(),
         user: "Current User",
         action: "generated report",
         task: null,
         timestamp: new Date().toISOString(),
+        messageType: "report_generated", // Custom type
       };
-
       setActivities((prev) => [newActivity, ...prev]);
-
       return { success: true };
     } catch (error) {
       console.error("Error generating report:", error);
@@ -604,64 +591,44 @@ const Dashboard = () => {
     }
   };
 
-  // Handle data refresh
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const newActivity = {
-        id: Date.now(),
-        user: "Current User",
-        action: "refreshed dashboard",
-        task: null,
-        timestamp: new Date().toISOString(),
-      };
-
-      setActivities((prev) => [newActivity, ...prev]);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
+    toast.success("Refreshing dashboard data...");
   };
 
-  // Handle adding new comment to a task
   const handleAddComment = async (taskId, commentText) => {
     try {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return { success: false, error: "Task not found" };
+
       const newComment = {
         id: Date.now(),
         user: "Current User",
         text: commentText,
         timestamp: new Date().toISOString(),
       };
-
       setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.id === taskId
-            ? { ...task, comments: [...task.comments, newComment] }
-            : task
+        prevTasks.map((t) =>
+          t.id === taskId
+            ? { ...t, comments: [...(t.comments || []), newComment] }
+            : t
         )
       );
-
       const newActivity = {
-        id: Date.now(),
+        id: Date.now().toString(),
         user: "Current User",
-        action: "commented on",
-        task: tasks.find((t) => t.id === taskId)?.name,
+        action: "commented on task",
+        task: task.name,
         timestamp: new Date().toISOString(),
+        messageType: "comment_added",
       };
-
       setActivities((prev) => [newActivity, ...prev]);
-
-      // Update selected task if it's the one being commented on
       if (selectedTask?.id === taskId) {
         setSelectedTask((prev) => ({
           ...prev,
-          comments: [...prev.comments, newComment],
+          comments: [...(prev.comments || []), newComment],
         }));
       }
-
       return { success: true };
     } catch (error) {
       console.error("Error adding comment:", error);
@@ -669,34 +636,23 @@ const Dashboard = () => {
     }
   };
 
-  // Format date range for display
   const getDateRangeDisplay = () => {
-    if (!dateFilter.startDate && !dateFilter.endDate) {
-      return "All Time";
-    }
-
-    const formatDate = (date) => {
-      return new Date(date).toLocaleDateString("en-US", {
+    if (!dateFilter.startDate && !dateFilter.endDate) return "All Time";
+    const formatDate = (date) =>
+      new Date(date).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
       });
-    };
-
-    if (dateFilter.startDate && dateFilter.endDate) {
+    if (dateFilter.startDate && dateFilter.endDate)
       return `${formatDate(dateFilter.startDate)} - ${formatDate(
         dateFilter.endDate
       )}`;
-    } else if (dateFilter.startDate) {
-      return `From ${formatDate(dateFilter.startDate)}`;
-    } else if (dateFilter.endDate) {
-      return `Until ${formatDate(dateFilter.endDate)}`;
-    }
-
+    if (dateFilter.startDate) return `From ${formatDate(dateFilter.startDate)}`;
+    if (dateFilter.endDate) return `Until ${formatDate(dateFilter.endDate)}`;
     return "All Time";
   };
 
-  // Clear all filters
   const clearAllFilters = () => {
     setSearchQuery("");
     setStatusFilter("All");
@@ -704,26 +660,18 @@ const Dashboard = () => {
     setPriorityFilter("All");
     setCategoryFilter("All");
     setFrequencyFilter("All");
-    setDateFilter({
-      startDate: null,
-      endDate: null,
-      filterType: "dueDate",
-    });
+    setDateFilter({ startDate: null, endDate: null, filterType: "dueDate" });
   };
 
-  // Check if any filters are active
-  const hasActiveFilters = () => {
-    return (
-      searchQuery ||
-      statusFilter !== "All" ||
-      userFilter !== "All" ||
-      priorityFilter !== "All" ||
-      categoryFilter !== "All" ||
-      frequencyFilter !== "All" ||
-      dateFilter.startDate ||
-      dateFilter.endDate
-    );
-  };
+  const hasActiveFilters = () =>
+    searchQuery ||
+    statusFilter !== "All" ||
+    userFilter !== "All" ||
+    priorityFilter !== "All" ||
+    categoryFilter !== "All" ||
+    frequencyFilter !== "All" ||
+    dateFilter.startDate ||
+    dateFilter.endDate;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -757,10 +705,12 @@ const Dashboard = () => {
             size="sm"
             className="flex items-center gap-2"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || activitiesLoading}
           >
             <RefreshCw
-              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${
+                isRefreshing || activitiesLoading ? "animate-spin" : ""
+              }`}
             />
             Refresh
           </Button>
@@ -775,7 +725,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Active Filters Display */}
       {hasActiveFilters() && (
         <div className="flex items-center gap-2 flex-wrap p-4 bg-blue-50 rounded-lg border border-blue-200">
           <Filter className="h-4 w-4 text-blue-600" />
@@ -823,23 +772,22 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* KPI Cards Section */}
       <KPICards kpis={kpis} />
-
-      {/* Main Dashboard Content */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-3">
           <TaskDistributionChart tasks={filteredTasks} />
         </div>
         <div className="lg:col-span-3">
-          <UserActivityFeed activities={activities} />
+          <UserActivityFeed
+            activities={activities}
+            isLoading={activitiesLoading}
+            error={activitiesError}
+          />
         </div>
       </div>
 
-      {/* Task Management Section */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Task List */}
         <div className="xl:col-span-2">
           <Card className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -866,13 +814,10 @@ const Dashboard = () => {
                   className="flex items-center gap-2"
                   onClick={handleCreateTask}
                 >
-                  <Plus className="h-4 w-4" />
-                  New Task
+                  <Plus className="h-4 w-4" /> New Task
                 </Button>
               </div>
             </div>
-
-            {/* Search and Filter Controls */}
             <div className="flex flex-col gap-4 mb-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -883,7 +828,6 @@ const Dashboard = () => {
                   className="pl-10"
                 />
               </div>
-
               {isFiltersOpen && (
                 <TaskFilters
                   statusFilter={statusFilter}
@@ -903,8 +847,6 @@ const Dashboard = () => {
                 />
               )}
             </div>
-
-            {/* Task List Component */}
             <TaskList
               tasks={filteredTasks}
               onTaskSelect={setSelectedTask}
@@ -915,14 +857,11 @@ const Dashboard = () => {
             />
           </Card>
         </div>
-
-        {/* Task Comments Section */}
         <div className="xl:col-span-1">
           <TaskComments task={selectedTask} onAddComment={handleAddComment} />
         </div>
       </div>
 
-      {/* Modals */}
       <DateFilterModal
         isOpen={isDateFilterOpen}
         onClose={() => setIsDateFilterOpen(false)}
@@ -930,7 +869,6 @@ const Dashboard = () => {
         onClear={handleDateFilterClear}
         currentFilter={dateFilter}
       />
-
       <GenerateReportModal
         isOpen={isGenerateReportOpen}
         onClose={() => setIsGenerateReportOpen(false)}
@@ -938,7 +876,6 @@ const Dashboard = () => {
         tasksCount={filteredTasks.length}
         kpis={kpis}
       />
-
       <AssignTaskModal
         isOpen={isTaskFormOpen}
         onClose={() => {
@@ -947,7 +884,6 @@ const Dashboard = () => {
         }}
         task={editingTask}
       />
-
       <ConfirmDeleteModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
