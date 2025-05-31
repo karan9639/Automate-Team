@@ -1,11 +1,12 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { taskApi } from "../../api/taskApi";
+// Ensure this path is correct and taskApi object is properly structured
+import * as taskApiService from "../../api/tasksApi";
 
 const initialState = {
   myTasks: [],
   delegatedTasks: [],
   allTasks: [],
-  currentTask: null,
+  currentTask: null, // This will hold the task details including its comments
   categoryTasks: [],
   taskCounts: {},
   searchResults: [],
@@ -24,6 +25,8 @@ const initialState = {
     search: false,
     filter: false,
     reassign: false,
+    createComment: false,
+    fetchComments: false, // New loading state for fetching comments
   },
   error: {
     myTasks: null,
@@ -39,16 +42,18 @@ const initialState = {
     search: null,
     filter: null,
     reassign: null,
+    createComment: null,
+    fetchComments: null, // New error state for fetching comments
   },
 };
 
-// Async Thunks
+// Async Thunks for Tasks
 export const createTask = createAsyncThunk(
   "tasks/createTask",
   async (taskData, { rejectWithValue }) => {
     try {
-      const response = await taskApi.createTask(taskData);
-      return response.data; // Assuming API returns { statusCode, data: createdTask, message, success }
+      const response = await taskApiService.createTask(taskData);
+      return response.data;
     } catch (error) {
       return rejectWithValue(
         error.response?.data || { message: "Failed to create task" }
@@ -61,8 +66,7 @@ export const fetchAllTasks = createAsyncThunk(
   "tasks/fetchAllTasks",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await taskApi.getAllTasks(params);
-      // response.data is: { statusCode, data: { tasks, ... }, message, success }
+      const response = await taskApiService.getAllTasks(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -76,7 +80,7 @@ export const fetchMyTasks = createAsyncThunk(
   "tasks/fetchMyTasks",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await taskApi.getAssignedToMeTasks(params);
+      const response = await taskApiService.getAssignedToMeTasks(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -90,7 +94,7 @@ export const fetchDelegatedTasks = createAsyncThunk(
   "tasks/fetchDelegatedTasks",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await taskApi.getDelegatedTasks(params);
+      const response = await taskApiService.getDelegatedTasks(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -104,7 +108,7 @@ export const editTask = createAsyncThunk(
   "tasks/editTask",
   async ({ taskId, taskData }, { rejectWithValue }) => {
     try {
-      const response = await taskApi.editTask(taskId, taskData);
+      const response = await taskApiService.editTask(taskId, taskData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -118,8 +122,9 @@ export const deleteTask = createAsyncThunk(
   "tasks/deleteTask",
   async (taskId, { rejectWithValue }) => {
     try {
-      await taskApi.deleteTask(taskId);
-      return taskId; // Return taskId for removal from state
+      // Assuming deleteTask is now correctly exported from taskApiService
+      await taskApiService.deleteTask(taskId);
+      return taskId;
     } catch (error) {
       return rejectWithValue(
         error.response?.data || { message: "Failed to delete task" }
@@ -130,9 +135,13 @@ export const deleteTask = createAsyncThunk(
 
 export const viewTask = createAsyncThunk(
   "tasks/viewTask",
-  async (taskId, { rejectWithValue }) => {
+  async (taskId, { dispatch, rejectWithValue }) => {
     try {
-      const response = await taskApi.viewTask(taskId);
+      const response = await taskApiService.viewTask(taskId);
+      if (response.data?.data?._id) {
+        // After fetching task details, fetch its comments
+        dispatch(fetchTaskCommentsByTaskId(response.data.data._id));
+      }
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -146,7 +155,9 @@ export const changeTaskStatus = createAsyncThunk(
   "tasks/changeTaskStatus",
   async ({ taskId, status }, { rejectWithValue }) => {
     try {
-      const response = await taskApi.changeTaskStatus(taskId, { status });
+      const response = await taskApiService.changeTaskStatus(taskId, {
+        status,
+      });
       return { taskId, status, data: response.data };
     } catch (error) {
       return rejectWithValue(
@@ -156,11 +167,45 @@ export const changeTaskStatus = createAsyncThunk(
   }
 );
 
+// Async Thunks for Comments
+export const createTaskComment = createAsyncThunk(
+  "tasks/createTaskComment", // Changed name for clarity if you have other comment types
+  async ({ taskId, commentData }, { rejectWithValue }) => {
+    try {
+      const response = await taskApiService.createTaskComment(
+        taskId,
+        commentData
+      );
+      // Assuming API returns the newly created comment object in response.data.data
+      return { taskId, newComment: response.data.data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { message: "Failed to create comment" }
+      );
+    }
+  }
+);
+
+export const fetchTaskCommentsByTaskId = createAsyncThunk(
+  "tasks/fetchTaskCommentsByTaskId",
+  async (taskId, { rejectWithValue }) => {
+    try {
+      const response = await taskApiService.fetchTaskComments(taskId);
+      // The API response has comments in response.data.data (which is an array)
+      return { taskId, comments: response.data.data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { message: "Failed to fetch comments" }
+      );
+    }
+  }
+);
+
 export const searchTasks = createAsyncThunk(
   "tasks/searchTasks",
   async (searchParams, { rejectWithValue }) => {
     try {
-      const response = await taskApi.searchTask(searchParams);
+      const response = await taskApiService.searchTask(searchParams);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -174,7 +219,7 @@ export const filterTasks = createAsyncThunk(
   "tasks/filterTasks",
   async (filterParams, { rejectWithValue }) => {
     try {
-      const response = await taskApi.filterTasks(filterParams);
+      const response = await taskApiService.filterTasks(filterParams);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -188,7 +233,7 @@ export const fetchCategoryTasks = createAsyncThunk(
   "tasks/fetchCategoryTasks",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await taskApi.fetchCategoryTasks(params);
+      const response = await taskApiService.fetchCategoryTasks(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -202,7 +247,7 @@ export const getCategoryWiseTaskCounting = createAsyncThunk(
   "tasks/getCategoryWiseTaskCounting",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await taskApi.getCategoryWiseTaskCounting(params);
+      const response = await taskApiService.getCategoryWiseTaskCounting(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -218,7 +263,7 @@ export const reAssignAllTasks = createAsyncThunk(
   "tasks/reAssignAllTasks",
   async (reassignData, { rejectWithValue }) => {
     try {
-      const response = await taskApi.reAssignAllTasks(reassignData);
+      const response = await taskApiService.reAssignAllTasks(reassignData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -266,7 +311,87 @@ const taskSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Create Task
+    // View Task
+    builder
+      .addCase(viewTask.pending, (state) => {
+        state.loading.view = true;
+        state.error.view = null;
+        state.currentTask = null; // Clear previous task while loading new one
+      })
+      .addCase(viewTask.fulfilled, (state, action) => {
+        state.loading.view = false;
+        // The task data is in action.payload.data
+        state.currentTask = action.payload.data || null;
+        // Comments will be fetched by the dispatched fetchTaskCommentsByTaskId
+        // Initialize comments array if not present, to avoid errors before fetch completes
+        if (state.currentTask && !state.currentTask.comments) {
+          state.currentTask.comments = [];
+        }
+        state.error.view = null;
+      })
+      .addCase(viewTask.rejected, (state, action) => {
+        state.loading.view = false;
+        state.error.view = action.payload?.message || "Failed to view task";
+        state.currentTask = null;
+      });
+
+    // Fetch Task Comments
+    builder
+      .addCase(fetchTaskCommentsByTaskId.pending, (state) => {
+        state.loading.fetchComments = true;
+        state.error.fetchComments = null;
+        if (state.currentTask) {
+          // Optionally clear old comments or show a specific loading state for comments
+          // state.currentTask.comments = []; // Or keep old ones until new ones arrive
+        }
+      })
+      .addCase(fetchTaskCommentsByTaskId.fulfilled, (state, action) => {
+        state.loading.fetchComments = false;
+        if (
+          state.currentTask &&
+          state.currentTask._id === action.payload.taskId
+        ) {
+          // The actual comments array is in action.payload.comments
+          state.currentTask.comments = action.payload.comments || [];
+        }
+        state.error.fetchComments = null;
+      })
+      .addCase(fetchTaskCommentsByTaskId.rejected, (state, action) => {
+        state.loading.fetchComments = false;
+        state.error.fetchComments =
+          action.payload?.message || "Failed to fetch comments";
+        if (state.currentTask) {
+          state.currentTask.comments = []; // Clear comments on error or keep stale ones
+        }
+      });
+
+    // Create Task Comment
+    builder
+      .addCase(createTaskComment.pending, (state) => {
+        state.loading.createComment = true;
+        state.error.createComment = null;
+      })
+      .addCase(createTaskComment.fulfilled, (state, action) => {
+        state.loading.createComment = false;
+        const { newComment } = action.payload;
+        if (state.currentTask && newComment) {
+          if (!state.currentTask.comments) {
+            state.currentTask.comments = [];
+          }
+          // Add the new comment to the beginning or end of the list
+          state.currentTask.comments.push(newComment);
+        }
+      })
+      .addCase(createTaskComment.rejected, (state, action) => {
+        state.loading.createComment = false;
+        state.error.createComment =
+          action.payload?.message || "Failed to create comment";
+      });
+
+    // ... other existing extraReducers for createTask, fetchAllTasks, editTask, deleteTask etc.
+    // Ensure they are correctly defined as in your previous version.
+    // For brevity, I'm omitting the full list of other task-related thunk handlers here,
+    // but they should be present. Example for createTask:
     builder
       .addCase(createTask.pending, (state) => {
         state.loading.create = true;
@@ -274,10 +399,9 @@ const taskSlice = createSlice({
       })
       .addCase(createTask.fulfilled, (state, action) => {
         state.loading.create = false;
-        // Add to relevant lists
         if (action.payload.data) {
           state.allTasks.unshift(action.payload.data);
-          state.delegatedTasks.unshift(action.payload.data);
+          // Decide if it should also go to delegatedTasks or myTasks based on your logic
         }
       })
       .addCase(createTask.rejected, (state, action) => {
@@ -293,7 +417,6 @@ const taskSlice = createSlice({
       })
       .addCase(fetchAllTasks.fulfilled, (state, action) => {
         state.loading.allTasks = false;
-        // CRITICAL LINE: Ensure tasks are extracted from action.payload.data.tasks
         state.allTasks = action.payload.data?.tasks || [];
         state.error.allTasks = null;
       })
@@ -358,7 +481,7 @@ const taskSlice = createSlice({
           state.myTasks = updateList(state.myTasks);
           state.delegatedTasks = updateList(state.delegatedTasks);
           if (state.currentTask?._id === updatedTask._id) {
-            state.currentTask = updatedTask;
+            state.currentTask = { ...state.currentTask, ...updatedTask }; // Preserve comments if not in payload
           }
         }
       })
@@ -390,23 +513,6 @@ const taskSlice = createSlice({
         state.error.delete = action.payload?.message || "Failed to delete task";
       });
 
-    // View Task
-    builder
-      .addCase(viewTask.pending, (state) => {
-        state.loading.view = true;
-        state.error.view = null;
-      })
-      .addCase(viewTask.fulfilled, (state, action) => {
-        state.loading.view = false;
-        state.currentTask = action.payload.data || null;
-        state.error.view = null;
-      })
-      .addCase(viewTask.rejected, (state, action) => {
-        state.loading.view = false;
-        state.error.view = action.payload?.message || "Failed to view task";
-        state.currentTask = null;
-      });
-
     // Change Task Status
     builder
       .addCase(changeTaskStatus.pending, (state) => {
@@ -415,22 +521,23 @@ const taskSlice = createSlice({
       })
       .addCase(changeTaskStatus.fulfilled, (state, action) => {
         state.loading.statusChange = false;
-        const { taskId, status } = action.payload;
+        const { taskId, status } = action.payload; // Assuming status is just the string
 
-        // Update status in all relevant arrays
         const updateStatusInArray = (array) => {
-          const task = array.find((task) => task._id === taskId);
-          if (task) {
-            task.taskStatus = status;
-          }
+          return array.map((task) =>
+            task._id === taskId
+              ? { ...task, taskStatus: status, status: status }
+              : task
+          );
         };
 
-        updateStatusInArray(state.allTasks);
-        updateStatusInArray(state.myTasks);
-        updateStatusInArray(state.delegatedTasks);
+        state.allTasks = updateStatusInArray(state.allTasks);
+        state.myTasks = updateStatusInArray(state.myTasks);
+        state.delegatedTasks = updateStatusInArray(state.delegatedTasks);
 
         if (state.currentTask && state.currentTask._id === taskId) {
           state.currentTask.taskStatus = status;
+          state.currentTask.status = status;
         }
       })
       .addCase(changeTaskStatus.rejected, (state, action) => {
@@ -547,5 +654,8 @@ export const selectFilterResults = (state) => state.tasks.filteredResults;
 export const selectSelectedTaskIds = (state) => state.tasks.selectedTaskIds;
 export const selectCategoryTasks = (state) => state.tasks.categoryTasks;
 export const selectTaskCounts = (state) => state.tasks.taskCounts;
+export const selectCurrentTaskWithComments = (state) => state.tasks.currentTask;
+export const selectTaskLoadingStates = (state) => state.tasks.loading;
+export const selectTaskErrorStates = (state) => state.tasks.error;
 
 export default taskSlice.reducer;
