@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Loader2, AlertTriangle } from "lucide-react";
 
 const UserActivityFeed = ({ activities, isLoading, error }) => {
-  // console.log("UserActivityFeed activities:", activities);
+  console.log("UserActivityFeed activities:", activities);
   const getActionColor = (messageType) => {
     if (!messageType) return "text-gray-500";
     switch (messageType) {
@@ -23,9 +23,9 @@ const UserActivityFeed = ({ activities, isLoading, error }) => {
       case "task_status_changed": // A possible local one
         return "text-yellow-500";
       // Custom local types
-      case "report_generated":
-      case "dashboard_refreshed":
-        return "text-indigo-500";
+      // case "report_generated":
+      // case "dashboard_refreshed":
+      //   return "text-indigo-500";
       default:
         // Fallback for any other messageTypes or local actions not explicitly listed
         if (messageType.includes("create") || messageType.includes("add"))
