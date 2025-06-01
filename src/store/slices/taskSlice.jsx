@@ -59,6 +59,7 @@ const initialState = {
 export const createTask = createAsyncThunk(
   "tasks/createTask",
   async (taskData, { rejectWithValue }) => {
+    console.log(taskData)
     try {
       const response = await taskApiService.createTask(taskData);
       return response.data; // Assuming API returns { success: true, data: newTask, message: "..." }

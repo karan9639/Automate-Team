@@ -335,7 +335,7 @@ const Sidebar = ({
         </div>
 
         {/* Navigation menu */}
-        <div className="overflow-y-auto h-[calc(100vh-64px)] py-2 px-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 bg-green-500">
+        <div className="overflow-y-auto h-[calc(100vh-64px)] py-2 px-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 bg-green-800">
           {navigationGroups.map((group) => (
             <div key={group.id} className="mb-2">
               {/* Group header (if it has a title) */}
