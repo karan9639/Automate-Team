@@ -276,13 +276,13 @@ const KPICards = ({ kpis }) => {
                   {/* Breakdown section for assigned vs my tasks */}
                   {card.breakdown && (
                     <div className="mt-2 pt-2 border-t border-gray-100">
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="grid grid-cols-1 gap-2 text-xs">
                         <div>
-                          <span className="text-gray-500">Assigned to me:</span>{" "}
+                          <span className="text-gray-500">My Tasks:</span>{" "}
                           <span className="font-medium">{card.breakdown.assignedToMe}</span>
                         </div>
                         <div>
-                          <span className="text-gray-500">Created by me:</span>{" "}
+                          <span className="text-gray-500">Initiated Tasks:</span>{" "}
                           <span className="font-medium">{card.breakdown.createdByMe}</span>
                         </div>
                       </div>

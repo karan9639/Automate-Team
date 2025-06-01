@@ -22,6 +22,7 @@ import { toast } from "react-hot-toast";
 import { Send, MessageSquare, UserCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { createTaskComment } from "../../store/slices/taskSlice"; // Ensure this path is correct
+import { fetchTaskCommentsByTaskId } from "../../store/slices/taskSlice";
 
 const ViewTaskModal = ({
   isOpen,
@@ -37,6 +38,8 @@ const ViewTaskModal = ({
     (state) => state.tasks
   );
 
+  const [comments, setComments] = useState([]);
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [formErrors, setFormErrors] = useState({});
@@ -47,6 +50,8 @@ const ViewTaskModal = ({
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const { user: loggedInUser } = useSelector((state) => state.auth); // Assuming you have loggedInUser in auth state
+
+  
 
   // User API integration from AssignTaskModal
   const [allUsers, setAllUsers] = useState([]);
@@ -92,6 +97,25 @@ const ViewTaskModal = ({
       setIsFetchingUsers(false);
     }
   };
+
+  useEffect(() => {
+  if (task?._id && isOpen) {
+    dispatch(fetchTaskCommentsByTaskId(task._id))
+      .unwrap()
+      .then((res) => {
+        if (res?.success && Array.isArray(res.data)) {
+          setComments(res.data);
+        } else {
+          toast.error("Failed to fetch comments.");
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching comments:", err);
+        toast.error("Error loading comments");
+      });
+  }
+}, [task?._id, isOpen, dispatch]);
+
 
   // Extract and store task ID when task changes
   useEffect(() => {
@@ -995,87 +1019,73 @@ const ViewTaskModal = ({
                   </div>
                 </div>
               </div>
-
+<div>
               {/* Comments Section */}
-              <div className="border-t pt-6">
-                <h3 className="flex items-center text-lg font-semibold text-gray-900 mb-3">
-                  <MessageSquare className="h-5 w-5 mr-2" />
-                  Comments
-                </h3>
-                <div className="space-y-4 max-h-60 overflow-y-auto mb-4 pr-2 bg-gray-50 p-4 rounded-md">
-                  {task?.comments && task.comments.length > 0 ? (
-                    task.comments.map((comment, index) => (
-                      <div
-                        key={comment._id || `comment-${index}`}
-                        className="flex space-x-3 pb-3 border-b border-gray-200 last:border-b-0"
-                      >
-                        <UserCircle className="h-8 w-8 text-gray-400 mt-1" />
-                        <div className="flex-1">
-                          <div className="flex items-baseline">
-                            <p className="text-sm font-medium text-gray-800">
-                              {/* Adjust based on how user info is stored in comment object */}
-                              {comment.user?.fullname ||
-                                comment.user?.name ||
-                                comment.user ||
-                                "User"}
-                            </p>
-                            <span className="ml-2 text-xs text-gray-500">
-                              {formatCommentTimestamp(
-                                comment.createdAt || comment.timestamp
-                              )}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
-                            {comment.text}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-4 text-center">
-                      <p className="text-gray-500">
-                        No comments yet. Be the first to comment!
-                      </p>
-                    </div>
-                  )}
-                </div>
+  {comments && comments.length > 0 ? (
+    comments.map((comment, index) => (
+      <div
+        key={comment._id || `comment-${index}`}
+        className="flex space-x-3 pb-3 border-b border-gray-200 last:border-b-0"
+      >
+        <UserCircle className="h-8 w-8 text-gray-400 mt-1" />
+        <div className="flex-1">
+          <div className="flex items-baseline">
+            <p className="text-sm font-medium text-gray-800">
+              {comment.commentedBy?.fullname || "User"}
+            </p>
+            <span className="ml-2 text-xs text-gray-500">
+              {formatCommentTimestamp(comment.createdAt)}
+            </span>
+          </div>
+          <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
+            {comment.comment || "No content"}
+          </p>
+        </div>
+      </div>
+    ))
+  ) : (
+    <div className="py-4 text-center">
+      <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+    </div>
+  )}
 
-                {!isEditMode && (
-                  <form onSubmit={handleCommentSubmit} className="mt-4">
-                    <div className="flex items-start space-x-2">
-                      <textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Add a comment..."
-                        className="flex-1 min-h-[60px] p-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500"
-                        rows={2}
-                      />
-                      <button
-                        type="submit"
-                        disabled={
-                          !newComment.trim() ||
-                          isSubmittingComment ||
-                          taskLoading.createComment
-                        }
-                        className="px-4 py-2 h-[60px] bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center"
-                      >
-                        {isSubmittingComment || taskLoading.createComment ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                    {taskErrors.createComment && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {taskErrors.createComment}
-                      </p>
-                    )}
-                  </form>
-                )}
+  {!isEditMode && (
+    <form onSubmit={handleCommentSubmit} className="mt-4">
+      <div className="flex items-start space-x-2">
+        <textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Add a comment..."
+          className="flex-1 min-h-[60px] p-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500"
+          rows={2}
+        />
+        <button
+          type="submit"
+          disabled={
+            !newComment.trim() ||
+            isSubmittingComment ||
+            taskLoading.createComment
+          }
+          className="px-4 py-2 h-[60px] bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center"
+        >
+          {isSubmittingComment || taskLoading.createComment ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+      {taskErrors.createComment && (
+        <p className="mt-1 text-sm text-red-600">
+          {taskErrors.createComment}
+        </p>
+      )}
+    </form>
+  )}
               </div>
 
-              {/* Task ID Error */}
+             {/* Task ID Error */}
+
               {formErrors.taskId && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
                   <p className="text-sm">
