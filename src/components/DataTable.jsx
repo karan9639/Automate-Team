@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
-import { motion } from "framer-motion"
-import { cn } from "../utils/helpers"
+import { useState } from "react";
+import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "../utils/helpers";
 
 const DataTable = ({
   data = [],
@@ -14,37 +14,41 @@ const DataTable = ({
   onPageChange,
   className,
 }) => {
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null })
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
 
   const handleSort = (key) => {
-    let direction = "asc"
+    let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc"
+      direction = "desc";
     }
-    setSortConfig({ key, direction })
-  }
+    setSortConfig({ key, direction });
+  };
 
   const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return <ChevronsUpDown size={16} />
-    return sortConfig.direction === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />
-  }
+    if (sortConfig.key !== key) return <ChevronsUpDown size={16} />;
+    return sortConfig.direction === "asc" ? (
+      <ChevronUp size={16} />
+    ) : (
+      <ChevronDown size={16} />
+    );
+  };
 
   const sortedData = [...data].sort((a, b) => {
-    if (!sortConfig.key) return 0
+    if (!sortConfig.key) return 0;
 
-    const aValue = a[sortConfig.key]
-    const bValue = b[sortConfig.key]
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
 
     if (aValue < bValue) {
-      return sortConfig.direction === "asc" ? -1 : 1
+      return sortConfig.direction === "asc" ? -1 : 1;
     }
     if (aValue > bValue) {
-      return sortConfig.direction === "asc" ? 1 : -1
+      return sortConfig.direction === "asc" ? 1 : -1;
     }
-    return 0
-  })
+    return 0;
+  });
 
-  const totalPages = Math.ceil(pagination.total / pagination.limit)
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
 
   if (isLoading) {
     return (
@@ -66,7 +70,7 @@ const DataTable = ({
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (data.length === 0) {
@@ -77,7 +81,7 @@ const DataTable = ({
         </div>
         <div className="p-8 text-center text-gray-500">No records found</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -91,13 +95,17 @@ const DataTable = ({
                   key={column.key}
                   className={cn(
                     "px-4 py-3 text-left text-sm font-medium text-gray-500 tracking-wider whitespace-nowrap",
-                    column.sortable && "cursor-pointer hover:bg-gray-100",
+                    column.sortable && "cursor-pointer hover:bg-gray-100"
                   )}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
                   <div className="flex items-center gap-1">
                     {column.header}
-                    {column.sortable && <span className="text-gray-400">{getSortIcon(column.key)}</span>}
+                    {column.sortable && (
+                      <span className="text-gray-400">
+                        {getSortIcon(column.key)}
+                      </span>
+                    )}
                   </div>
                 </th>
               ))}
@@ -107,7 +115,10 @@ const DataTable = ({
             {sortedData.map((row, rowIndex) => (
               <motion.tr
                 key={row.id || rowIndex}
-                className={cn("hover:bg-gray-50", onRowClick && "cursor-pointer")}
+                className={cn(
+                  "hover:bg-gray-50",
+                  onRowClick && "cursor-pointer"
+                )}
                 onClick={() => onRowClick && onRowClick(row)}
                 whileHover={{ backgroundColor: "rgba(0,0,0,0.02)" }}
                 transition={{ duration: 0.1 }}
@@ -124,12 +135,13 @@ const DataTable = ({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 sm:gap-0">
           <div className="text-sm text-gray-500">
             Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} entries
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-1">
             <button
               className="px-3 py-1 rounded border text-sm disabled:opacity-50"
               disabled={pagination.page === 1}
@@ -138,22 +150,25 @@ const DataTable = ({
               Previous
             </button>
             {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
-              const pageNumber = pagination.page <= 3 ? index + 1 : pagination.page + index - 2
+              const pageNumber =
+                pagination.page <= 3 ? index + 1 : pagination.page + index - 2;
 
-              if (pageNumber > totalPages) return null
+              if (pageNumber > totalPages) return null;
 
               return (
                 <button
                   key={pageNumber}
                   className={cn(
                     "px-3 py-1 rounded border text-sm",
-                    pagination.page === pageNumber ? "bg-purple-100 border-purple-300" : "",
+                    pagination.page === pageNumber
+                      ? "bg-purple-100 border-purple-300"
+                      : ""
                   )}
                   onClick={() => onPageChange(pageNumber)}
                 >
                   {pageNumber}
                 </button>
-              )
+              );
             })}
             <button
               className="px-3 py-1 rounded border text-sm disabled:opacity-50"
@@ -166,7 +181,7 @@ const DataTable = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default DataTable
+export default DataTable;

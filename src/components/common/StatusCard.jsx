@@ -1,70 +1,52 @@
-"use client"
+"use client";
+import { motion } from "framer-motion";
 
-import PropTypes from "prop-types"
-import { motion } from "framer-motion"
-
-/**
- * Status card component for displaying metrics
- */
-const StatusCard = ({ title, count, icon: Icon, color }) => {
-  const colorVariants = {
-    green: {
-      bg: "bg-green-50",
-      text: "text-green-700",
-      iconBg: "bg-green-100",
-      iconColor: "text-green-500",
-    },
-    red: {
-      bg: "bg-red-50",
-      text: "text-red-700",
-      iconBg: "bg-red-100",
-      iconColor: "text-red-500",
-    },
-    blue: {
-      bg: "bg-blue-50",
-      text: "text-blue-700",
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-500",
-    },
-    amber: {
-      bg: "bg-amber-50",
-      text: "text-amber-700",
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-500",
-    },
-    purple: {
-      bg: "bg-purple-50",
-      text: "text-purple-700",
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-500",
-    },
-  }
-
-  const variant = colorVariants[color] || colorVariants.blue
-
+const StatusCard = ({
+  title,
+  count,
+  trend,
+  Icon,
+  bgColor,
+  textColor,
+  trendColor,
+  countColor,
+  iconColor,
+  iconBgColor,
+}) => {
   return (
     <motion.div
-      whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
-      className={`${variant.bg} rounded-lg p-4 shadow-sm`}
+      whileHover={{ y: -5, boxShadow: "0 10px 20px -5px rgba(0,0,0,0.1)" }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={`rounded-xl p-4 sm:p-6 shadow-lg transition-all duration-300 ease-out ${bgColor} ${textColor} flex flex-col items-start text-left`}
     >
-      <div className="flex items-center">
-        <div className={`${variant.iconBg} p-3 rounded-full`}>
-          <Icon className={`h-6 w-6 ${variant.iconColor}`} />
-        </div>
-        <div className="ml-4">
-          <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-          <p className={`text-2xl font-bold ${variant.text}`}>{count}</p>
-        </div>
+      <div
+        className={`p-2 sm:p-3 rounded-full ${
+          iconBgColor || "bg-foreground/5"
+        } mb-3 self-start`}
+      >
+        <Icon
+          size={20}
+          sm:size={24}
+          className={iconColor || "text-foreground"}
+        />
       </div>
+      <h3 className="text-sm sm:text-base font-medium text-muted-foreground mb-1">
+        {title}
+      </h3>
+      <p
+        className={`text-2xl sm:text-3xl font-bold ${
+          countColor || "text-foreground"
+        }`}
+      >
+        {count}
+      </p>
+      {trend && (
+        <p className={`text-xs mt-1 ${trendColor || "text-muted-foreground"}`}>
+          {trend}
+        </p>
+      )}
     </motion.div>
-  )
-}
+  );
+};
 
-StatusCard.propTypes = {
-  title: PropTypes.string.isRequired,
-  count: PropTypes.number.isRequired,
-  icon: PropTypes.elementType.isRequired,
-  color: PropTypes.oneOf(["green", "red", "blue", "amber", "purple"]).isRequired,
-}
-
-export default StatusCard
+export default StatusCard;

@@ -1,30 +1,49 @@
-"use client"
-import { useSelector } from "react-redux"
-import { motion } from "framer-motion"
-import { AlertCircle, Clock, PlayCircle, CheckCircle, XCircle } from "lucide-react"
+"use client";
+import { useSelector } from "react-redux";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  Clock,
+  PlayCircle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 
 const TaskTable = ({ view, dateFilter, searchQuery, filters }) => {
   // Get team members from Redux store
-  const { members } = useSelector((state) => state.team)
+  const { members } = useSelector((state) => state.team);
 
   // Get tasks from Redux store
-  const { tasks } = useSelector((state) => state.tasks)
+  const { tasks } = useSelector((state) => state.tasks);
 
   // Group tasks by employee
   const tasksByEmployee = members.map((member) => {
-    const employeeTasks = tasks.filter((task) => task.assigneeId === member.id)
+    const employeeTasks = tasks.filter((task) => task.assigneeId === member.id);
 
     // Count tasks by status
-    const overdue = employeeTasks.filter((task) => task.status === "overdue").length
-    const pending = employeeTasks.filter((task) => task.status === "pending").length
-    const inProgress = employeeTasks.filter((task) => task.status === "in-progress").length
-    const completed = employeeTasks.filter((task) => task.status === "completed").length
-    const inTime = employeeTasks.filter((task) => task.status === "in-time").length
-    const delayed = employeeTasks.filter((task) => task.status === "delayed").length
+    const overdue = employeeTasks.filter(
+      (task) => task.status === "overdue"
+    ).length;
+    const pending = employeeTasks.filter(
+      (task) => task.status === "pending"
+    ).length;
+    const inProgress = employeeTasks.filter(
+      (task) => task.status === "in-progress"
+    ).length;
+    const completed = employeeTasks.filter(
+      (task) => task.status === "completed"
+    ).length;
+    const inTime = employeeTasks.filter(
+      (task) => task.status === "in-time"
+    ).length;
+    const delayed = employeeTasks.filter(
+      (task) => task.status === "delayed"
+    ).length;
 
     // Calculate completion percentage
-    const total = employeeTasks.length
-    const completedPercentage = total > 0 ? Math.round((completed / total) * 100) : 0
+    const total = employeeTasks.length;
+    const completedPercentage =
+      total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return {
       employee: member,
@@ -37,23 +56,26 @@ const TaskTable = ({ view, dateFilter, searchQuery, filters }) => {
       inTime,
       delayed,
       completedPercentage,
-    }
-  })
+    };
+  });
 
   // Filter by search query and filters
   const filteredData = tasksByEmployee.filter((data) => {
     // Filter by search query
-    if (searchQuery && !data.employee.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false
+    if (
+      searchQuery &&
+      !data.employee.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
+      return false;
     }
 
     // Filter by assignee
     if (filters.assignedTo && data.employee.id !== filters.assignedTo) {
-      return false
+      return false;
     }
 
-    return true
-  })
+    return true;
+  });
 
   // Render employee-wise view
   if (view === "Employee Wise") {
@@ -158,11 +180,13 @@ const TaskTable = ({ view, dateFilter, searchQuery, filters }) => {
                 transition={{ duration: 0.3 }}
                 className="hover:bg-gray-50"
               >
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10 relative">
                       <div className="absolute inset-0 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-800 font-medium">{data.employee.name.charAt(0)}</span>
+                        <span className="text-blue-800 font-medium">
+                          {data.employee.name.charAt(0)}
+                        </span>
                       </div>
                       <svg viewBox="0 0 36 36" className="h-10 w-10">
                         <path
@@ -175,33 +199,57 @@ const TaskTable = ({ view, dateFilter, searchQuery, filters }) => {
                         />
                       </svg>
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{data.employee.name}</div>
+                    <div className="ml-2 sm:ml-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {data.employee.name}
+                      </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.total}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {data.overdue} ({data.total > 0 ? Math.round((data.overdue / data.total) * 100) : 0}%)
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
+                  {data.total}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {data.pending} ({data.total > 0 ? Math.round((data.pending / data.total) * 100) : 0}%)
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
+                  {data.overdue} (
+                  {data.total > 0
+                    ? Math.round((data.overdue / data.total) * 100)
+                    : 0}
+                  %)
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {data.inProgress} ({data.total > 0 ? Math.round((data.inProgress / data.total) * 100) : 0}%)
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
+                  {data.pending} (
+                  {data.total > 0
+                    ? Math.round((data.pending / data.total) * 100)
+                    : 0}
+                  %)
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {data.inTime} ({data.total > 0 ? Math.round((data.inTime / data.total) * 100) : 0}%)
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
+                  {data.inProgress} (
+                  {data.total > 0
+                    ? Math.round((data.inProgress / data.total) * 100)
+                    : 0}
+                  %)
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {data.delayed} ({data.total > 0 ? Math.round((data.delayed / data.total) * 100) : 0}%)
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
+                  {data.inTime} (
+                  {data.total > 0
+                    ? Math.round((data.inTime / data.total) * 100)
+                    : 0}
+                  %)
+                </td>
+                <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
+                  {data.delayed} (
+                  {data.total > 0
+                    ? Math.round((data.delayed / data.total) * 100)
+                    : 0}
+                  %)
                 </td>
               </motion.tr>
             ))}
           </tbody>
         </table>
       </div>
-    )
+    );
   }
 
   // For other views, show a placeholder
@@ -209,7 +257,7 @@ const TaskTable = ({ view, dateFilter, searchQuery, filters }) => {
     <div className="bg-white rounded-lg border border-gray-200 p-6 text-center text-gray-500">
       {view} view is not implemented in this demo
     </div>
-  )
-}
+  );
+};
 
-export default TaskTable
+export default TaskTable;

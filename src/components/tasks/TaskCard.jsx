@@ -253,7 +253,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
 
   return (
     <Card
-      className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+      className="p-3 sm:p-4 hover:shadow-md transition-shadow cursor-pointer"
       onClick={(e) => {
         // Don't trigger onClick if clicking on the actions dropdown
         if (!e.target.closest(".actions-dropdown")) {
@@ -267,7 +267,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
       }}
     >
       <div className="flex justify-between items-start mb-3">
-        <h3 className="font-medium text-lg">{taskTitle}</h3>
+        <h3 className="font-medium text-base sm:text-lg">{taskTitle}</h3>
         <div className="relative actions-dropdown">
           <Button
             variant="ghost"
@@ -362,7 +362,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
         )}
       </div>
 
-      <div className="flex justify-between items-center text-sm text-gray-500">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-xs sm:text-sm text-gray-500 gap-2 sm:gap-0">
         <div className="flex items-center">
           <Clock className="h-4 w-4 mr-1" />
           <span>

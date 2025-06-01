@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Loader2, AlertTriangle } from "lucide-react";
 
 const UserActivityFeed = ({ activities, isLoading, error }) => {
+  // console.log("UserActivityFeed activities:", activities);
   const getActionColor = (messageType) => {
     if (!messageType) return "text-gray-500";
     switch (messageType) {
@@ -119,8 +120,7 @@ const UserActivityFeed = ({ activities, isLoading, error }) => {
                       {activity.user || "System"}
                     </span>{" "}
                     <span className={getActionColor(activity.messageType)}>
-                      {activity.action ||
-                        activity.messageType.replace(/_/g, " ")}
+                      {activity.messageType.replace(/_/g, " ")}
                     </span>{" "}
                     {activity.task && (
                       <span className="font-medium">"{activity.task}"</span>

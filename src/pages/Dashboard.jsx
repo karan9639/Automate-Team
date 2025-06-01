@@ -802,14 +802,14 @@ const Dashboard = () => {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
+          {/* <Button
             variant="outline"
             size="sm"
             onClick={() => setIsDateFilterOpen(true)}
           >
             <CalendarDays className="h-4 w-4 mr-2" />
             {getDateRangeDisplay()}
-          </Button>
+          </Button> */}
           <Button
             variant="outline"
             size="sm"
@@ -837,10 +837,10 @@ const Dashboard = () => {
             />
             Refresh
           </Button>
-          <Button size="sm" onClick={() => setIsGenerateReportOpen(true)}>
+          {/* <Button size="sm" onClick={() => setIsGenerateReportOpen(true)}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Generate Report
-          </Button>
+          </Button> */}
         </div>
       </div>
 
