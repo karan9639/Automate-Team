@@ -1,295 +1,314 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  Bell,
   Menu,
   X,
   User,
   LogOut,
-  Settings,
   ChevronDown,
+  Bell,
+  Settings,
 } from "lucide-react";
-import AutomateLogo from "../components/common/AutomateLogo";
 import PropTypes from "prop-types";
 import { ROUTES } from "../constants/routes";
 import { toast } from "react-hot-toast";
 import { logoutUser } from "@/api/authApi";
+import { Button } from "@/components/ui/button"; // Assuming Button is modernized
 
-const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
+const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const dropdownRef = useRef(null);
+  const notificationsRef = useRef(null);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownOpen && !event.target.closest(".user-dropdown")) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
       if (
-        notificationsOpen &&
-        !event.target.closest(".notifications-dropdown")
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target)
       ) {
         setNotificationsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownOpen, notificationsOpen]);
+  }, []);
 
-  // Keyboard shortcut for search
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
       }
-      if (e.key === "Escape" && searchOpen) {
-        setSearchOpen(false);
-      }
+      if (e.key === "Escape" && searchOpen) setSearchOpen(false);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [searchOpen]);
 
-  // 🛠 Fixed logout function
   const handleLogout = async (event) => {
     event?.preventDefault();
     event?.stopPropagation();
-
     if (isLoggingOut) return;
-
+    setIsLoggingOut(true);
+    setDropdownOpen(false);
     try {
-      setIsLoggingOut(true);
-      setDropdownOpen(false);
-
-      const apiResponse = await logoutUser();
-
-      console.log("Logout API success:", apiResponse);
-
+      await logoutUser();
       await logout();
       navigate(ROUTES.AUTH.LOGIN, { replace: true });
       toast.success("Logged out successfully.");
     } catch (error) {
-      console.error("Logout failed:", error);
-
-      if (error.message?.includes("401") || error.status === 401) {
-        toast.error("Session expired. Please login again.");
-        navigate(ROUTES.AUTH.LOGIN, { replace: true });
-      } else {
-        toast.error(`Logout failed: ${error.message || "Unknown error"}`);
-      }
+      toast.error(`Logout failed: ${error.message || "Unknown error"}`);
     } finally {
       setIsLoggingOut(false);
     }
   };
 
-  const getUserDisplayName = () => {
-    if (!currentUser) return "User";
-    return (
-      currentUser.fullname?.trim() ||
-      currentUser.name?.trim() ||
-      currentUser.email?.split("@")[0] ||
-      "User"
-    );
-  };
-
+  const getUserDisplayName = () =>
+    currentUser?.fullname ||
+    currentUser?.name ||
+    currentUser?.email?.split("@")[0] ||
+    "User";
   const getUserInitial = () => getUserDisplayName().charAt(0).toUpperCase();
   const getUserRole = () =>
     currentUser?.accountType || currentUser?.role || "User";
   const getUserEmail = () => currentUser?.email || "";
 
+  const itemVariants = {
+    closed: { opacity: 0, y: -10 },
+    open: { opacity: 1, y: 0 },
+  };
+
   return (
-    <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 z-10 sticky top-0 bg-green-700">
+    <header className="h-16 bg-background/80 backdrop-blur-md border-b border-border shadow-sm flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
       <div className="flex items-center">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={toggleSidebar}
-          className="p-1 mr-3 text-gray-400 rounded-md hover:bg-gray-800 hover:text-white"
+          className="mr-2 text-muted-foreground hover:text-foreground"
           aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
-          <Menu size={24} />
-        </button>
+          {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+        </Button>
 
-        {/* {isMobile && !isSidebarOpen && (
-          <div className="mr-3">
-            <AutomateLogo />
-          </div>
-        )} */}
-
-        <div className="relative">
-          {/* <div
-            className="flex items-center bg-gray-800 text-gray-400 rounded-md px-3 py-1.5 cursor-pointer"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search size={16} />
-            <span className="ml-2 text-sm hidden md:inline">
-              Search (CTRL/CMD+K)
-            </span>
-          </div> */}
-
-          <AnimatePresence>
-            {searchOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-20 z-50"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) setSearchOpen(false);
-                }}
-              >
-                <motion.div
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  className="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center border-b p-4">
-                    <Search size={20} className="text-gray-500 mr-2" />
-                    <input
-                      type="text"
-                      className="flex-1 outline-none text-lg"
-                      placeholder="Search..."
-                      autoFocus
-                    />
-                    <button onClick={() => setSearchOpen(false)}>
-                      <X size={20} className="text-gray-500" />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-gray-500 text-sm">No recent searches</p>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Global Search (Optional - can be complex to implement fully) */}
+        {/* <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground" onClick={() => setSearchOpen(true)}>
+          <Search size={16} /> Search... <span className="text-xs bg-muted px-1.5 py-0.5 rounded">⌘K</span>
+        </Button> */}
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative notifications-dropdown">
-          {/* <button
-            className="p-1.5 text-gray-400 rounded-md hover:bg-gray-800 hover:text-white relative"
+      <div className="flex items-center space-x-3 md:space-x-4">
+        {/* Notifications */}
+        <div className="relative" ref={notificationsRef}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground relative"
             onClick={() => setNotificationsOpen(!notificationsOpen)}
+            aria-label="Notifications"
           >
             <Bell size={20} />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button> */}
-
+            {/* Example notification badge */}
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-background"></span>
+          </Button>
           <AnimatePresence>
             {notificationsOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50"
+                initial="closed"
+                animate="open"
+                exit="closed"
+                variants={{
+                  open: { opacity: 1, y: 0, scale: 1 },
+                  closed: { opacity: 0, y: -10, scale: 0.95 },
+                }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute right-0 mt-2 w-80 bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden"
               >
-                <div className="px-4 py-2 border-b border-gray-100">
+                <div className="p-4 border-b border-border">
                   <h3 className="text-sm font-semibold">Notifications</h3>
                 </div>
-                <div className="max-h-96 overflow-y-auto">
-                  <div className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100">
-                    <p className="text-sm font-medium">New task assigned</p>
-                    <p className="text-xs text-gray-500 mt-1">2 minutes ago</p>
+                <div className="max-h-80 overflow-y-auto scrollbar-thin p-2">
+                  {/* Example Notification Item */}
+                  <div className="p-2 hover:bg-accent rounded-md smooth-transition">
+                    <p className="text-sm font-medium">
+                      New task assigned: "Deploy to production"
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      2 minutes ago
+                    </p>
                   </div>
+                  <div className="p-2 hover:bg-accent rounded-md smooth-transition">
+                    <p className="text-sm font-medium">
+                      Comment on "Fix login bug"
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      1 hour ago
+                    </p>
+                  </div>
+                  {/* Add more notifications here */}
                 </div>
-                <div className="px-4 py-2 border-t border-gray-100">
-                  <button className="text-sm text-blue-600 hover:text-blue-800">
+                <div className="p-2 border-t border-border text-center">
+                  <Button variant="link" size="sm" className="text-primary">
                     View all notifications
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="relative user-dropdown">
+        {/* User Dropdown */}
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center space-x-2 focus:outline-none"
+            className="flex items-center space-x-2 focus:outline-none p-1 rounded-md hover:bg-accent smooth-transition"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-semibold text-primary-foreground">
               {getUserInitial()}
             </div>
             <div className="hidden md:block text-left">
               <p
-                className="text-white text-sm font-medium"
+                className="text-sm font-semibold text-foreground truncate max-w-[120px]"
                 title={getUserEmail()}
               >
                 {getUserDisplayName()}
               </p>
-              <p className="text-white text-xs">{getUserRole()}</p>
+              <p className="text-xs text-muted-foreground">{getUserRole()}</p>
             </div>
-            <ChevronDown size={16} className="text-gray-400 hidden md:block" />
+            <ChevronDown
+              size={16}
+              className="text-muted-foreground hidden md:block"
+            />
           </button>
 
           <AnimatePresence>
             {dropdownOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.2 }}
-                className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-50"
+                initial="closed"
+                animate="open"
+                exit="closed"
+                variants={{
+                  open: { opacity: 1, y: 0, scale: 1 },
+                  closed: { opacity: 0, y: -10, scale: 0.95 },
+                }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute right-0 mt-2 w-60 bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 py-1.5 overflow-hidden"
               >
-                <div className="px-4 py-3 border-b border-gray-100 md:hidden">
-                  <p className="text-sm font-medium text-gray-900">
+                <div className="px-3 py-2.5 border-b border-border md:hidden">
+                  <p className="text-sm font-semibold text-foreground">
                     {getUserDisplayName()}
                   </p>
-                  <p className="text-xs text-gray-500">{getUserEmail()}</p>
-                  <p className="text-xs text-blue-600 font-medium">
-                    {getUserRole()}
+                  <p className="text-xs text-muted-foreground">
+                    {getUserEmail()}
                   </p>
                 </div>
-
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    navigate(ROUTES.PROFILE);
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <User size={16} className="mr-2" />
-                  Profile
-                </button>
-                {/* <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    navigate(ROUTES.SETTINGS);
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <Settings size={16} className="mr-2" />
-                  Settings
-                </button> */}
-                <button
-                  onClick={(e) => handleLogout(e)}
+                {[
+                  {
+                    label: "Profile",
+                    icon: User,
+                    action: () => navigate(ROUTES.PROFILE),
+                  },
+                  {
+                    label: "Settings",
+                    icon: Settings,
+                    action: () => navigate(ROUTES.SETTINGS),
+                  },
+                ].map((item) => (
+                  <motion.button
+                    key={item.label}
+                    variants={itemVariants}
+                    onClick={() => {
+                      item.action();
+                      setDropdownOpen(false);
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-sm text-popover-foreground hover:bg-accent smooth-transition"
+                  >
+                    <item.icon
+                      size={16}
+                      className="mr-2.5 text-muted-foreground"
+                    />
+                    {item.label}
+                  </motion.button>
+                ))}
+                <div className="my-1.5 h-px bg-border" />
+                <motion.button
+                  variants={itemVariants}
+                  onClick={handleLogout}
                   disabled={isLoggingOut}
-                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                  className={`flex items-center w-full px-3 py-2 text-sm smooth-transition ${
                     isLoggingOut
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-red-600"
+                      ? "text-muted-foreground cursor-not-allowed"
+                      : "text-destructive hover:bg-destructive/10"
                   }`}
                 >
-                  <LogOut size={16} className="mr-2" />
+                  <LogOut size={16} className="mr-2.5" />
                   {isLoggingOut ? "Signing out..." : "Sign out"}
-                </button>
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Search Modal (if used) */}
+      <AnimatePresence>
+        {searchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-20 z-50"
+            onClick={() => setSearchOpen(false)}
+          >
+            <motion.div
+              initial={{ y: -20, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -20, opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-popover rounded-xl shadow-2xl w-full max-w-xl mx-4 border border-border"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center border-b border-border p-4">
+                <Search size={20} className="text-muted-foreground mr-3" />
+                <input
+                  type="text"
+                  className="flex-1 bg-transparent outline-none text-lg placeholder:text-muted-foreground"
+                  placeholder="Search tasks, users, projects..."
+                  autoFocus
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchOpen(false)}
+                  className="text-muted-foreground"
+                >
+                  Esc
+                </Button>
+              </div>
+              <div className="p-6 text-center">
+                <p className="text-muted-foreground text-sm">
+                  Start typing to see results.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
@@ -297,7 +316,6 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
 Topbar.propTypes = {
   toggleSidebar: PropTypes.func.isRequired,
   isSidebarOpen: PropTypes.bool.isRequired,
-  isMobile: PropTypes.bool.isRequired,
 };
 
 export default Topbar;
