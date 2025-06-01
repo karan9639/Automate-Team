@@ -170,37 +170,59 @@ export const changeTaskStatus = createAsyncThunk(
   }
 );
 
+// Async Thunks for Comments
 export const fetchTaskComments = createAsyncThunk(
-  "tasks/fetchTaskComments",
+  "comment/fetchTaskComments",
   async (taskId, { rejectWithValue }) => {
     try {
-      const response = await taskApiService.fetchTaskComments(taskId);
-      // console.log("📥 fetchTaskComments API response:", response.data);
-      // console.log("res status: ",response.data.statusCode);
+      const response = await taskApiService.fetchTaskComments(taskId); // AxiosResponse
+      console.log(
+        "TASKS_SLICE: fetchTaskComments - Raw API Response Status:",
+        response.status
+      );
+      console.log(
+        "TASKS_SLICE: fetchTaskComments - Raw API Response Data:",
+        response.data
+      );
 
-      if (
-        (response.data.statusCode === 200 || response.status === 200) 
-      ) {
-        console.log("fetched comments: ", response.data.data);
-        return response.data.data; 
-        
-      } else {
-        return rejectWithValue(
-          response.message ||
-            "Failed to fetch comments due to unexpected response"
+      // Check for overall HTTP success and a success indicator from the API body
+      // Assuming response.data contains { statusCode, data, message, success }
+      // Adjust this condition based on your actual API's success indication
+      const isSuccess =
+        response.status === 200 &&
+        (response.data?.success === true || response.data?.statusCode === 200);
+
+      if (isSuccess && response.data?.data) {
+        console.log(
+          "TASKS_SLICE: fetchTaskComments - Success, returning comments object:",
+          response.data.data
         );
+        return response.data.data; // Should be { assignedToComments: [...], createdByComments: [...] }
+      } else {
+        const errorMessage =
+          response.data?.message ||
+          "Failed to fetch comments: API indicated failure or malformed response.";
+        console.error(
+          "TASKS_SLICE: fetchTaskComments - API call not successful or data missing. Error:",
+          errorMessage,
+          "Response Data:",
+          response.data
+        );
+        return rejectWithValue(errorMessage);
       }
     } catch (error) {
+      console.error(
+        "TASKS_SLICE: fetchTaskComments - Network or other error:",
+        error
+      );
       const message =
         error.response?.data?.message ||
         error.message ||
-        "Failed to fetch comments";
+        "Failed to fetch comments due to a network or unexpected error.";
       return rejectWithValue(message);
     }
   }
 );
-
-
 
 export const createTaskComment = createAsyncThunk(
   "tasks/createTaskComment",
@@ -209,19 +231,14 @@ export const createTaskComment = createAsyncThunk(
       const response = await taskApiService.createTaskComment(
         taskId,
         commentData
-      );
-
-      // ✅ More reliable condition
-      if (
-        (response.statusCode === 201 || response.status === 201) &&
-        response.data
-      ) {
-        dispatch(fetchTaskComments(taskId));
-        return response.data;
+      ); // Ensure this method exists
+      // Based on your API response: { statusCode: 201, data: {metadata}, message: "...", success: true }
+      if (response.success) {
+        dispatch(fetchTaskComments(taskId)); // Re-fetch comments to get the new one
+        return response.data; // Return metadata of the created comment
       } else {
         return rejectWithValue(
-          response.message ||
-            "Failed to create comment due to unexpected response"
+          response.message || "Failed to create comment due to API error"
         );
       }
     } catch (error) {
@@ -233,7 +250,6 @@ export const createTaskComment = createAsyncThunk(
     }
   }
 );
-
 
 // Other Async Thunks (Search, Filter, etc.)
 export const searchTasks = createAsyncThunk(
@@ -542,23 +558,48 @@ const taskSlice = createSlice({
       });
 
     // Fetch Task Comments
-builder
-  .addCase(fetchTaskComments.pending, (state) => {
-    state.loading.fetchComments = true;
-    state.error.fetchComments = null;
-  })
-  .addCase(fetchTaskComments.fulfilled, (state, action) => {
-    state.loading.fetchComments = false;
-    state.comments = Array.isArray(action.payload) ? action.payload : [];
-  })
-  .addCase(fetchTaskComments.rejected, (state, action) => {
-    const errorMsg = action.payload || action.error?.message || "Failed to load comments.";
-    state.loading.fetchComments = false;
-    state.error.fetchComments = errorMsg;
-    state.comments = [];
-    toast.error(errorMsg);
-  });
+    builder
+      .addCase(fetchTaskComments.pending, (state) => {
+        state.loading.fetchComments = true;
+        state.error.fetchComments = null; // Clear previous errors
+        state.comments = []; // Optionally clear comments while loading new ones
+      })
+      .addCase(fetchTaskComments.fulfilled, (state, action) => {
+        state.loading.fetchComments = false;
+        const payload = action.payload; // Expected: { assignedToComments: [...], createdByComments: [...] }
+        let combinedComments = [];
 
+        if (payload && typeof payload === "object") {
+          const assignedComments = Array.isArray(payload.assignedToComments)
+            ? payload.assignedToComments
+            : [];
+          const createdByComments = Array.isArray(payload.createdByComments)
+            ? payload.createdByComments
+            : [];
+          combinedComments = [...assignedComments, ...createdByComments];
+
+          // Sort comments by createdAt date, most recent first
+          combinedComments.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+        } else {
+          console.warn(
+            "TASKS_SLICE: fetchTaskComments.fulfilled - Payload was not the expected object:",
+            payload
+          );
+        }
+
+        state.comments = combinedComments;
+        state.error.fetchComments = null; // Clear any previous error on success
+      })
+      .addCase(fetchTaskComments.rejected, (state, action) => {
+        const errorMsg =
+          action.payload || action.error?.message || "Failed to load comments.";
+        state.loading.fetchComments = false;
+        state.error.fetchComments = errorMsg;
+        state.comments = []; // Clear comments on error
+        toast.error(errorMsg);
+      });
 
     // Create Task Comment
     builder

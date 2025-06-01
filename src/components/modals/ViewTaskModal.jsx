@@ -67,7 +67,6 @@ const ViewTaskModal = ({
     ],
     []
   );
-
   // State from Redux store
   const {
     comments, // Array of comments for the current task
