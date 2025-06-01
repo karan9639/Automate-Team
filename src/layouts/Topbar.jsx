@@ -108,7 +108,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   const getUserEmail = () => currentUser?.email || "";
 
   return (
-    <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 z-10 sticky top-0 bg-green-500">
+    <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 z-10 sticky top-0 bg-green-700">
       <div className="flex items-center">
         <button
           onClick={toggleSidebar}
@@ -229,7 +229,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
               >
                 {getUserDisplayName()}
               </p>
-              <p className="text-gray-800 text-xs">{getUserRole()}</p>
+              <p className="text-white text-xs">{getUserRole()}</p>
             </div>
             <ChevronDown size={16} className="text-gray-400 hidden md:block" />
           </button>

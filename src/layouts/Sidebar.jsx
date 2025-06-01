@@ -309,7 +309,7 @@ const Sidebar = ({
       {/* Sidebar */}
       <motion.div
         ref={sidebarRef}
-        className={`fixed top-0 left-0 z-40 h-screen bg-green-600 shadow-lg overflow-hidden
+        className={`fixed top-0 left-0 z-40 h-screen bg-green-700 shadow-lg overflow-hidden
                    ${isMobile ? "max-w-[85%]" : "w-64"}`} // Always use full width for tablet
         initial="closed"
         animate={isOpen ? "open" : "closed"}
@@ -335,7 +335,7 @@ const Sidebar = ({
         </div>
 
         {/* Navigation menu */}
-        <div className="overflow-y-auto h-[calc(100vh-64px)] py-2 px-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 bg-green-500">
+        <div className="overflow-y-auto h-[calc(100vh-64px)] py-2 px-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 bg-green-700">
           {navigationGroups.map((group) => (
             <div key={group.id} className="mb-2">
               {/* Group header (if it has a title) */}
