@@ -236,6 +236,17 @@ export default function SignupPage() {
     handleSubmitAfterOtp();
   };
 
+  const handlePhoneChange = (setter, field) => (e) => {
+    let value = e.target.value;
+
+    if (field === "whatsappNumber") {
+      // Remove any non-digit characters as user types
+      value = value.replace(/\D/g, "");
+    }
+
+    setter(value);
+  };
+
   const handleInputChange = (setter, fieldName) => (e) => {
     setter(e.target.value);
     if (errors[fieldName]) {
@@ -438,7 +449,7 @@ export default function SignupPage() {
                     type="tel"
                     placeholder="9876543210"
                     value={whatsappNumber}
-                    onChange={handleInputChange(
+                    onChange={handlePhoneChange(
                       setWhatsappNumber,
                       "whatsappNumber"
                     )}
