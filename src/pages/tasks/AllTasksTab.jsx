@@ -30,12 +30,23 @@ const AllTasksTab = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTask, setSelectedTask] = useState(null); // For TaskDetailModal
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // For TaskDetailModal
+  // Add this state for tracking task selection
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   const fetchAllTasks = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    // Create an AbortController for cleanup
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+
     try {
-      const response = await taskApi.getAllTasks();
+      const response = await taskApi.getAllTasks(signal); // Pass signal to API call if your API supports it
+
+      // Check if component is still mounted (signal not aborted)
+      if (signal.aborted) return;
+
       const tasksData =
         response.data?.data || response.data?.tasks || response.data || [];
 
@@ -52,20 +63,36 @@ const AllTasksTab = () => {
           }
         });
       }
+
       setTasks(uniqueTasks);
     } catch (err) {
+      // Don't update state if the request was aborted
+      if (err.name === "AbortError") return;
+
       const errorMessage =
         err.response?.data?.message || err.message || "Failed to load tasks.";
       setError(errorMessage);
       toast.error(errorMessage);
       setTasks([]);
     } finally {
-      setIsLoading(false);
+      // Only update loading state if not aborted
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
+
+    // Return the abort controller for cleanup
+    return abortController;
   }, []);
 
   useEffect(() => {
-    fetchAllTasks();
+    const abortController = fetchAllTasks();
+
+    // Cleanup function to abort any in-flight requests when unmounting
+    // or when dependencies change
+    return () => {
+      abortController?.abort();
+    };
   }, [fetchAllTasks]);
 
   const handleTaskCreated = () => {
@@ -92,9 +119,30 @@ const AllTasksTab = () => {
     );
   };
 
+  // Replace the handleTaskClick function with this:
   const handleTaskClick = (task) => {
-    setSelectedTask(task);
-    setIsDetailModalOpen(true);
+    setSelectedTaskId(task._id || task.id);
+  };
+
+  // Add this useEffect to handle modal opening after state update
+  useEffect(() => {
+    if (selectedTaskId) {
+      // Find the selected task
+      const task = tasks.find(
+        (task) => (task._id || task.id) === selectedTaskId
+      );
+      if (task) {
+        setSelectedTask(task);
+        setIsDetailModalOpen(true);
+      }
+    }
+  }, [selectedTaskId, tasks]);
+
+  // Add this function to reset modal state
+  const handleCloseModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedTask(null);
+    setSelectedTaskId(null);
   };
 
   const filteredTasks = tasks.filter(
@@ -211,16 +259,13 @@ const AllTasksTab = () => {
       {selectedTask && (
         <TaskDetailModal
           isOpen={isDetailModalOpen}
-          onClose={() => {
-            setIsDetailModalOpen(false);
-            setSelectedTask(null);
-          }}
+          onClose={handleCloseModal}
           task={selectedTask}
           onTaskUpdated={() => {
-            fetchAllTasks(); // Refetch tasks if updated from detail modal
+            fetchAllTasks();
             handleTaskStatusChanged(selectedTask._id || selectedTask.id, {
               data: selectedTask,
-            }); // Optimistic update for status
+            });
           }}
         />
       )}
