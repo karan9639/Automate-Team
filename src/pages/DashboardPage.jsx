@@ -29,7 +29,7 @@ const DashboardPage = () => {
   const taskCounts = {
     overdue: tasks.filter((task) => task.status === "overdue").length,
     pending: tasks.filter((task) => task.status === "pending").length,
-    inProgress: tasks.filter((task) => task.status === "in-progress").length,
+    inProgress: tasks.filter((task) => task.status === "in progress").length,
     completed: tasks.filter((task) => task.status === "completed").length,
     inTime: tasks.filter((task) => task.status === "in-time").length,
     delayed: tasks.filter((task) => task.status === "delayed").length,

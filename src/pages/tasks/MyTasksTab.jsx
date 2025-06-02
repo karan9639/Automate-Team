@@ -42,7 +42,7 @@ const MyTasksTab = () => {
       count: 0,
     },
     {
-      id: "in-progress",
+      id: "in progress",
       label: "In Progress",
       color: "text-yellow-500",
       icon: PlusCircle,

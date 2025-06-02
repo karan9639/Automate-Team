@@ -29,7 +29,7 @@ const MyTasksWithRedux = () => {
   const statusFilters = [
     { id: "overdue", label: "Overdue", color: "text-red-500", icon: Clock, count: 0 },
     { id: "pending", label: "Pending", color: "text-orange-500", icon: Circle, count: 0 },
-    { id: "in-progress", label: "In Progress", color: "text-yellow-500", icon: PlusCircle, count: 0 },
+    { id: "in progress", label: "In Progress", color: "text-yellow-500", icon: PlusCircle, count: 0 },
     { id: "completed", label: "Completed", color: "text-green-500", icon: CheckCircle, count: 0 },
   ]
 
