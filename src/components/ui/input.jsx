@@ -1,6 +1,5 @@
-import * as React from "react"
-
-import { cn } from "../../utils/helpers"
+import * as React from "react";
+import { cn } from "../../utils/helpers"; // Ensure this path is correct
 
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
   return (
@@ -13,8 +12,8 @@ className={cn(
       ref={ref}
       {...props}
     />
-  )
-})
-Input.displayName = "Input"
+  );
+});
+Input.displayName = "Input";
 
-export { Input }
+export { Input };

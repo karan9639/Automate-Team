@@ -31,27 +31,13 @@ const AutomateLogo = ({ small = false }) => {
 
   return (
     <div className="flex items-center space-x-3">
-      <svg width="40" height="40" viewBox="0 0 64 64" fill="none">
-        <defs>
-          <linearGradient
-            id="sparkGradient"
-            x1="0"
-            y1="0"
-            x2="64"
-            y2="64"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#38BDF8" />
-            <stop offset="1" stopColor="#6366F1" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M32 4L24 28H36L20 60L40 32H28L44 4H32Z"
-          fill="url(#sparkGradient)"
-          stroke="#1E40AF"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
+      <svg
+        className="w-8 h-8 text-yellow-600"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
       </svg>
 
       <div className="flex flex-col leading-tight">

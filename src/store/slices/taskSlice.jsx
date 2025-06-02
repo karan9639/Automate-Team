@@ -232,14 +232,19 @@ export const createTaskComment = createAsyncThunk(
       const response = await taskApiService.createTaskComment(
         taskId,
         commentData
-      ); // Ensure this method exists
-      // Based on your API response: { statusCode: 201, data: {metadata}, message: "...", success: true }
-      if (response.success) {
-        dispatch(fetchTaskComments(taskId)); // Re-fetch comments to get the new one
-        return response.data; // Return metadata of the created comment
+      );
+
+      // ✅ More reliable condition
+      if (
+        (response.statusCode === 201 || response.status === 201) &&
+        response.data
+      ) {
+        dispatch(fetchTaskComments(taskId));
+        return response.data;
       } else {
         return rejectWithValue(
-          response.message || "Failed to create comment due to API error"
+          response.message ||
+            "Failed to create comment due to unexpected response"
         );
       }
     } catch (error) {
@@ -251,6 +256,7 @@ export const createTaskComment = createAsyncThunk(
     }
   }
 );
+
 
 // Other Async Thunks (Search, Filter, etc.)
 export const searchTasks = createAsyncThunk(
