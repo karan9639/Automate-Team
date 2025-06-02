@@ -1,21 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  UserPlus,
-  Upload,
-  Trash2,
-  Search,
-  Filter,
-  RefreshCw,
-} from "lucide-react";
+import { UserPlus, Search, Filter, RefreshCw } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import EmptyState from "../../components/common/EmptyState";
 import DataTable from "../../components/common/DataTable";
+import ActionDropdown from "../../components/common/ActionDropdown";
 import AddMemberModal from "../../components/modals/AddMemberModal";
 import UploadUsersModal from "../../components/modals/UploadUsersModal";
+import ReassignAllTasksModal from "../../components/modals/ReassignAllTasksModal";
+import DeleteAllTasksModal from "../../components/modals/DeleteAllTasksModal";
 import { userApi } from "../../apiService/apiService";
 import {
   setTeamMembers,
@@ -35,6 +31,9 @@ const MyTeam = () => {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isReassignTasksModalOpen, setIsReassignTasksModalOpen] =
+    useState(false);
+  const [isDeleteTasksModalOpen, setIsDeleteTasksModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -145,6 +144,18 @@ const MyTeam = () => {
     setIsDeleteModalOpen(true);
   };
 
+  // Handle reassign all tasks
+  const handleReassignAllTasks = (member) => {
+    setSelectedMember(member);
+    setIsReassignTasksModalOpen(true);
+  };
+
+  // Handle delete all tasks
+  const handleDeleteAllTasks = (member) => {
+    setSelectedMember(member);
+    setIsDeleteTasksModalOpen(true);
+  };
+
   // Handle confirm delete
   const handleConfirmDelete = async () => {
     if (selectedMember) {
@@ -164,6 +175,40 @@ const MyTeam = () => {
           error.response?.data?.message || "Failed to delete team member"
         );
       }
+    }
+  };
+
+  // Handle confirm reassign tasks
+  const handleConfirmReassignTasks = async (member, targetUserId) => {
+    const memberId = member.newMember?._id || member._id || member.id;
+    try {
+      // TODO: Implement API call for reassigning tasks
+      // await taskApi.reassignAllTasks(memberId, targetUserId);
+      console.log("Reassigning tasks from", memberId, "to", targetUserId);
+
+      // For now, just show success message
+      toast.success("Tasks reassignment initiated successfully");
+    } catch (error) {
+      console.error("Error reassigning tasks:", error);
+      toast.error("Failed to reassign tasks");
+      throw error;
+    }
+  };
+
+  // Handle confirm delete tasks
+  const handleConfirmDeleteTasks = async (member) => {
+    const memberId = member.newMember?._id || member._id || member.id;
+    try {
+      // TODO: Implement API call for deleting all tasks
+      // await taskApi.deleteAllTasksForUser(memberId);
+      console.log("Deleting all tasks for", memberId);
+
+      // For now, just show success message
+      toast.success("Tasks deletion initiated successfully");
+    } catch (error) {
+      console.error("Error deleting tasks:", error);
+      toast.error("Failed to delete tasks");
+      throw error;
     }
   };
 
@@ -283,18 +328,12 @@ const MyTeam = () => {
       render: (row) => {
         const memberData = row.newMember || row;
         return (
-          <div className="flex space-x-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteMember(row); // Pass the whole row for ID extraction
-              }}
-              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-              aria-label={`Delete ${memberData.fullname}`}
-            >
-              <Trash2 size={18} />
-            </button>
-          </div>
+          <ActionDropdown
+            onReassignTasks={() => handleReassignAllTasks(row)}
+            onDeleteTasks={() => handleDeleteAllTasks(row)}
+            onDeleteMember={() => handleDeleteMember(row)}
+            memberName={memberData.fullname}
+          />
         );
       },
     },
@@ -323,13 +362,6 @@ const MyTeam = () => {
             <UserPlus size={18} />
             <span>Add Member</span>
           </button>
-          {/* <button
-            onClick={handleUploadUsers}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-          >
-            <Upload size={18} />
-            <span>Upload Users</span>
-          </button> */}
         </div>
       </div>
 
@@ -451,6 +483,28 @@ const MyTeam = () => {
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"
+      />
+
+      {/* Reassign All Tasks Modal */}
+      <ReassignAllTasksModal
+        isOpen={isReassignTasksModalOpen}
+        onClose={() => {
+          setIsReassignTasksModalOpen(false);
+          setSelectedMember(null);
+        }}
+        selectedMember={selectedMember}
+        onConfirm={handleConfirmReassignTasks}
+      />
+
+      {/* Delete All Tasks Modal */}
+      <DeleteAllTasksModal
+        isOpen={isDeleteTasksModalOpen}
+        onClose={() => {
+          setIsDeleteTasksModalOpen(false);
+          setSelectedMember(null);
+        }}
+        selectedMember={selectedMember}
+        onConfirm={handleConfirmDeleteTasks}
       />
 
       {/* Upload Users Modal */}
