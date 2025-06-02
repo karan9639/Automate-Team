@@ -23,9 +23,10 @@ const UserActivityFeed = ({ activities, isLoading, error }) => {
       case "task_status_changed": // A possible local one
         return "text-yellow-500";
       // Custom local types
-      // case "report_generated":
+      case "tasks_overdue":
+        return "text-red-600";
       // case "dashboard_refreshed":
-      //   return "text-indigo-500";
+      //
       default:
         // Fallback for any other messageTypes or local actions not explicitly listed
         if (messageType.includes("create") || messageType.includes("add"))
