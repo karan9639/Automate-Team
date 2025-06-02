@@ -114,7 +114,7 @@ const ActionDropdown = ({
           Reassign All Tasks
         </button>
 
-        <button
+        {/* <button
           onClick={(e) => {
             e.stopPropagation();
             handleAction(onDeleteTasks);
@@ -123,7 +123,7 @@ const ActionDropdown = ({
         >
           <Trash2 size={16} />
           Delete All Tasks
-        </button>
+        </button> */}
 
         <div className="border-t dark:border-gray-700 my-1"></div>
 

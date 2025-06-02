@@ -346,7 +346,7 @@ const Dashboard = () => {
           const fetchedActivities = response.data.data.map((activity) => {
             const fullMessage = activity.message
             const messageType = activity.messageType
-            const task = activity.task || "Task"
+            const task = activity.task
             const userNameMatch = fullMessage.match(/^([^\s]+)/)
             const userName = userNameMatch ? userNameMatch[0] : "User"
 

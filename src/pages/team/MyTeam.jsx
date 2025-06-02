@@ -44,33 +44,34 @@ const MyTeam = () => {
   });
 
   // Fetch team members on component mount
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
 
   // Fetch team members from API
-  const fetchTeamMembers = async () => {
-    setIsLoading(true);
-    try {
-      const response = await userApi.fetchAllTeamMembers();
-      console.log("API Response:", response.data);
 
-      // Extract the actual data array from the nested response structure
-      const members = response.data?.data || [];
-      console.log("Extracted members:", members);
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      setIsLoading(true);
+      try {
+        const response = await userApi.fetchAllTeamMembers();
+        console.log("API Response:", response.data);
 
-      dispatch(setTeamMembers(members));
-    } catch (error) {
-      console.error("Error fetching team members:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to fetch team members"
-      );
-      // Set empty array on error to prevent filter issues
-      dispatch(setTeamMembers([]));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        // Extract the actual data array from the nested response structure
+        const members = response.data?.data || [];
+        console.log("Extracted members:", members);
+
+        dispatch(setTeamMembers(members));
+      } catch (error) {
+        console.error("Error fetching team members:", error);
+        toast.error(
+          error.response?.data?.message || "Failed to fetch team members"
+        );
+        // Set empty array on error to prevent filter issues
+        dispatch(setTeamMembers([]));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTeamMembers();
+  }, [dispatch]);
 
   // Refresh team members
   const handleRefresh = async () => {
@@ -227,7 +228,6 @@ const MyTeam = () => {
       setIsAddMemberModalOpen(false);
 
       // Refresh the list to ensure sync
-      fetchTeamMembers();
     } catch (error) {
       console.error("Error adding member:", error);
       const errorMessage =
