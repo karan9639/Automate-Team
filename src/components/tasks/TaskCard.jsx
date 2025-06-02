@@ -160,7 +160,6 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
       case "completed":
         return "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300";
       case "in progress":
-      case "in progress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300";
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300";
@@ -174,7 +173,6 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
     switch (status?.toLowerCase()) {
       case "completed":
         return <CheckCircle className="h-4 w-4 mr-1" />;
-      case "in progress":
       case "in progress":
         return <Clock className="h-4 w-4 mr-1" />;
       case "pending":
