@@ -38,7 +38,6 @@ export {
   createTaskComment,
   fetchTaskComments,
   setOverDue,
-  createTask
 };
 
 
