@@ -71,9 +71,6 @@ API.interceptors.response.use(
       document.cookie =
         "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
-      import("react-hot-toast").then(({ toast }) => {
-        toast.error("Session expired. Please login again.");
-      });
 
       setTimeout(() => {
         if (window.location.pathname !== ROUTES.AUTH.LOGIN) {
