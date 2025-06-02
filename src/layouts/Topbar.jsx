@@ -223,11 +223,11 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                     icon: User,
                     action: () => navigate(ROUTES.PROFILE),
                   },
-                  {
-                    label: "Settings",
-                    icon: Settings,
-                    action: () => navigate(ROUTES.SETTINGS),
-                  },
+                  // {
+                  //   label: "Settings",
+                  //   icon: Settings,
+                  //   action: () => navigate(ROUTES.SETTINGS),
+                  // },
                 ].map((item) => (
                   <motion.button
                     key={item.label}
