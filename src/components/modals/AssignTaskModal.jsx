@@ -287,7 +287,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         await dispatch(
           editTask({ taskId: task._id, taskData: payload })
         ).unwrap(); // Changed updateTask to editTask
-        toast.success("Task updated successfully!");
+        // toast.success("Task updated successfully!");
       } else {
         // Creating new task
         await dispatch(createTask(payload)).unwrap();
