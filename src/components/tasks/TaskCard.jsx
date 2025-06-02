@@ -159,7 +159,6 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
     switch (status?.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300";
-      case "in-progress":
       case "in progress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300";
       case "pending":
@@ -174,7 +173,6 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
     switch (status?.toLowerCase()) {
       case "completed":
         return <CheckCircle className="h-4 w-4 mr-1" />;
-      case "in-progress":
       case "in progress":
         return <Clock className="h-4 w-4 mr-1" />;
       case "pending":
@@ -187,7 +185,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
   };
   const getStatusDisplayText = (status) => {
     switch (status?.toLowerCase()) {
-      case "in-progress":
+      case "in progress":
         return "In Progress";
       case "completed":
         return "Completed";
@@ -235,14 +233,14 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <DropdownMenuItem
-              onSelect={() => handleStatusChange("in-progress")}
+              onSelect={() => handleStatusChange("in progress")}
               disabled={
                 isUpdatingStatus ||
                 isRequestingDelete ||
-                taskStatus === "in-progress"
+                taskStatus === ""
               }
             >
-              {isUpdatingStatus && taskStatus !== "in-progress"
+              {isUpdatingStatus && taskStatus !== "in progress"
                 ? "Updating..."
                 : "Mark as In Progress"}
             </DropdownMenuItem>

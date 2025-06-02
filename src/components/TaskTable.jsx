@@ -28,7 +28,7 @@ const TaskTable = ({ view, dateFilter, searchQuery, filters }) => {
       (task) => task.status === "pending"
     ).length;
     const inProgress = employeeTasks.filter(
-      (task) => task.status === "in-progress"
+      (task) => task.status === "in progress"
     ).length;
     const completed = employeeTasks.filter(
       (task) => task.status === "completed"

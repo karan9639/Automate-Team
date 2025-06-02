@@ -60,13 +60,13 @@ const KPICards = ({ kpis }) => {
       const inProgressTasks =
         getStatusCount(createdByMe.counts, [
           "In Progress",
-          "in-progress",
+          "in progress",
           "InProgress",
           "in_progress",
         ]) +
         getStatusCount(assignedToMe.counts, [
           "In Progress",
-          "in-progress",
+          "in progress",
           "InProgress",
           "in_progress",
         ]);
@@ -144,15 +144,15 @@ const KPICards = ({ kpis }) => {
           breakdown: {
             assignedToMe: getStatusCount(assignedToMe.counts, [
               "In Progress",
-              "in-progress",
+              "in progress",
               "InProgress",
-              "in_progress",
+              "in progress",
             ]),
             createdByMe: getStatusCount(createdByMe.counts, [
               "In Progress",
-              "in-progress",
+              "in progress",
               "InProgress",
-              "in_progress",
+              "in progress",
             ]),
           },
         },

@@ -44,7 +44,7 @@ const AutomateLogo = ({ small = false }) => {
         <span className="text-2xl font-black tracking-wide text-[#CA8A04]">
           KPS
         </span>
-        <span className="text-sm font-bold tracking-widest text-[#25B16B]">
+        <span className="text-sm font-bold tracking-widest text-[#25B168]">
           AUTOMATE
         </span>
       </div>

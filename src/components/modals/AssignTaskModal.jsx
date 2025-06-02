@@ -291,7 +291,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       } else {
         // Creating new task
         await dispatch(createTask(payload)).unwrap();
-        toast.success("Task created successfully!");
       }
 
       if (!assignMoreTasks) {

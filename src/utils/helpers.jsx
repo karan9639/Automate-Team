@@ -25,7 +25,7 @@ export function getStatusColor(status) {
     approved: "green",
     rejected: "red",
     completed: "green",
-    "in-progress": "blue",
+    "in progress": "blue",
     overdue: "red",
   };
 
