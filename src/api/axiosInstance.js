@@ -1,8 +1,8 @@
 import axios from "axios";
-import { ROUTES } from "../constants/routes"; 
+import { ROUTES } from "../constants/routes";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_PUBLIC_API_BASE_URL, // This will use your https://kps-automate-business-solutions.onrender.com/api/v1/
+  baseURL: import.meta.env.VITE_PUBLIC_API_BASE_URL, // This will use your https://Jasmine-automate-business-solutions.onrender.com/api/v1/
   withCredentials: true,
   timeout: 30000, // 30 seconds timeout
   headers: {
@@ -70,7 +70,6 @@ API.interceptors.response.use(
       localStorage.removeItem("user");
       document.cookie =
         "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
 
       setTimeout(() => {
         if (window.location.pathname !== ROUTES.AUTH.LOGIN) {

@@ -113,6 +113,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const mockCategories = useMemo(
     () => [
@@ -288,9 +289,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           editTask({ taskId: task._id, taskData: payload })
         ).unwrap(); // Changed updateTask to editTask
         // toast.success("Task updated successfully!");
+        setRefreshTrigger(Date.now());
       } else {
         // Creating new task
         await dispatch(createTask(payload)).unwrap();
+        setRefreshTrigger(Date.now());
       }
 
       if (!assignMoreTasks) {

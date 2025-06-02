@@ -71,12 +71,12 @@ const LoginPage = () => {
             <AutomateLogo className="h-14 w-auto text-white drop-shadow-lg" />
           </Link>
           <h1 className="text-4xl font-bold tracking-tight text-balance">
-            Streamline Your Success with KPS Automate Task
+            Streamline Your Success with Jasmine Automate Task
           </h1>
           <p className="text-lg leading-relaxed text-primary-foreground/80 text-balance">
             Unlock peak productivity with intuitive task management, real-time
-            collaboration, and insightful analytics. KPS Automate empowers your
-            team to achieve more, effortlessly.
+            collaboration, and insightful analytics. Jasmine Automate empowers
+            your team to achieve more, effortlessly.
           </p>
           <div className="flex justify-center space-x-8 pt-6">
             {[

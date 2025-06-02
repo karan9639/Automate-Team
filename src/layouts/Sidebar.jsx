@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 import { ROUTES } from "../constants/routes";
-import AutomateLogo from "../components/AutomateLogo"; // Assuming AutomateLogo is fine
+import AutomateLogo from "@/components/common/AutomateLogo";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, CheckSquare, Users, ChevronDown, Menu, X } from "lucide-react";
 
@@ -234,7 +234,7 @@ const Sidebar = ({
         </nav>
         {/* Optional Footer for Sidebar */}
         {/* <div className="p-4 border-t border-border mt-auto">
-          <p className="text-xs text-muted-foreground text-center">&copy; {new Date().getFullYear()} KPS Automate</p>
+          <p className="text-xs text-muted-foreground text-center">&copy; {new Date().getFullYear()} Jasmine Automate</p>
         </div> */}
       </motion.aside>
     </>
