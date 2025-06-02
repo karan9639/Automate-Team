@@ -1,6 +1,9 @@
 import API from "./axiosInstance.js";
 
 // Task specific APIs (assuming they remain under 'task/' prefix)
+const createTask = async (taskData) => {
+  return API.post("task/create-task", taskData);
+};
 const myTask = async () => API.get("task/assigned-to-me");
 const deligatedTask = async () => API.get("task/delegated-tasks");
 const allTask = async () => API.get("task/all-tasks");
@@ -27,6 +30,7 @@ const fetchTaskComments = async (taskId) =>
 const setOverDue = async () => API.patch("task/set-overdue-status")
 
 export {
+  createTask,
   myTask,
   deligatedTask,
   allTask,
