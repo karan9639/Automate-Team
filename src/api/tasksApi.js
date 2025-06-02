@@ -24,6 +24,10 @@ const setOverDue = async () => API.patch("task/set-overdue-status")
 
 const filterTask = async (data) => API.post("task/filter-tasks", data)
 
+const reassignAllTask = async (reassignData) => {
+  return API.patch("task/re-assign-all-tasks", reassignData)
+}
+
 export {
   createTask,
   myTask,
@@ -37,4 +41,5 @@ export {
   fetchTaskComments,
   setOverDue,
   filterTask,
+  reassignAllTask
 }
