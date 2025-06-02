@@ -764,10 +764,15 @@ const Dashboard = () => {
       </div>
 
       {/* Footer - Added as requested */}
-      <footer className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© All rights reserved 2025 KPS Automate Business</p>
-          <p className="mt-2 sm:mt-0 mr-16 sm:mr-20">v 1.0.0</p>
+      <footer className="mt-auto pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col xs:flex-row sm:flex-row justify-between items-start xs:items-center sm:items-center gap-2 xs:gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-center xs:text-left sm:text-left order-2 xs:order-1 w-full xs:w-auto">
+            <span className="block xs:inline sm:inline">© All rights reserved 2025</span>
+            <span className="block xs:inline sm:inline xs:ml-1 sm:ml-1">KPS Automate Business</span>
+          </p>
+          <p className="text-center xs:text-right sm:text-right order-1 xs:order-2 w-full xs:w-auto mr-12 xs:mr-14 sm:mr-16 md:mr-18 lg:mr-20 xl:mr-20">
+            v 1.0.0
+          </p>
         </div>
       </footer>
 
