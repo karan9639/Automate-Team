@@ -8,6 +8,10 @@ const viewTask = async (taskId) => API.get(`task/view-task/${taskId}`);
 const editTask = async (taskId, updatedData) =>
   API.put(`task/edit-task/${taskId}`, updatedData);
 const deleteTask = async (taskId) => API.delete(`task/delete-task/${taskId}`);
+const createTask = async (taskData) => {
+  return API.post("task/create-task", taskData);
+};
+
 
 const changeTaskStatus = async (taskId, newStatus) => {
   const payload = { status: newStatus };
@@ -32,7 +36,8 @@ export {
   changeTaskStatus,
   createTaskComment,
   fetchTaskComments,
-  setOverDue
+  setOverDue,
+  createTask
 };
 
 

@@ -81,7 +81,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const [taskDueDate, setTaskDueDate] = useState("")
   const [taskPriority, setTaskPriority] = useState(backendTaskSchema.taskPriority.default)
   const [taskFrequencyType, setTaskFrequencyType] = useState("one-time")
-  const [attachedFiles, setAttachedFiles] = useState([])
+  const [taskImage, settaskImage] = useState([])
 
   const [assignMoreTasks, setAssignMoreTasks] = useState(false)
   const [errors, setErrors] = useState({})
@@ -115,7 +115,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         setTaskDueDate(task.taskDueDate ? new Date(task.taskDueDate).toISOString().split("T")[0] : "")
         setTaskPriority(task.taskPriority || backendTaskSchema.taskPriority.default)
         setTaskFrequencyType(task.taskFrequency?.type || "one-time")
-        setAttachedFiles(task.attachedFiles || [])
+        settaskImage(task.taskImage || [])
       } else {
         resetFormFields()
       }
@@ -128,7 +128,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     setTaskDescription("")
     setTaskAssignedTo("")
     setTaskCategory("")
-    setAttachedFiles([])
+    settaskImage([])
     if (!keepDueDate) {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
@@ -171,7 +171,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         type: file.type,
         file: file,
       }))
-      setAttachedFiles((prev) => [...prev, ...newFiles])
+      settaskImage((prev) => [...prev, ...newFiles])
       toast.success(`${files.length} file(s) attached successfully`)
     }
     // Reset the input value so the same file can be selected again
@@ -179,7 +179,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   }
 
   const handleFileRemove = (fileId) => {
-    setAttachedFiles((prev) => prev.filter((file) => file.id !== fileId))
+    settaskImage((prev) => prev.filter((file) => file.id !== fileId))
     toast.success("File removed successfully")
   }
 
@@ -229,7 +229,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       taskDueDate: taskDueDate ? new Date(taskDueDate).toISOString() : undefined,
       taskPriority: taskPriority,
       taskFrequency: { type: taskFrequencyType },
-      attachedFiles: attachedFiles,
+      taskImage: taskImage,
       // taskCreatedBy: "currentUser_id_placeholder", // This should be set on the backend or passed from auth context
     }
 
@@ -584,11 +584,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
 
             {/* Display attached files */}
-            {attachedFiles.length > 0 && (
+            {taskImage.length > 0 && (
               <div className="mt-4 space-y-2">
-                <h4 className="text-sm font-medium text-gray-700">Attached Files ({attachedFiles.length})</h4>
+                <h4 className="text-sm font-medium text-gray-700">Attached Files ({taskImage.length})</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {attachedFiles.map((file) => (
+                  {taskImage.map((file) => (
                     <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border">
                       <div className="flex items-center space-x-2 flex-1 min-w-0">
                         <span className="text-lg">{getFileIcon(file.name)}</span>
