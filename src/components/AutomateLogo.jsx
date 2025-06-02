@@ -41,10 +41,10 @@ const AutomateLogo = ({ small = false }) => {
       </svg>
 
       <div className="flex flex-col leading-tight">
-        <span className="text-2xl font-black tracking-wide text-[#1E3A8A]">
+        <span className="text-2xl font-black tracking-wide text-[#CA8A04]">
           KPS
         </span>
-        <span className="text-sm font-medium tracking-widest text-[#384bf8]">
+        <span className="text-sm font-bold tracking-widest text-[#25B168]">
           AUTOMATE
         </span>
       </div>

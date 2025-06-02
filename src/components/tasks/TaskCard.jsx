@@ -320,7 +320,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
             Due: {taskDueDate ? formatDate(taskDueDate) : "No due date"}
           </span>
         </div>
-        <div className="flex -space-x-2">
+        {/* <div className="flex -space-x-2">
           {taskAssignees &&
             (Array.isArray(taskAssignees)
               ? taskAssignees
@@ -340,7 +340,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
                   : "A"}
               </div>
             ))}
-        </div>
+        </div> */}
       </div>
     </Card>
   );
