@@ -11,7 +11,7 @@ import TaskCard from "../../components/tasks/TaskCard";
 import EmptyState from "../../components/common/EmptyState";
 import {
   myTask,
-  deligatedTask,
+  delegatedTask,
   allTask,
   viewTask,
   filterTask,
@@ -615,7 +615,7 @@ const TaskManagement = () => {
         setLoading(true);
         setError(null);
 
-        const response = await deligatedTask();
+        const response = await delegatedTask();
         const taskData = extractTasksFromResponse(response);
         const processedDelegatedTasks = [];
         const seenDelegatedTaskIds = new Set();

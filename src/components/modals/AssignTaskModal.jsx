@@ -104,7 +104,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     backendTaskSchema.taskPriority.default
   );
   const [taskFrequencyType, setTaskFrequencyType] = useState("one-time");
-  const [taskImage, settaskImage] = useState([]);
+  const [taskImage, setTaskImage] = useState([]);
 
   const [assignMoreTasks, setAssignMoreTasks] = useState(false);
   const [errors, setErrors] = useState({});
@@ -147,7 +147,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           task.taskPriority || backendTaskSchema.taskPriority.default
         );
         setTaskFrequencyType(task.taskFrequency?.type || "one-time");
-        settaskImage(task.taskImage || []);
+        setTaskImage(task.taskImage || []);
       } else {
         resetFormFields();
       }
@@ -160,7 +160,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     setTaskDescription("");
     setTaskAssignedTo("");
     setTaskCategory("");
-    settaskImage([]);
+    setTaskImage([]);
     if (!keepDueDate) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -206,7 +206,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         type: file.type,
         file: file,
       }));
-      settaskImage((prev) => [...prev, ...newFiles]);
+      setTaskImage((prev) => [...prev, ...newFiles]);
       toast.success(`${files.length} file(s) attached successfully`);
     }
     // Reset the input value so the same file can be selected again
@@ -214,7 +214,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   };
 
   const handleFileRemove = (fileId) => {
-    settaskImage((prev) => prev.filter((file) => file.id !== fileId));
+    setTaskImage((prev) => prev.filter((file) => file.id !== fileId));
     toast.success("File removed successfully");
   };
 
@@ -261,15 +261,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     const payload = {
       taskTitle: taskTitle.trim(),
       taskDescription: taskDescription.trim(),
-      taskAssignedTo: taskAssignedTo,
+      taskAssignedTo,
       taskCategory: taskCategory.trim(),
       taskDueDate: taskDueDate
         ? new Date(taskDueDate).toISOString()
         : undefined,
-      taskPriority: taskPriority,
+      taskPriority,
       taskFrequency: { type: taskFrequencyType },
-      taskImage: taskImage,
-      // taskCreatedBy: "currentUser_id_placeholder", // This should be set on the backend or passed from auth context
     };
 
     const validationErrors = validateTaskForm(payload, backendTaskSchema);
@@ -283,18 +281,32 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     setErrors({});
 
     try {
-      if (task && task._id) {
-        // Editing existing task
-        await dispatch(
-          editTask({ taskId: task._id, taskData: payload })
-        ).unwrap(); // Changed updateTask to editTask
-        // toast.success("Task updated successfully!");
-        setRefreshTrigger(Date.now());
-      } else {
-        // Creating new task
-        await dispatch(createTask(payload)).unwrap();
-        setRefreshTrigger(Date.now());
+      const formData = new FormData();
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(
+            key,
+            typeof value === "object" ? JSON.stringify(value) : value
+          );
+        }
+      });
+
+      // ✅ Append only ONE image file
+      if (taskImage[0]?.file) {
+        formData.append("taskImage", taskImage[0].file);
       }
+
+      // ✅ Don't set headers manually — let Axios do it
+      if (task && task._id) {
+        await dispatch(
+          editTask({ taskId: task._id, taskData: formData })
+        ).unwrap();
+      } else {
+        await dispatch(createTask(formData)).unwrap();
+      }
+
+      setRefreshTrigger(Date.now());
 
       if (!assignMoreTasks) {
         onClose();
@@ -306,14 +318,16 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       const errorMessage =
         typeof error === "string"
           ? error
-          : error.message || "Failed to save task.";
+          : error?.response?.data?.message ||
+            error.message ||
+            "Unexpected error during file upload";
       setErrors({ submit: errorMessage });
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
   const handleUserSelect = (userId) => {
     setTaskAssignedTo(userId);
     setShowUserDropdown(false);
@@ -660,7 +674,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                 onChange={handleFileSelect}
                 multiple
                 className="hidden"
-                accept="*/*"
+                accept="image/*"
               />
 
               {/* File attachment button */}
