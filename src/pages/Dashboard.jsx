@@ -773,7 +773,7 @@ const Dashboard = () => {
     dateFilter.endDate;
 
   return (
-    <div className="space-y-6 md:space-y-8 p-4 sm:p-6 lg:p-8 relative flex flex-col min-h-screen">
+    <div className="space-y-6 md:space-y-8 p-4 md:p-8 relative flex flex-col min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
@@ -868,7 +868,7 @@ const Dashboard = () => {
               Jasmine Automate Business
             </span>
           </p>
-          <p className="text-center xs:text-right order-1 xs:order-2 w-full xs:w-auto">
+          <p className="text-center xs:text-right sm:text-right order-1 xs:order-2 w-full xs:w-auto mr-12 xs:mr-14 sm:mr-16 md:mr-18 lg:mr-20 xl:mr-20">
             v 1.0.0
           </p>
         </div>
@@ -903,14 +903,6 @@ const Dashboard = () => {
           setIsDeleteModalOpen(false);
           setTaskToDelete(null);
         }}
-        onConfirm={handleConfirmDelete}
-        task={taskToDelete}
-      />
-
-      <FAB
-        onClick={handleCreateTask}
-        icon={<PlusCircle size={24} />}
-        label="Create New Task"
         onConfirm={handleConfirmDelete}
         task={taskToDelete}
       />
