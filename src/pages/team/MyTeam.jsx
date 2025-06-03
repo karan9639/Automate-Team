@@ -281,7 +281,7 @@ const MyTeam = () => {
                 .join("")
                 .toUpperCase() || "?"}
             </div>
-            <div className="ml-4">
+            <div className="ml-2 sm:ml-4">
               <div className="text-sm font-medium text-gray-900 dark:text-white">
                 {memberData.fullname || "N/A"}
               </div>
@@ -340,7 +340,7 @@ const MyTeam = () => {
   ];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">My Team</h1>
         <div className="flex flex-wrap gap-2">
