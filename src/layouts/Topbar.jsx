@@ -4,31 +4,33 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Search,
-  Menu,
-  X,
-  User,
-  LogOut,
-  ChevronDown,
-  Bell,
-  Settings,
-} from "lucide-react";
+import { Search, Menu, X, User, LogOut, ChevronDown, Bell } from "lucide-react";
 import PropTypes from "prop-types";
 import { ROUTES } from "../constants/routes";
 import { toast } from "react-hot-toast";
 import { logoutUser } from "@/api/authApi";
-import { Button } from "@/components/ui/button"; // Assuming Button is modernized
+import { Button } from "@/components/ui/button";
+import useActivities from "@/hooks/useActivities";
 
 const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const { activities, activitiesLoading } = useActivities(isRefreshing);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const notificationsRef = useRef(null);
+
+  // Reset refresh after activities are done loading
+  useEffect(() => {
+    if (!activitiesLoading && isRefreshing) {
+      setIsRefreshing(false);
+    }
+  }, [activitiesLoading, isRefreshing]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -103,11 +105,6 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
         >
           {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
         </Button>
-
-        {/* Global Search (Optional - can be complex to implement fully) */}
-        {/* <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground" onClick={() => setSearchOpen(true)}>
-          <Search size={16} /> Search... <span className="text-xs bg-muted px-1.5 py-0.5 rounded">⌘K</span>
-        </Button> */}
       </div>
 
       <div className="flex items-center space-x-3 md:space-x-4">
@@ -121,8 +118,9 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
             aria-label="Notifications"
           >
             <Bell size={20} />
-            {/* Example notification badge */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-background"></span>
+            {activities.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-background"></span>
+            )}
           </Button>
           <AnimatePresence>
             {notificationsOpen && (
@@ -141,28 +139,38 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                   <h3 className="text-sm font-semibold">Notifications</h3>
                 </div>
                 <div className="max-h-80 overflow-y-auto scrollbar-thin p-2">
-                  {/* Example Notification Item */}
-                  <div className="p-2 hover:bg-accent rounded-md smooth-transition">
-                    <p className="text-sm font-medium">
-                      New task assigned: "Deploy to production"
+                  {activitiesLoading ? (
+                    <p className="text-sm text-muted-foreground p-2">
+                      Loading...
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      2 minutes ago
+                  ) : activities.length === 0 ? (
+                    <p className="text-sm text-muted-foreground p-2">
+                      No recent activity.
                     </p>
-                  </div>
-                  <div className="p-2 hover:bg-accent rounded-md smooth-transition">
-                    <p className="text-sm font-medium">
-                      Comment on "Fix login bug"
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      1 hour ago
-                    </p>
-                  </div>
-                  {/* Add more notifications here */}
+                  ) : (
+                    activities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="p-2 hover:bg-accent rounded-md smooth-transition"
+                      >
+                        <p className="text-sm font-medium">
+                          {activity.user} {activity.action}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <div className="p-2 border-t border-border text-center">
-                  <Button variant="link" size="sm" className="text-primary">
-                    View all notifications
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsRefreshing(true)}
+                    className="text-primary"
+                  >
+                    Refresh Notifications
                   </Button>
                 </div>
               </motion.div>
@@ -195,7 +203,6 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
               className="text-muted-foreground hidden md:block"
             />
           </button>
-
           <AnimatePresence>
             {dropdownOpen && (
               <motion.div
@@ -223,11 +230,6 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                     icon: User,
                     action: () => navigate(ROUTES.PROFILE),
                   },
-                  // {
-                  //   label: "Settings",
-                  //   icon: Settings,
-                  //   action: () => navigate(ROUTES.SETTINGS),
-                  // },
                 ].map((item) => (
                   <motion.button
                     key={item.label}
@@ -265,7 +267,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
         </div>
       </div>
 
-      {/* Search Modal (if used) */}
+      {/* Search Modal */}
       <AnimatePresence>
         {searchOpen && (
           <motion.div
