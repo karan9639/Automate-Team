@@ -155,7 +155,6 @@ const DashboardPage = () => {
     })
     setSearchQuery("")
   }
-
   // Keyboard shortcut for search
   useEffect(() => {
     const handleKeyDown = (e) => {
