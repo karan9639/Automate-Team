@@ -1,7 +1,7 @@
 // src/hooks/useActivities.js
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import userApi from "@/api/userApi"; // Adjust the path as needed
+import userApi from "../api/userApi"; // Adjust the path as needed
 
 const useActivities = (isRefreshing) => {
   const [activities, setActivities] = useState([]);
