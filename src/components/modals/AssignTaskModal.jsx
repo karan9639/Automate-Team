@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
-import { Modal } from "../../components/ui/modal";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Textarea } from "../../components/ui/textarea";
-import { Switch } from "../../components/ui/switch";
+import { Modal } from "../../components/ui/modal.jsx"; // Added .jsx
+import { Button } from "../../components/ui/button.jsx"; // Added .jsx
+import { Input } from "../../components/ui/input.jsx"; // Added .jsx
+import { Textarea } from "../../components/ui/textarea.jsx"; // Added .jsx
+import { Switch } from "../../components/ui/switch.jsx"; // Added .jsx
 import { createTask, editTask } from "../../store/slices/taskSlice";
 import { userApi } from "../../apiService/apiService";
 import { Check, FileText, AlertCircle, Loader2, X, Search } from "lucide-react";
@@ -85,7 +85,7 @@ const backendTaskSchema = {
 const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
-  const userSearchInputRef = useRef(null); // Ref for user search input
+  const userSearchInputRef = useRef(null);
 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -105,7 +105,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [userSearchTerm, setUserSearchTerm] = useState(""); // State for user search term
+  const [userSearchTerm, setUserSearchTerm] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const mockCategories = useMemo(
@@ -121,7 +121,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
   useEffect(() => {
     if (isOpen) {
-      // Fetch users if modal opens and users aren't loaded (or if forced refresh)
       if (allUsers.length === 0 && !isFetchingUsers) {
         fetchUsersForDropdown();
       }
@@ -148,15 +147,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         resetFormFields();
       }
       setErrors({});
-      setUserSearchTerm(""); // Reset search term when modal opens/task changes
+      setUserSearchTerm("");
     }
   }, [isOpen, task]);
 
-  // Auto-focus search input when user dropdown opens
   useEffect(() => {
     if (showUserDropdown && userSearchInputRef.current) {
       setTimeout(() => {
-        // Timeout ensures the element is visible and focusable
         userSearchInputRef.current.focus();
       }, 100);
     }
@@ -180,8 +177,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   };
 
   const fetchUsersForDropdown = async () => {
-    // Removed condition: if (allUsers.length > 0 && !isFetchingUsers) return;
-    // This allows re-fetching if needed, e.g., after adding a new user elsewhere.
     setIsFetchingUsers(true);
     try {
       const response = await userApi.fetchAllTeamMembers();
@@ -191,6 +186,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         fetchedUsers.map((u) => ({
           id: u._id,
           name: u.fullname,
+          email: u.email, // Assuming 'email' is available in the fetched user object
           avatar:
             u.avatarUrl ||
             `/placeholder.svg?height=32&width=32&query=${encodeURIComponent(
@@ -201,7 +197,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to fetch users for assignment.");
-      setAllUsers([]); // Set to empty array on error to avoid issues with undefined
+      setAllUsers([]);
     } finally {
       setIsFetchingUsers(false);
     }
@@ -240,6 +236,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
   const getFileIcon = (fileName) => {
     const extension = fileName.split(".").pop()?.toLowerCase();
+    // ... (rest of getFileIcon function remains the same)
     switch (extension) {
       case "pdf":
         return "📄";
@@ -316,7 +313,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       if (!assignMoreTasks) {
         onClose();
       } else {
-        resetFormFields(true); // Keep due date if assigning more
+        resetFormFields(true);
       }
     } catch (error) {
       console.error("Error saving task:", error);
@@ -336,7 +333,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const handleUserSelect = (userId) => {
     setTaskAssignedTo(userId);
     setShowUserDropdown(false);
-    setUserSearchTerm(""); // Reset search on select
+    setUserSearchTerm("");
     if (errors.taskAssignedTo)
       setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
   };
@@ -373,7 +370,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     return user ? user.name : "Select User";
   }, [taskAssignedTo, allUsers]);
 
-  // Filtered users for the dropdown
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm.trim()) {
       return allUsers;
@@ -501,7 +497,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                           placeholder="Search users..."
                           value={userSearchTerm}
                           onChange={(e) => setUserSearchTerm(e.target.value)}
-                          className="h-9 text-sm w-full pl-9" // Added pl-9 for icon spacing
+                          className="h-9 text-sm w-full pl-9"
                         />
                       </div>
                     </div>
@@ -540,7 +536,16 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                                 )}`)
                               }
                             />
-                            <span className="truncate">{user.name}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="block truncate font-medium">
+                                {user.name}
+                              </span>
+                              {user.email && (
+                                <span className="block truncate text-xs text-gray-500">
+                                  {user.email}
+                                </span>
+                              )}
+                            </div>
                           </li>
                         ))
                       ) : (
@@ -615,6 +620,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
           </div>
 
+          {/* Priority, Frequency, Due Date, Attachments, Submit sections remain the same */}
+          {/* ... (rest of the form) ... */}
           {/* Priority */}
           <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
             <div className="flex items-center mb-3">
@@ -633,7 +640,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     if (errors.taskPriority)
                       setErrors((prev) => ({ ...prev, taskPriority: "" }));
                   }}
-                  variant={taskPriority === priorityValue ? "solid" : "outline"} // Changed to solid for selected
+                  variant={taskPriority === priorityValue ? "solid" : "outline"}
                   className={`flex items-center px-4 py-2 text-sm rounded-md ${
                     taskPriority === priorityValue
                       ? "bg-emerald-500 text-white hover:bg-emerald-600"
@@ -674,7 +681,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   }}
                   variant={
                     taskFrequencyType === freq.value ? "solid" : "outline"
-                  } // Changed to solid for selected
+                  }
                   className={`flex items-center px-3 py-2 text-sm rounded-md ${
                     taskFrequencyType === freq.value
                       ? "bg-emerald-500 text-white hover:bg-emerald-600"
@@ -805,7 +812,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
             <Button
               type="submit"
-              variant="solid" // Changed to solid
+              variant="solid"
               className="w-full h-11 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white rounded-md"
               disabled={isSubmitting}
             >
