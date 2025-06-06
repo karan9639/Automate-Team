@@ -133,12 +133,13 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                   closed: { opacity: 0, y: -10, scale: 0.95 },
                 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-0 mt-2 w-80 bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden"
+                className="absolute right-0 mt-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden sm:mr-4"
               >
                 <div className="p-4 border-b border-border">
                   <h3 className="text-sm font-semibold">Notifications</h3>
                 </div>
-                <div className="max-h-80 overflow-y-auto scrollbar-thin p-2">
+
+                <div className="max-h-80 overflow-y-auto scrollbar-thin p-2 flex flex-col gap-2">
                   {activitiesLoading ? (
                     <p className="text-sm text-muted-foreground p-2">
                       Loading...
@@ -151,7 +152,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                     activities.map((activity) => (
                       <div
                         key={activity.id}
-                        className="p-2 hover:bg-accent rounded-md smooth-transition"
+                        className="p-2 hover:bg-accent rounded-md transition-all duration-200"
                       >
                         <p className="text-sm font-medium">
                           {activity.user} {activity.action}
@@ -163,12 +164,13 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                     ))
                   )}
                 </div>
+
                 <div className="p-2 border-t border-border text-center">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsRefreshing(true)}
-                    className="text-primary"
+                    className="text-primary w-full sm:w-auto"
                   >
                     Refresh Notifications
                   </Button>
