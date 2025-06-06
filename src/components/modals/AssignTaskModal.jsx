@@ -294,12 +294,15 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       return;
     }
 
-    // ✅ Image validation: Only one image allowed and max 1MB
-    if (taskImage?.[0]?.file) {
-      const imageFile = taskImage[0].file;
-      if (imageFile.size > 1048576) {
-        setErrors({ taskImage: "Image must be under 1MB." });
-        toast.error("Image must be under 1MB.");
+    // 🔒 Validate image
+    const file = taskImage?.[0]?.file;
+    if (file) {
+      if (!(file instanceof File)) {
+        toast.error("Invalid image file.");
+        return;
+      }
+      if (file.size > 1024 * 1024) {
+        toast.error("Image must be less than 1MB.");
         return;
       }
     }
@@ -317,11 +320,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         }
       });
 
-      // ✅ Add image if valid
-      if (taskImage?.[0]?.file) {
-        formData.append("taskImage", taskImage[0].file);
+      if (file) {
+        formData.append("taskImage", file);
       }
 
+      // ✅ Now sending multipart/form-data correctly
       if (task && task._id) {
         await dispatch(
           editTask({ taskId: task._id, taskData: formData })
@@ -334,7 +337,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       toast.success(
         task ? "Task updated successfully!" : "Task created successfully!"
       );
-
       if (!assignMoreTasks) {
         onClose();
       } else {
