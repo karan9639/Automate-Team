@@ -362,15 +362,15 @@ const KPICards = ({ kpis }) => {
                     <div className="mt-3 pt-2 border-t border-gray-200">
                       {" "}
                       {/* Adjusted border color */}
-                      <div className="grid grid-cols-1 gap-x-16 text-xs lg:grid-cols-2 ">
-                        <div className="flex gap-x-1">
-                          <span className="text-gray-500">Assigned:</span>{" "}
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs mt-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">Assigned:</span>
                           <span className={`font-medium ${card.valueColor}`}>
                             {card.breakdown.assignedToMe}
                           </span>
                         </div>
-                        <div className="flex gap-x-1">
-                          <span className="text-gray-500">Created:</span>{" "}
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">Created:</span>
                           <span className={`font-medium ${card.valueColor}`}>
                             {card.breakdown.createdByMe}
                           </span>
