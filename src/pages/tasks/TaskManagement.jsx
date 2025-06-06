@@ -57,10 +57,19 @@ const TaskManagement = () => {
   const filterOptions = {
     taskCategory: [
       { value: "", label: "All Categories" },
-      { value: "Development", label: "Development" },
-      { value: "Design", label: "Design" },
-      { value: "Marketing", label: "Marketing" },
-      { value: "Operations", label: "Operations" },
+      { value: "Sampling", label: "Sampling" },
+      { value: "PPC", label: "PPC" },
+      { value: "Job Work", label: "Job Work" },
+      { value: "Greige", label: "Greige" },
+      { value: "Form Lamination", label: "Form Lamination" },
+      { value: "Flat Knit", label: "Flat Knit" },
+      { value: "Dyeing", label: "Dyeing" },
+      { value: "Dyeing Lab", label: "Dyeing Lab" },
+      { value: "Dispatch Dyeing", label: "Dispatch Dyeing" },
+      { value: "Digital Printing", label: "Digital Printing" },
+      { value: "Biling", label: "Biling" },
+      { value: "Adhessive", label: "Adhessive" },
+      { value: "Accounts", label: "Accounts" },
     ],
     taskPriority: [
       { value: "", label: "All Priorities" },
