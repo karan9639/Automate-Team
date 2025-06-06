@@ -50,13 +50,23 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
   // Mock categories - replace with actual API if available
   const mockCategories = useMemo(
     () => [
-      { id: "cat1", name: "Development" },
-      { id: "cat2", name: "Design" },
-      { id: "cat3", name: "Marketing" },
-      { id: "cat4", name: "Operations" },
+      { id: "cat1", name: "Sampling" },
+      { id: "cat2", name: "PPC" },
+      { id: "cat3", name: "Job Work" },
+      { id: "cat4", name: "Greige" },
+      { id: "cat5", name: "Form Lamination" },
+      { id: "cat6", name: "Flat Knit" },
+      { id: "cat7", name: "Dyeing" },
+      { id: "cat8", name: "Dyeing Lab" },
+      { id: "cat9", name: "Dispatch Dyeing" },
+      { id: "cat10", name: "Digital Printing" },
+      { id: "cat11", name: "Biling" },
+      { id: "cat12", name: "Adhessive" },
+      { id: "cat13", name: "Accounts" },
     ],
-    [],
-  )
+    []
+  );
+  
 
   const selectedUserName = editFormData.taskAssignedTo
     ? allUsers.find((u) => u.id === editFormData.taskAssignedTo)?.name || "Select User"
