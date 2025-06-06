@@ -7,16 +7,9 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { Switch } from "../../components/ui/switch";
-import { createTask, editTask } from "../../store/slices/taskSlice"; // Changed updateTask to editTask
+import { createTask, editTask } from "../../store/slices/taskSlice";
 import { userApi } from "../../apiService/apiService";
-import {
-  Check,
-  FileText,
-  ImageIcon,
-  AlertCircle,
-  Loader2,
-  X,
-} from "lucide-react";
+import { Check, FileText, AlertCircle, Loader2, X, Search } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 const validateTaskForm = (formData, backendSchema) => {
@@ -46,9 +39,7 @@ const validateTaskForm = (formData, backendSchema) => {
     errors.taskCategory = "Task category is required";
   }
 
-  if (!formData.taskDueDate) {
-    // Due date is optional in backend schema
-  } else {
+  if (formData.taskDueDate) {
     const selectedDate = new Date(formData.taskDueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -94,6 +85,7 @@ const backendTaskSchema = {
 const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
+  const userSearchInputRef = useRef(null); // Ref for user search input
 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -113,6 +105,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState(""); // State for user search term
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const mockCategories = useMemo(
@@ -128,7 +121,10 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchUsersForDropdown();
+      // Fetch users if modal opens and users aren't loaded (or if forced refresh)
+      if (allUsers.length === 0 && !isFetchingUsers) {
+        fetchUsersForDropdown();
+      }
       if (task) {
         setTaskTitle(task.taskTitle || "");
         setTaskDescription(task.taskDescription || "");
@@ -152,8 +148,19 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         resetFormFields();
       }
       setErrors({});
+      setUserSearchTerm(""); // Reset search term when modal opens/task changes
     }
   }, [isOpen, task]);
+
+  // Auto-focus search input when user dropdown opens
+  useEffect(() => {
+    if (showUserDropdown && userSearchInputRef.current) {
+      setTimeout(() => {
+        // Timeout ensures the element is visible and focusable
+        userSearchInputRef.current.focus();
+      }, 100);
+    }
+  }, [showUserDropdown]);
 
   const resetFormFields = (keepDueDate = false) => {
     setTaskTitle("");
@@ -169,10 +176,12 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     setTaskPriority(backendTaskSchema.taskPriority.default);
     setTaskFrequencyType("one-time");
     setErrors({});
+    setUserSearchTerm("");
   };
 
   const fetchUsersForDropdown = async () => {
-    if (allUsers.length > 0 && !isFetchingUsers) return;
+    // Removed condition: if (allUsers.length > 0 && !isFetchingUsers) return;
+    // This allows re-fetching if needed, e.g., after adding a new user elsewhere.
     setIsFetchingUsers(true);
     try {
       const response = await userApi.fetchAllTeamMembers();
@@ -184,13 +193,15 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           name: u.fullname,
           avatar:
             u.avatarUrl ||
-            `/placeholder.svg?height=32&width=32&query=${u.fullname}`,
+            `/placeholder.svg?height=32&width=32&query=${encodeURIComponent(
+              u.fullname
+            )}`,
         }))
       );
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to fetch users for assignment.");
-      setAllUsers([]);
+      setAllUsers([]); // Set to empty array on error to avoid issues with undefined
     } finally {
       setIsFetchingUsers(false);
     }
@@ -209,7 +220,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       setTaskImage((prev) => [...prev, ...newFiles]);
       toast.success(`${files.length} file(s) attached successfully`);
     }
-    // Reset the input value so the same file can be selected again
     event.target.value = "";
   };
 
@@ -257,7 +267,6 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const payload = {
       taskTitle: taskTitle.trim(),
       taskDescription: taskDescription.trim(),
@@ -279,10 +288,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
     setIsSubmitting(true);
     setErrors({});
-
     try {
       const formData = new FormData();
-
       Object.entries(payload).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           formData.append(
@@ -291,13 +298,10 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           );
         }
       });
-
-      // ✅ Append only ONE image file
       if (taskImage[0]?.file) {
         formData.append("taskImage", taskImage[0].file);
       }
 
-      // ✅ Don't set headers manually — let Axios do it
       if (task && task._id) {
         await dispatch(
           editTask({ taskId: task._id, taskData: formData })
@@ -305,13 +309,14 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       } else {
         await dispatch(createTask(formData)).unwrap();
       }
-
       setRefreshTrigger(Date.now());
-
+      toast.success(
+        task ? "Task updated successfully!" : "Task created successfully!"
+      );
       if (!assignMoreTasks) {
         onClose();
       } else {
-        resetFormFields(true);
+        resetFormFields(true); // Keep due date if assigning more
       }
     } catch (error) {
       console.error("Error saving task:", error);
@@ -320,17 +325,18 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           ? error
           : error?.response?.data?.message ||
             error.message ||
-            "Unexpected error during file upload";
+            "Unexpected error during task submission";
       setErrors({ submit: errorMessage });
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleUserSelect = (userId) => {
     setTaskAssignedTo(userId);
     setShowUserDropdown(false);
+    setUserSearchTerm(""); // Reset search on select
     if (errors.taskAssignedTo)
       setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
   };
@@ -366,6 +372,16 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     const user = allUsers.find((u) => u.id === taskAssignedTo);
     return user ? user.name : "Select User";
   }, [taskAssignedTo, allUsers]);
+
+  // Filtered users for the dropdown
+  const filteredUsers = useMemo(() => {
+    if (!userSearchTerm.trim()) {
+      return allUsers;
+    }
+    return allUsers.filter((user) =>
+      user.name.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [allUsers, userSearchTerm]);
 
   return (
     <Modal
@@ -443,10 +459,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   type="button"
                   id="taskAssignedToButton"
                   onClick={() => {
-                    if (allUsers.length === 0) fetchUsersForDropdown();
+                    if (allUsers.length === 0 && !isFetchingUsers)
+                      fetchUsersForDropdown();
                     setShowUserDropdown(!showUserDropdown);
                   }}
-                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white ${
+                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white text-sm ${
                     errors.taskAssignedTo ? "border-red-500" : "border-gray-300"
                   }`}
                 >
@@ -454,9 +471,15 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     {selectedUserName}
                   </span>
                   {isFetchingUsers ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
-                    <span className="ml-1">▼</span>
+                    <span
+                      className={`ml-1 transition-transform duration-200 ${
+                        showUserDropdown ? "rotate-180" : ""
+                      }`}
+                    >
+                      ▼
+                    </span>
                   )}
                 </button>
                 {errors.taskAssignedTo && (
@@ -465,36 +488,66 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     {errors.taskAssignedTo}
                   </p>
                 )}
-                {showUserDropdown && !isFetchingUsers && (
-                  <div className="absolute z-20 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60 overflow-auto">
-                    <ul role="listbox" className="py-1">
-                      {allUsers.length > 0 ? (
-                        allUsers.map((user) => (
+                {showUserDropdown && (
+                  <div className="absolute z-20 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 flex flex-col max-h-72">
+                    <div className="p-2 border-b border-gray-200 flex-shrink-0">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Search className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <Input
+                          ref={userSearchInputRef}
+                          type="text"
+                          placeholder="Search users..."
+                          value={userSearchTerm}
+                          onChange={(e) => setUserSearchTerm(e.target.value)}
+                          className="h-9 text-sm w-full pl-9" // Added pl-9 for icon spacing
+                        />
+                      </div>
+                    </div>
+                    <ul
+                      role="listbox"
+                      className="py-1 overflow-y-auto flex-grow"
+                    >
+                      {isFetchingUsers ? (
+                        <li className="px-3 py-2 text-gray-500 text-sm text-center flex items-center justify-center">
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
+                          Loading users...
+                        </li>
+                      ) : filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
                           <li
                             key={user.id}
                             role="option"
                             aria-selected={taskAssignedTo === user.id}
-                            className={`px-3 py-2 cursor-pointer flex items-center ${
+                            className={`px-3 py-2 cursor-pointer flex items-center text-sm ${
                               taskAssignedTo === user.id
-                                ? "bg-blue-100 font-semibold"
+                                ? "bg-blue-100 font-semibold text-blue-700"
                                 : "hover:bg-gray-100"
                             }`}
                             onClick={() => handleUserSelect(user.id)}
                           >
                             {taskAssignedTo === user.id && (
-                              <Check className="h-4 w-4 mr-2 text-blue-600" />
+                              <Check className="h-4 w-4 mr-2 text-blue-600 flex-shrink-0" />
                             )}
                             <img
                               src={user.avatar || "/placeholder.svg"}
                               alt={user.name}
-                              className="w-6 h-6 rounded-full mr-2"
+                              className="w-6 h-6 rounded-full mr-2 flex-shrink-0 object-cover"
+                              onError={(e) =>
+                                (e.target.src = `/placeholder.svg?height=24&width=24&query=${encodeURIComponent(
+                                  user.name
+                                )}`)
+                              }
                             />
                             <span className="truncate">{user.name}</span>
                           </li>
                         ))
                       ) : (
-                        <li className="px-3 py-2 text-gray-500">
-                          No users available or failed to load.
+                        <li className="px-3 py-2 text-gray-500 text-sm text-center">
+                          {allUsers.length === 0
+                            ? "No users available."
+                            : "No users match your search."}
                         </li>
                       )}
                     </ul>
@@ -516,14 +569,20 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   type="button"
                   id="taskCategoryButton"
                   onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white ${
+                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white text-sm ${
                     errors.taskCategory ? "border-red-500" : "border-gray-300"
                   }`}
                 >
                   <span className="text-gray-700 truncate">
                     {taskCategory || "Select Category"}
                   </span>
-                  <span className="ml-1">▼</span>
+                  <span
+                    className={`ml-1 transition-transform duration-200 ${
+                      showCategoryDropdown ? "rotate-180" : ""
+                    }`}
+                  >
+                    ▼
+                  </span>
                 </button>
                 {errors.taskCategory && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
@@ -539,9 +598,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                           key={category.id}
                           role="option"
                           aria-selected={taskCategory === category.name}
-                          className={`px-3 py-2 cursor-pointer ${
+                          className={`px-3 py-2 cursor-pointer text-sm ${
                             taskCategory === category.name
-                              ? "bg-blue-50"
+                              ? "bg-blue-50 font-semibold"
                               : "hover:bg-gray-100"
                           }`}
                           onClick={() => handleCategorySelect(category.name)}
@@ -560,7 +619,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
             <div className="flex items-center mb-3">
               <span className="mr-2 text-lg">🚩</span>
-              <span className="font-medium">
+              <span className="font-medium text-gray-700">
                 Priority <span className="text-red-500">*</span>
               </span>
             </div>
@@ -574,15 +633,15 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     if (errors.taskPriority)
                       setErrors((prev) => ({ ...prev, taskPriority: "" }));
                   }}
-                  variant={taskPriority === priorityValue ? "green" : "outline"}
-                  className={`flex items-center px-4 py-2 ${
+                  variant={taskPriority === priorityValue ? "solid" : "outline"} // Changed to solid for selected
+                  className={`flex items-center px-4 py-2 text-sm rounded-md ${
                     taskPriority === priorityValue
-                      ? "bg-emerald-500 text-white"
-                      : "bg-white"
+                      ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   {taskPriority === priorityValue && (
-                    <Check className="h-4 w-4 mr-1" />
+                    <Check className="h-4 w-4 mr-1.5" />
                   )}
                   {priorityValue}
                 </Button>
@@ -599,7 +658,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
             <div className="flex items-center mb-3">
               <span className="mr-2 text-lg">🔄</span>
-              <span className="font-medium">
+              <span className="font-medium text-gray-700">
                 Frequency <span className="text-red-500">*</span>
               </span>
             </div>
@@ -614,16 +673,16 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                       setErrors((prev) => ({ ...prev, taskFrequency: "" }));
                   }}
                   variant={
-                    taskFrequencyType === freq.value ? "green" : "outline"
-                  }
-                  className={`flex items-center px-3 py-2 text-sm ${
+                    taskFrequencyType === freq.value ? "solid" : "outline"
+                  } // Changed to solid for selected
+                  className={`flex items-center px-3 py-2 text-sm rounded-md ${
                     taskFrequencyType === freq.value
-                      ? "bg-emerald-500 text-white"
-                      : "bg-white"
+                      ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   {taskFrequencyType === freq.value && (
-                    <Check className="h-3 w-3 mr-1" />
+                    <Check className="h-3 w-3 mr-1.5" />
                   )}
                   {freq.label}
                 </Button>
@@ -641,7 +700,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             <div className="flex flex-col sm:flex-row sm:items-center">
               <div className="flex items-center mb-2 sm:mb-0 sm:mr-4">
                 <span className="mr-2 text-lg">📅</span>
-                <span className="font-medium">Due Date</span>
+                <span className="font-medium text-gray-700">Due Date</span>
               </div>
               <div className="flex-1">
                 <Input
@@ -652,7 +711,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   }
                   className={`h-10 border ${
                     errors.taskDueDate ? "border-red-500" : "border-gray-300"
-                  } rounded-md bg-white px-3 py-2 w-full`}
+                  } rounded-md bg-white px-3 py-2 w-full text-sm`}
                 />
                 {errors.taskDueDate && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
@@ -667,54 +726,37 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           {/* Attachment Options */}
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3 pt-2 justify-center sm:justify-start">
-              {/* Hidden file input */}
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
-                multiple
                 className="hidden"
                 accept="image/*"
               />
-
-              {/* File attachment button */}
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full p-2 h-10 w-10"
+                className="rounded-full p-2 h-10 w-10 border-gray-300 hover:bg-gray-50"
                 size="icon"
                 title="Attach image"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <FileText className="h-5 w-5" />
+                <FileText className="h-5 w-5 text-gray-600" />
               </Button>
-
-              {/* Other attachment buttons */}
-              {/* <Button
-                type="button"
-                variant="outline"
-                className="rounded-full p-2 h-10 w-10"
-                size="icon"
-                title="Attach image"
-              >
-                <ImageIcon className="h-5 w-5" />
-              </Button> */}
             </div>
-
-            {/* Display attached files */}
             {taskImage.length > 0 && (
               <div className="mt-4 space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">
                   Attached Files ({taskImage.length})
                 </h4>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
+                <div className="space-y-2 max-h-32 overflow-y-auto p-1">
                   {taskImage.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md border"
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
                     >
                       <div className="flex items-center space-x-2 flex-1 min-w-0">
-                        <span className="text-lg">
+                        <span className="text-lg flex-shrink-0">
                           {getFileIcon(file.name)}
                         </span>
                         <div className="flex-1 min-w-0">
@@ -730,7 +772,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="p-1 h-6 w-6 text-gray-400 hover:text-red-500"
+                        className="p-1 h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50"
                         onClick={() => handleFileRemove(file.id)}
                         title="Remove file"
                       >
@@ -752,7 +794,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
           <div className="pt-4 mt-6 border-t border-gray-200">
             <div className="flex justify-end items-center gap-3 mb-4">
-              <span className="text-sm font-medium">Assign More Tasks</span>
+              <span className="text-sm font-medium text-gray-700">
+                Assign More Tasks
+              </span>
               <Switch
                 checked={assignMoreTasks}
                 onCheckedChange={setAssignMoreTasks}
@@ -761,8 +805,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
             <Button
               type="submit"
-              variant="green"
-              className="w-full h-11 text-base font-medium bg-emerald-500 hover:bg-emerald-600"
+              variant="solid" // Changed to solid
+              className="w-full h-11 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white rounded-md"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
