@@ -945,13 +945,25 @@ const TaskManagement = () => {
       ) : displayTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayTasks.map((task, index) => {
-            const taskId = extractTaskId(task);
+            const taskId = extractTaskId(task); // Ensure extractTaskId is robust
             return (
               <TaskCard
-                key={taskId || `task-${index}`}
+                key={taskId || `task-${index}-${refreshTrigger}`} // Added refreshTrigger to key for potential edge cases if IDs are not perfectly unique temporarily
                 task={task}
                 onClick={() => {
                   handleTaskClick(task, index);
+                }}
+                onDelete={(deletedTaskId) => {
+                  console.log(
+                    `Task ${deletedTaskId} deleted, refreshing lists.`
+                  );
+                  handleRefresh();
+                }}
+                onStatusChange={(changedTaskId, updatedData) => {
+                  console.log(
+                    `Task ${changedTaskId} status changed (ID: ${changedTaskId}), refreshing lists.`
+                  );
+                  handleRefresh();
                 }}
               />
             );
