@@ -363,13 +363,13 @@ const KPICards = ({ kpis }) => {
                       {" "}
                       {/* Adjusted border color */}
                       <div className="grid grid-cols-1 gap-x-16 text-xs lg:grid-cols-2 ">
-                        <div className="flex gap-x-1.5">
+                        <div className="flex gap-x-1">
                           <span className="text-gray-500">Assigned:</span>{" "}
                           <span className={`font-medium ${card.valueColor}`}>
                             {card.breakdown.assignedToMe}
                           </span>
                         </div>
-                        <div className="flex gap-x-1.5">
+                        <div className="flex gap-x-1">
                           <span className="text-gray-500">Created:</span>{" "}
                           <span className={`font-medium ${card.valueColor}`}>
                             {card.breakdown.createdByMe}
