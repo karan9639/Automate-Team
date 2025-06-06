@@ -133,7 +133,7 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                   closed: { opacity: 0, y: -10, scale: 0.95 },
                 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-0 mt-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden sm:mr-4"
+                className="absolute right-0 mt-2 w-60 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden sm:mr-4"
               >
                 <div className="p-4 border-b border-border">
                   <h3 className="text-sm font-semibold">Notifications</h3>
