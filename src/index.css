@@ -141,6 +141,8 @@
     @apply bg-background text-foreground antialiased;
     min-height: 100vh;
     margin: 0;
+    overflow-x: hidden;
+    /* Add this line */
   }
 
   * {

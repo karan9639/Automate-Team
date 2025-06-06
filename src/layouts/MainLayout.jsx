@@ -25,7 +25,9 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen bg-background text-foreground">
+      {" "}
+      {/* Ensure this doesn't cause overflow if body has overflow-x:hidden */}
       {/* Sidebar */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -33,11 +35,11 @@ const MainLayout = () => {
         isTablet={isTablet}
         toggleSidebar={toggleSidebar}
       />
-
-      {/* Main content */}
+      {/* Main content panel */}
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          isSidebarOpen && !isMobile ? "ml-64" : "ml-0"
+        className={`flex-1 flex flex-col transition-all duration-300 overflow-x-hidden ${
+          // Added overflow-x-hidden
+          isSidebarOpen && !isMobile ? "ml-64" : "ml-0 md:ml-20" // Adjusted for collapsed sidebar width on md
         }`}
       >
         {/* Topbar */}
@@ -48,7 +50,9 @@ const MainLayout = () => {
         />
 
         {/* Main content area */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+          {" "}
+          {/* Changed overflow-auto to overflow-y-auto and added overflow-x-hidden, added padding */}
           <Outlet />
         </main>
       </div>
