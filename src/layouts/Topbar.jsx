@@ -24,11 +24,10 @@ const Topbar = ({
   // Use the custom hook for activities
   // This assumes useActivities returns an object like { activities, isLoading, error, refreshActivities }
   // and refreshActivities can be called to re-fetch.
-  const {
-    activities,
-    isLoading: activitiesLoading,
-    refreshActivities,
-  } = useActivities();
+  const [isActivitiesRefreshing, setIsActivitiesRefreshing] = useState(false);
+  const { activities, activitiesLoading, activitiesError } = useActivities(
+    isActivitiesRefreshing
+  );
 
   const userDropdownRef = useRef(null);
   const notificationsDropdownRef = useRef(null);
@@ -92,9 +91,7 @@ const Topbar = ({
 
   const handleRefreshNotifications = (e) => {
     e.stopPropagation(); // Prevent dropdown from closing if it's part of the dropdown itself
-    if (refreshActivities) {
-      refreshActivities();
-    }
+    setIsActivitiesRefreshing((prev) => !prev); // Or use a counter: setIsActivitiesRefreshing(c => c + 1) if it's a number
   };
 
   return (
@@ -212,8 +209,8 @@ const Topbar = ({
                 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className="absolute mt-2 bg-gray-800 text-gray-200 rounded-lg shadow-2xl border border-gray-700 z-50 overflow-hidden flex flex-col
-                         w-[calc(100vw-2rem)] max-w-sm left-1/2 -translate-x-1/2 
-                         sm:w-80 sm:max-w-none sm:left-auto sm:right-0 sm:translate-x-0"
+                       w-[calc(100vw-2rem)] max-w-sm left-1/2 -translate-x-1/2 
+                       sm:w-80 sm:max-w-none sm:left-auto sm:right-0 sm:translate-x-0"
               >
                 <div className="p-3 border-b border-gray-700 flex-shrink-0">
                   {" "}
