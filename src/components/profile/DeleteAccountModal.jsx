@@ -5,10 +5,10 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { userApi } from "@/api/userApi";
-import { Modal } from "@/components/ui/modal"; // Assuming modal.jsx exists and is correctly exported
-import { Button } from "@/components/ui/button.jsx"; // Added .jsx extension
-import OtpInput from "@/components/OtpInput"; // Assuming OtpInput.jsx exists or is a directory with index.jsx
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.jsx"; // Corrected import
+import { Modal } from "@/components/ui/modal.jsx"; // Corrected import
+import { Button } from "@/components/ui/button.jsx";
+import OtpInput from "@/components/OtpInput.jsx"; // Assuming OtpInput.jsx exists
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.jsx";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 
@@ -24,14 +24,13 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset state when modal is closed
       setTimeout(() => {
         setStep("confirm");
         setOtp("");
         setError(null);
         setIsLoading(false);
         setCountdown(0);
-      }, 300); // Delay to allow closing animation
+      }, 300);
     }
   }, [isOpen]);
 
@@ -49,7 +48,6 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Ensure currentUser and currentUser.email exist before making API call
       if (!currentUser || !currentUser.email) {
         throw new Error(
           "User information is not available. Please log in again."
@@ -59,7 +57,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
       if (response.data && response.data.success) {
         toast.success(response.data.message || "OTP sent to your email.");
         setStep("otp");
-        setCountdown(60); // 60-second countdown
+        setCountdown(60);
       } else {
         throw new Error(response.data.message || "Failed to send OTP.");
       }
@@ -83,14 +81,14 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
     setStep("deleting");
 
     try {
-      const response = await userApi.deleteMyAccount(otp); // Ensure this API call is correct
+      const response = await userApi.deleteMyAccount(otp);
       if (response.data && response.data.success) {
         toast.success(
           "Account deleted successfully. You are being logged out."
         );
-        await logout(); // Ensure logout is awaitable or handle appropriately
+        await logout();
         navigate(ROUTES.LOGIN, { replace: true });
-        onClose();
+        if (onClose) onClose(); // Ensure onClose is called
       } else {
         throw new Error(response.data.message || "Failed to delete account.");
       }
@@ -99,7 +97,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
         err.response?.data?.message || err.message || "An error occurred.";
       setError(errorMessage);
       toast.error(errorMessage);
-      setStep("otp"); // Go back to OTP step on failure
+      setStep("otp");
     } finally {
       setIsLoading(false);
     }
