@@ -72,8 +72,8 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
   };
 
   const handleDeleteAccount = async () => {
-    if (otp.length !== 6) {
-      setError("Please enter a valid 6-digit OTP.");
+    if (otp.length !== 4) {
+      setError("Please enter a valid 4-digit OTP.");
       return;
     }
     setIsLoading(true);
@@ -112,14 +112,14 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
               An OTP has been sent to <strong>{currentUser?.email}</strong>.
               Please enter it below to confirm account deletion.
             </p>
-            <OtpInput length={6} onComplete={setOtp} disabled={isLoading} />
+            <OtpInput length={4} onComplete={setOtp} disabled={isLoading} />
             {error && (
               <p className="text-red-500 text-sm text-center mt-2">{error}</p>
             )}
             <div className="mt-6 flex flex-col gap-3">
               <Button
                 onClick={handleDeleteAccount}
-                disabled={isLoading || otp.length !== 6}
+                disabled={isLoading || otp.length !== 4}
                 variant="destructive"
               >
                 {isLoading ? (
