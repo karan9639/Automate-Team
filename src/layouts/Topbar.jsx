@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, Bell, Menu, X, User, LogOut, Settings } from "lucide-react";
 import AutomateLogo from "@/components/common/AutomateLogo";
 import useActivities from "@/hooks/useActivities"; // Corrected default import
-import Button from "@/components/ui/button"; // Assuming Button is in src/components/ui
+import { Button } from "@/components/ui/button"; // Assuming Button is in src/components/ui
 
 const Topbar = ({
   toggleSidebar,
@@ -209,8 +209,8 @@ const Topbar = ({
                 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className="absolute mt-2 bg-gray-800 text-gray-200 rounded-lg shadow-2xl border border-gray-700 z-50 overflow-hidden flex flex-col
-                       w-[calc(100vw-2rem)] max-w-sm left-1/2 -translate-x-1/2 
-                       sm:w-80 sm:max-w-none sm:left-auto sm:right-0 sm:translate-x-0"
+                     w-[calc(100vw-2rem)] max-w-sm left-1/2 -translate-x-1/2 
+                     sm:w-80 sm:max-w-none sm:left-auto sm:right-0 sm:translate-x-0"
               >
                 <div className="p-3 border-b border-gray-700 flex-shrink-0">
                   {" "}
