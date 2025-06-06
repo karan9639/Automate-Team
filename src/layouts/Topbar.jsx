@@ -133,13 +133,13 @@ const Topbar = ({ toggleSidebar, isSidebarOpen }) => {
                   closed: { opacity: 0, y: -10, scale: 0.95 },
                 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-0 mt-2 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden sm:mr-4"
+                className="absolute left-0 right-0 mx-2 sm:right-0 sm:left-auto sm:mx-0 mt-2 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl bg-popover text-popover-foreground rounded-lg shadow-2xl border border-border z-50 overflow-hidden"
               >
-                <div className="p-4 border-b border-border">
+                <div className="p-3 sm:p-4 border-b border-border">
                   <h3 className="text-base font-semibold">Notifications</h3>
                 </div>
 
-                <div className="max-h-[32rem] overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3">
+                <div className="max-h-[32rem] overflow-y-auto scrollbar-thin p-3 sm:p-4 flex flex-col gap-3">
                   {activitiesLoading ? (
                     <p className="text-sm text-muted-foreground p-2">
                       Loading...
