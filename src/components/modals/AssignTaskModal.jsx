@@ -274,6 +274,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const payload = {
       taskTitle: taskTitle.trim(),
       taskDescription: taskDescription.trim(),
@@ -293,6 +294,16 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       return;
     }
 
+    // ✅ Image validation: Only one image allowed and max 1MB
+    if (taskImage?.[0]?.file) {
+      const imageFile = taskImage[0].file;
+      if (imageFile.size > 1048576) {
+        setErrors({ taskImage: "Image must be under 1MB." });
+        toast.error("Image must be under 1MB.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setErrors({});
     try {
@@ -305,7 +316,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           );
         }
       });
-      if (taskImage[0]?.file) {
+
+      // ✅ Add image if valid
+      if (taskImage?.[0]?.file) {
         formData.append("taskImage", taskImage[0].file);
       }
 
@@ -316,10 +329,12 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       } else {
         await dispatch(createTask(formData)).unwrap();
       }
+
       setRefreshTrigger(Date.now());
       toast.success(
         task ? "Task updated successfully!" : "Task created successfully!"
       );
+
       if (!assignMoreTasks) {
         onClose();
       } else {
@@ -339,6 +354,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       setIsSubmitting(false);
     }
   };
+  
 
   const handleUserSelect = (userId) => {
     setTaskAssignedTo(userId);
