@@ -1,130 +1,157 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { toast } from "react-hot-toast"
-import { useAuth } from "@/contexts/AuthContext"
-import { userApi } from "@/api/userApi"
-import { Modal } from "@/components/ui/modal"
-import { Button } from "@/components/ui/button"
-import OtpInput from "@/components/OtpInput"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, ShieldAlert } from "lucide-react"
-import { ROUTES } from "@/constants/routes"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { userApi } from "@/api/userApi";
+import { Modal } from "@/components/ui/modal"; // Assuming modal.jsx exists and is correctly exported
+import { Button } from "@/components/ui/button.jsx"; // Added .jsx extension
+import OtpInput from "@/components/OtpInput"; // Assuming OtpInput.jsx exists or is a directory with index.jsx
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.jsx"; // Corrected import
+import { Loader2, ShieldAlert } from "lucide-react";
+import { ROUTES } from "@/constants/routes";
 
 const DeleteAccountModal = ({ isOpen, onClose }) => {
-  const { currentUser, logout } = useAuth()
-  const navigate = useNavigate()
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const [step, setStep] = useState("confirm") // 'confirm', 'otp', 'deleting'
-  const [otp, setOtp] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [countdown, setCountdown] = useState(0)
+  const [step, setStep] = useState("confirm"); // 'confirm', 'otp', 'deleting'
+  const [otp, setOtp] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
     if (!isOpen) {
       // Reset state when modal is closed
       setTimeout(() => {
-        setStep("confirm")
-        setOtp("")
-        setError(null)
-        setIsLoading(false)
-        setCountdown(0)
-      }, 300) // Delay to allow closing animation
+        setStep("confirm");
+        setOtp("");
+        setError(null);
+        setIsLoading(false);
+        setCountdown(0);
+      }, 300); // Delay to allow closing animation
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   useEffect(() => {
-    let timer
+    let timer;
     if (countdown > 0) {
       timer = setInterval(() => {
-        setCountdown((prev) => prev - 1)
-      }, 1000)
+        setCountdown((prev) => prev - 1);
+      }, 1000);
     }
-    return () => clearInterval(timer)
-  }, [countdown])
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const handleSendOtp = async () => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await userApi.sendOtp({ email: currentUser.email })
+      // Ensure currentUser and currentUser.email exist before making API call
+      if (!currentUser || !currentUser.email) {
+        throw new Error(
+          "User information is not available. Please log in again."
+        );
+      }
+      const response = await userApi.sendOtp({ email: currentUser.email });
       if (response.data && response.data.success) {
-        toast.success(response.data.message || "OTP sent to your email.")
-        setStep("otp")
-        setCountdown(60) // 60-second countdown
+        toast.success(response.data.message || "OTP sent to your email.");
+        setStep("otp");
+        setCountdown(60); // 60-second countdown
       } else {
-        throw new Error(response.data.message || "Failed to send OTP.")
+        throw new Error(response.data.message || "Failed to send OTP.");
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || "An error occurred."
-      setError(errorMessage)
-      toast.error(errorMessage)
+      const errorMessage =
+        err.response?.data?.message || err.message || "An error occurred.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDeleteAccount = async () => {
     if (otp.length !== 6) {
-      setError("Please enter a valid 6-digit OTP.")
-      return
+      setError("Please enter a valid 6-digit OTP.");
+      return;
     }
-    setIsLoading(true)
-    setError(null)
-    setStep("deleting")
+    setIsLoading(true);
+    setError(null);
+    setStep("deleting");
 
     try {
-      const response = await userApi.deleteMyAccount(otp)
+      const response = await userApi.deleteMyAccount(otp); // Ensure this API call is correct
       if (response.data && response.data.success) {
-        toast.success("Account deleted successfully. You are being logged out.")
-        await logout()
-        navigate(ROUTES.LOGIN, { replace: true })
-        onClose()
+        toast.success(
+          "Account deleted successfully. You are being logged out."
+        );
+        await logout(); // Ensure logout is awaitable or handle appropriately
+        navigate(ROUTES.LOGIN, { replace: true });
+        onClose();
       } else {
-        throw new Error(response.data.message || "Failed to delete account.")
+        throw new Error(response.data.message || "Failed to delete account.");
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || "An error occurred."
-      setError(errorMessage)
-      toast.error(errorMessage)
-      setStep("otp") // Go back to OTP step on failure
+      const errorMessage =
+        err.response?.data?.message || err.message || "An error occurred.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setStep("otp"); // Go back to OTP step on failure
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const renderContent = () => {
     switch (step) {
       case "otp":
         return (
           <div>
-            <p className="text-center text-gray-600 mb-4">
-              An OTP has been sent to <strong>{currentUser?.email}</strong>. Please enter it below to confirm account
-              deletion.
+            <p className="text-center text-gray-600 dark:text-gray-300 mb-4">
+              An OTP has been sent to <strong>{currentUser?.email}</strong>.
+              Please enter it below to confirm account deletion.
             </p>
             <OtpInput length={6} onComplete={setOtp} disabled={isLoading} />
-            {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
+            {error && (
+              <p className="text-red-500 text-sm text-center mt-2">{error}</p>
+            )}
             <div className="mt-6 flex flex-col gap-3">
-              <Button onClick={handleDeleteAccount} disabled={isLoading || otp.length !== 6} variant="destructive">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              <Button
+                onClick={handleDeleteAccount}
+                disabled={isLoading || otp.length !== 6}
+                variant="destructive"
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 Verify OTP & Delete Account
               </Button>
-              <Button variant="link" onClick={handleSendOtp} disabled={countdown > 0 || isLoading} className="text-sm">
+              <Button
+                variant="link"
+                onClick={handleSendOtp}
+                disabled={countdown > 0 || isLoading}
+                className="text-sm"
+              >
                 {countdown > 0 ? `Resend OTP in ${countdown}s` : "Resend OTP"}
               </Button>
             </div>
           </div>
-        )
+        );
       case "deleting":
         return (
           <div className="flex flex-col items-center justify-center p-8 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-destructive mb-4" />
-            <h3 className="text-lg font-semibold">Deleting Your Account...</h3>
-            <p className="text-gray-600 mt-2">Please wait. This action is irreversible.</p>
+            <h3 className="text-lg font-semibold dark:text-white">
+              Deleting Your Account...
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mt-2">
+              Please wait. This action is irreversible.
+            </p>
           </div>
-        )
+        );
       case "confirm":
       default:
         return (
@@ -133,29 +160,44 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
               <ShieldAlert className="h-4 w-4" />
               <AlertTitle>This action is irreversible.</AlertTitle>
               <AlertDescription>
-                Deleting your account will permanently remove all your data, including tasks, team information, and
-                personal settings. This cannot be undone.
+                Deleting your account will permanently remove all your data,
+                including tasks, team information, and personal settings. This
+                cannot be undone.
               </AlertDescription>
             </Alert>
-            {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
-            <p className="text-gray-600 mb-4">
-              To confirm, we will send a One-Time Password (OTP) to your registered email:{" "}
-              <strong>{currentUser?.email}</strong>.
+            {error && (
+              <p className="text-red-500 text-sm text-center mb-4">{error}</p>
+            )}
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              To confirm, we will send a One-Time Password (OTP) to your
+              registered email: <strong>{currentUser?.email}</strong>.
             </p>
-            <Button onClick={handleSendOtp} disabled={isLoading} className="w-full" variant="destructive">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button
+              onClick={handleSendOtp}
+              disabled={isLoading}
+              className="w-full"
+              variant="destructive"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               Send OTP and Continue
             </Button>
           </div>
-        )
+        );
     }
-  }
+  };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Delete Your Account" className="max-w-md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Delete Your Account"
+      className="max-w-md"
+    >
       {renderContent()}
     </Modal>
-  )
-}
+  );
+};
 
-export default DeleteAccountModal
+export default DeleteAccountModal;
