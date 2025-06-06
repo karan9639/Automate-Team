@@ -726,9 +726,9 @@ const TaskManagement = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Task Management</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center self-start md:self-auto justify-start md:justify-end gap-2">
           <Button
             onClick={() => setShowFilters(!showFilters)}
             variant="outline"
@@ -768,18 +768,22 @@ const TaskManagement = () => {
       {/* Filter Panel */}
       {showFilters && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-          <div className="flex flex-wrap items-center gap-4 mb-4">
-            <h3 className="font-medium text-gray-700">Filter Tasks:</h3>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end mb-4">
             {/* Category Filter */}
-            <div className="flex flex-col">
-              <label className="text-sm text-gray-600 mb-1">Category</label>
+            <div className="flex flex-col w-full">
+              <label
+                htmlFor="filter-category"
+                className="text-sm text-gray-600 mb-1"
+              >
+                Category
+              </label>
               <select
+                id="filter-category"
                 value={filters.taskCategory}
                 onChange={(e) =>
                   handleFilterChange("taskCategory", e.target.value)
                 }
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {filterOptions.taskCategory.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -790,14 +794,20 @@ const TaskManagement = () => {
             </div>
 
             {/* Priority Filter */}
-            <div className="flex flex-col">
-              <label className="text-sm text-gray-600 mb-1">Priority</label>
+            <div className="flex flex-col w-full">
+              <label
+                htmlFor="filter-priority"
+                className="text-sm text-gray-600 mb-1"
+              >
+                Priority
+              </label>
               <select
+                id="filter-priority"
                 value={filters.taskPriority}
                 onChange={(e) =>
                   handleFilterChange("taskPriority", e.target.value)
                 }
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {filterOptions.taskPriority.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -808,14 +818,20 @@ const TaskManagement = () => {
             </div>
 
             {/* Status Filter */}
-            <div className="flex flex-col">
-              <label className="text-sm text-gray-600 mb-1">Status</label>
+            <div className="flex flex-col w-full">
+              <label
+                htmlFor="filter-status"
+                className="text-sm text-gray-600 mb-1"
+              >
+                Status
+              </label>
               <select
+                id="filter-status"
                 value={filters.taskStatus}
                 onChange={(e) =>
                   handleFilterChange("taskStatus", e.target.value)
                 }
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {filterOptions.taskStatus.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -827,15 +843,17 @@ const TaskManagement = () => {
 
             {/* Clear Filters Button */}
             {hasActiveFilters() && (
-              <Button
-                onClick={clearAllFilters}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 mt-6"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
-              </Button>
+              <div className="flex items-end h-full">
+                <Button
+                  onClick={clearAllFilters}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 w-full sm:w-auto"
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filters
+                </Button>
+              </div>
             )}
           </div>
 
@@ -865,12 +883,12 @@ const TaskManagement = () => {
 
       <div className="mb-6">
         <div className="border-b">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-4 sm:space-x-8 -mb-px overflow-x-auto scrollbar-hidden">
             {["my-tasks", "delegated-tasks", "all-tasks"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab
                     ? "border-emerald-500 text-emerald-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -945,10 +963,10 @@ const TaskManagement = () => {
       ) : displayTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayTasks.map((task, index) => {
-            const taskId = extractTaskId(task); // Ensure extractTaskId is robust
+            const taskId = extractTaskId(task);
             return (
               <TaskCard
-                key={taskId || `task-${index}-${refreshTrigger}`} // Added refreshTrigger to key for potential edge cases if IDs are not perfectly unique temporarily
+                key={taskId || `task-${index}`}
                 task={task}
                 onClick={() => {
                   handleTaskClick(task, index);
@@ -961,7 +979,7 @@ const TaskManagement = () => {
                 }}
                 onStatusChange={(changedTaskId, updatedData) => {
                   console.log(
-                    `Task ${changedTaskId} status changed (ID: ${changedTaskId}), refreshing lists.`
+                    `Task ${changedTaskId} status changed, refreshing lists.`
                   );
                   handleRefresh();
                 }}
