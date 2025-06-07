@@ -990,32 +990,15 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                         e.target.parentNode.appendChild(errorText);
                       }}
                     />
-
                     <div className="text-center mt-4">
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(task.taskImage.url);
-                            const blob = await response.blob();
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.download = `task-image-${
-                              task.id || "download"
-                            }.jpg`; // customize filename
-                            document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                            URL.revokeObjectURL(url);
-                          } catch (err) {
-                            console.error("Image download failed", err);
-                            alert("Failed to download image.");
-                          }
-                        }}
+                      <a
+                        href={task.taskImage.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                       >
-                        Download Image
-                      </button>
+                        View Image
+                      </a>
                     </div>
                   </div>
                 </div>
