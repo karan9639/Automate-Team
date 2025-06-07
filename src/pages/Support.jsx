@@ -90,8 +90,8 @@ const Support = () => {
                 <Mail className="w-5 h-5 text-gray-500" />
                 <div>
                   <p className="text-sm font-medium">Email</p>
-                  <p className="text-sm text-gray-600">
-                    support@automateteam.com
+                  <p className="text-sm text-gray-600 ">
+                    jasmineautomate.support@natharts.com
                   </p>
                 </div>
               </div>

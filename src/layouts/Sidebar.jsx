@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import { ROUTES } from "../constants/routes";
 import AutomateLogo from "@/components/common/AutomateLogo";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, CheckSquare, Users, ChevronDown, Menu, X } from "lucide-react";
+import { Home, CheckSquare, Users, ChevronDown, Menu, X, HelpCircle } from "lucide-react";
 
 const Sidebar = ({
   isOpen = true,
@@ -97,7 +97,17 @@ const Sidebar = ({
         },
       ],
     },
-    
+    {
+      id: "support",
+      items: [
+        {
+          title: "Support",
+          icon: <HelpCircle size={18} />,
+          path: ROUTES.SUPPORT,
+        },
+      ],
+    },
+
     // Add other groups here if they were uncommented
   ];
 
