@@ -782,6 +782,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               >
                 <FileText className="h-5 w-5 text-gray-600" />
               </Button>
+              <p>
+              Supported formats: Only Images (Max 1MB)
+              </p>
             </div>
 
             {/* Show attached file if any */}
@@ -816,7 +819,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     }}
                     title="Remove file"
                   >
-                    ❌ 
+                    ❌
                   </Button>
                 </div>
               </div>
