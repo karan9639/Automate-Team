@@ -97,6 +97,7 @@ const Sidebar = ({
         },
       ],
     },
+    
     // Add other groups here if they were uncommented
   ];
 
