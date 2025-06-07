@@ -96,7 +96,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     backendTaskSchema.taskPriority.default
   );
   const [taskFrequencyType, setTaskFrequencyType] = useState("one-time");
-  const [taskImage, setTaskImage] = useState([]);
+  const [taskImage, setTaskImage] = useState(null);
+
 
   const [assignMoreTasks, setAssignMoreTasks] = useState(false);
   const [errors, setErrors] = useState({});
@@ -152,7 +153,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           task.taskPriority || backendTaskSchema.taskPriority.default
         );
         setTaskFrequencyType(task.taskFrequency?.type || "one-time");
-        setTaskImage(task.taskImage || []);
+        setTaskImage(task.taskImage || null);
       } else {
         resetFormFields();
       }
@@ -174,7 +175,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     setTaskDescription("");
     setTaskAssignedTo("");
     setTaskCategory("");
-    setTaskImage([]);
+    setTaskImage(null);
     if (!keepDueDate) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -214,25 +215,27 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   };
 
   const handleFileSelect = (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length > 0) {
-      const newFiles = files.map((file) => ({
+    const file = event.target.files[0]; // only take the first file
+    if (file) {
+      const newFile = {
         id: Date.now() + Math.random(),
         name: file.name,
         size: file.size,
         type: file.type,
         file: file,
-      }));
-      setTaskImage((prev) => [...prev, ...newFiles]);
-      toast.success(`${files.length} file(s) attached successfully`);
+      };
+      setTaskImage(newFile); // set a single file object
+      toast.success(`1 file attached successfully`);
     }
-    event.target.value = "";
+    event.target.value = ""; // reset input
   };
+  
 
-  const handleFileRemove = (fileId) => {
-    setTaskImage((prev) => prev.filter((file) => file.id !== fileId));
+  const handleFileRemove = () => {
+    setTaskImage(null);
     toast.success("File removed successfully");
   };
+  
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
@@ -294,8 +297,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       return;
     }
 
-    // 🔒 Validate image
-    const file = taskImage?.[0]?.file;
+    const file = taskImage?.file; // direct access, no array indexing
     if (file) {
       if (!(file instanceof File)) {
         toast.error("Invalid image file.");
@@ -306,6 +308,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         return;
       }
     }
+    
 
     setIsSubmitting(true);
     setErrors({});
@@ -758,8 +761,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             </div>
           </div>
 
-          {/* Attachment Options */}
           <div className="space-y-4">
+            {/* Upload button (always visible) */}
             <div className="flex flex-wrap gap-3 pt-2 justify-center sm:justify-start">
               <input
                 type="file"
@@ -779,42 +782,40 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                 <FileText className="h-5 w-5 text-gray-600" />
               </Button>
             </div>
-            {taskImage.length > 0 && (
+
+            {/* Show attached file if any */}
+            {taskImage && (
               <div className="mt-4 space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">
-                  Attached Files ({taskImage.length})
+                  Replace File
                 </h4>
-                <div className="space-y-2 max-h-32 overflow-y-auto p-1">
-                  {taskImage.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
-                    >
-                      <div className="flex items-center space-x-2 flex-1 min-w-0">
-                        <span className="text-lg flex-shrink-0">
-                          {getFileIcon(file.name)}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="p-1 h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                        onClick={() => handleFileRemove(file.id)}
-                        title="Remove file"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+                  <div className="flex items-center space-x-2 flex-1 min-w-0">
+                    <span className="text-lg flex-shrink-0">
+                      {getFileIcon(taskImage.name)}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {taskImage.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(taskImage.size)}
+                      </p>
                     </div>
-                  ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    onClick={() => {
+                      setTaskImage(null);
+                      toast.success("File removed successfully");
+                    }}
+                    title="Remove file"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )}
