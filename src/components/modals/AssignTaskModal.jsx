@@ -10,6 +10,7 @@ import { Switch } from "../../components/ui/switch.jsx"; // Added .jsx
 import { createTask, editTask } from "../../store/slices/taskSlice";
 import { userApi } from "../../apiService/apiService";
 import { Check, FileText, AlertCircle, Loader2, X, Search } from "lucide-react";
+
 import { toast } from "react-hot-toast";
 
 const validateTaskForm = (formData, backendSchema) => {
@@ -803,18 +804,19 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                       </p>
                     </div>
                   </div>
+
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="p-1 h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    className="p-1 h-6 w-6 text-gray-700 hover:text-red-600 hover:bg-red-100 dark:text-gray-300 dark:hover:text-red-400 dark:hover:bg-red-800/10"
                     onClick={() => {
                       setTaskImage(null);
                       toast.success("File removed successfully");
                     }}
                     title="Remove file"
                   >
-                    <X className="h-4 w-4" />
+                    ❌ 
                   </Button>
                 </div>
               </div>
