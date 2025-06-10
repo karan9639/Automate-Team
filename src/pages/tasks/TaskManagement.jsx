@@ -626,23 +626,26 @@ const TaskManagement = () => {
         const response = await myTask()
         const taskData = extractTasksFromResponse(response)
         const processedMyTasks = []
-        const seenMyTaskIds = new Set()
-        taskData.forEach((originalTask) => {
-          const normalizedTask = normalizeTask(originalTask)
-          const id = normalizedTask._id
 
-          if (id && typeof id === "string") {
-            if (!seenMyTaskIds.has(id)) {
-              processedMyTasks.push(normalizedTask)
-              seenMyTaskIds.add(id)
-            } else {
-              console.warn(`[fetchMyTasksData] Duplicate task ID ${id} after normalization. Skipping.`)
-            }
-          } else {
-            processedMyTasks.push(normalizedTask)
-            console.warn("[fetchMyTasksData] Task without a proper string _id after normalization:", normalizedTask)
+        taskData.forEach((originalTask, index) => {
+          // Create a unique ID for tasks that don't have one
+          // Use createdAt timestamp + index as fallback ID
+          let taskId = originalTask._id
+
+          if (!taskId || typeof taskId !== "string") {
+            // Generate a unique ID using createdAt and index
+            const timestamp = originalTask.createdAt || new Date().toISOString()
+            taskId = `task-${timestamp}-${index}`
           }
+
+          const normalizedTask = {
+            ...originalTask,
+            _id: taskId,
+          }
+
+          processedMyTasks.push(normalizedTask)
         })
+
         setTasks(processedMyTasks)
       } catch (err) {
         setError(err)
@@ -666,26 +669,25 @@ const TaskManagement = () => {
         const response = await delegatedTask()
         const taskData = extractTasksFromResponse(response)
         const processedDelegatedTasks = []
-        const seenDelegatedTaskIds = new Set()
-        taskData.forEach((originalTask) => {
-          const normalizedTask = normalizeTask(originalTask)
-          const id = normalizedTask._id
 
-          if (id && typeof id === "string") {
-            if (!seenDelegatedTaskIds.has(id)) {
-              processedDelegatedTasks.push(normalizedTask)
-              seenDelegatedTaskIds.add(id)
-            } else {
-              console.warn(`[fetchDelegatedTasksData] Duplicate task ID ${id} after normalization. Skipping.`)
-            }
-          } else {
-            processedDelegatedTasks.push(normalizedTask)
-            console.warn(
-              "[fetchDelegatedTasksData] Task without a proper string _id after normalization:",
-              normalizedTask,
-            )
+        taskData.forEach((originalTask, index) => {
+          // Create a unique ID for tasks that don't have one
+          let taskId = originalTask._id
+
+          if (!taskId || typeof taskId !== "string") {
+            // Generate a unique ID using createdAt and index
+            const timestamp = originalTask.createdAt || new Date().toISOString()
+            taskId = `delegated-task-${timestamp}-${index}`
           }
+
+          const normalizedTask = {
+            ...originalTask,
+            _id: taskId,
+          }
+
+          processedDelegatedTasks.push(normalizedTask)
         })
+
         setDelegatedTasks(processedDelegatedTasks)
       } catch (err) {
         setError(err)
