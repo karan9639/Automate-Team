@@ -376,7 +376,7 @@ const MyTeam = () => {
           }{" "}
           Admins
         </div>
-        <div className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium dark:bg-purple-700 dark:text-purple-200">
+        <div className="bg-purple-100 text-pink-700 px-3 py-1.5 rounded-full text-xs font-medium dark:bg-pink-700 dark:text-purple-200">
           {
             safeTeamMembers.filter(
               (m) => (m.newMember || m).accountType === "Manager"
