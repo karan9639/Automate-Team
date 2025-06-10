@@ -865,11 +865,11 @@ const Dashboard = () => {
               © All rights reserved 2025
             </span>
             <span className="block xs:inline sm:inline xs:ml-1 sm:ml-1">
-              Jasmine Automate Business
+              Jasmine Automate
             </span>
           </p>
           <p className="text-center xs:text-right sm:text-right order-1 xs:order-2 w-full xs:w-auto mr-12 xs:mr-14 sm:mr-16 md:mr-18 lg:mr-20 xl:mr-20">
-            v 1.0.0
+            v 1.1.2
           </p>
         </div>
       </footer>
