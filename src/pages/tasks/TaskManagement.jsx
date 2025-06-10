@@ -683,7 +683,6 @@ const TaskManagement = () => {
         setError(null);
 
         const response = await myTask();
-        response = response.data || response; // Ensure we have the correct response structure
         const taskData = extractTasksFromResponse(response);
         const processedMyTasks = [];
 
@@ -732,7 +731,6 @@ const TaskManagement = () => {
         setError(null);
 
         const response = await delegatedTask();
-        response = response.data || response; // Ensure we have the correct response structure
         const taskData = extractTasksFromResponse(response);
         const processedDelegatedTasks = [];
 
