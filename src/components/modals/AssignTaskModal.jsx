@@ -18,7 +18,7 @@ const validateTaskForm = (formData, backendSchema) => {
 
   if (!formData.taskTitle || !formData.taskTitle.trim()) {
     errors.taskTitle = "Task title is required";
-  } else if (formData.taskTitle.trim().length < 3) {
+  } else if (formData.taskTitle.trim().length < 1) {
     errors.taskTitle = "Task title must be at least 3 characters long";
   } else if (formData.taskTitle.trim().length > 100) {
     errors.taskTitle = "Task title must not exceed 100 characters";
@@ -26,7 +26,7 @@ const validateTaskForm = (formData, backendSchema) => {
 
   if (!formData.taskDescription || !formData.taskDescription.trim()) {
     errors.taskDescription = "Task description is required";
-  } else if (formData.taskDescription.trim().length < 10) {
+  } else if (formData.taskDescription.trim().length < 1) {
     errors.taskDescription = "Description must be at least 10 characters long";
   } else if (formData.taskDescription.trim().length > 500) {
     errors.taskDescription = "Description must not exceed 500 characters";
