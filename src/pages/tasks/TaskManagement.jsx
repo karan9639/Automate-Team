@@ -636,63 +636,32 @@ const TaskManagement = () => {
     return hasActiveFilters() ? filteredTasks : getCurrentTasks();
   };
 
-// USEEFFECT: Fetch tasks based on active tab and pagination
-
+  // USEEFFECT: Fetch All Tasks (with pagination support)
   useEffect(() => {
-    const fetchTasksByTab = async () => {
+    const fetchAllTasksData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        let data;
-        let tasks = [];
-
-        // Fetch tasks based on active tab
-        if (activeTab === "my-tasks") {
-          data = await myTask(page, limit);
-          tasks =
-            data?.myTasksAssignedByLeader || extractTasksFromResponse(data);
-        } else if (activeTab === "delegated-tasks") {
-          data = await delegatedTask(page, limit);
-          tasks = data?.allTasks || extractTasksFromResponse(data);
-        } else {
-          data = await allTask(page, limit);
-          tasks = data.tasks || extractTasksFromResponse(data);
-        }
-
-        // Handle ID mapping and clean duplicates
-        const seenIds = new Set();
-        const cleanedTasks = tasks
-          .map((task, index) => {
-            let taskId = task._id;
-
-            if (!taskId || typeof taskId !== "string") {
-              const timestamp = task.createdAt || new Date().toISOString();
-              taskId = `${activeTab}-task-${timestamp}-${index}`;
-            }
-
-            if (seenIds.has(taskId)) return null;
-            seenIds.add(taskId);
-
-            return {
-              ...task,
-              _id: taskId,
-            };
-          })
-          .filter(Boolean); // remove nulls
-
-        // Set specific state based on tab
-        if (activeTab === "my-tasks") {
-          setTasks(cleanedTasks);
-        } else if (activeTab === "delegated-tasks") {
-          setDelegatedTasks(cleanedTasks);
-        } else {
-          const mapping = buildTaskIdMapping(cleanedTasks);
-          setTaskIdMapping(mapping);
-          setAllTasks(cleanedTasks);
-        }
+        const data = await allTask(page, limit); // Assuming it returns response?.data?.data
+        const tasks = data?.tasks ?? extractTasksFromResponse(data);
+        const mapping = buildTaskIdMapping(tasks);
 
         setTotalPages(data?.totalPages || 1);
+        setTaskIdMapping(mapping);
+
+        const seenIds = new Set();
+        const cleanedTasks = [];
+
+        tasks.forEach((task) => {
+          const id = extractAllTaskId(task);
+          if (id && !seenIds.has(id)) {
+            cleanedTasks.push({ ...task, _id: id });
+            seenIds.add(id);
+          }
+        });
+
+        setAllTasks(cleanedTasks);
       } catch (err) {
         setError(err);
       } finally {
@@ -700,9 +669,100 @@ const TaskManagement = () => {
       }
     };
 
-    fetchTasksByTab();
-  }, [activeTab, page, limit, refreshTrigger]);
-  
+    fetchAllTasksData();
+  }, [page, limit, refreshTrigger, dispatch,activeTab]);
+
+  // USEEFFECT: Fetch My Tasks - runs when tab is active, mapping is ready, or refresh
+  useEffect(() => {
+    if (activeTab !== "my-tasks" || Object.keys(taskIdMapping).length === 0)
+      return;
+
+    const fetchMyTasksData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await myTask();
+        const taskData = extractTasksFromResponse(response);
+        const processedMyTasks = [];
+
+        taskData.forEach((originalTask, index) => {
+          // Create a unique ID for tasks that don't have one
+          // Use createdAt timestamp + index as fallback ID
+          let taskId = originalTask._id;
+
+          if (!taskId || typeof taskId !== "string") {
+            // Generate a unique ID using createdAt and index
+            const timestamp =
+              originalTask.createdAt || new Date().toISOString();
+            taskId = `task-${timestamp}-${index}`;
+          }
+
+          const normalizedTask = {
+            ...originalTask,
+            _id: taskId,
+          };
+
+          processedMyTasks.push(normalizedTask);
+        });
+
+        setTasks(processedMyTasks);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyTasksData();
+  }, [activeTab, taskIdMapping, refreshTrigger]);
+
+  // USEEFFECT: Fetch Delegated Tasks - runs when tab is active, mapping is ready, or refresh
+  useEffect(() => {
+    if (
+      activeTab !== "delegated-tasks" ||
+      Object.keys(taskIdMapping).length === 0
+    )
+      return;
+
+    const fetchDelegatedTasksData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await delegatedTask();
+        const taskData = extractTasksFromResponse(response);
+        const processedDelegatedTasks = [];
+
+        taskData.forEach((originalTask, index) => {
+          // Create a unique ID for tasks that don't have one
+          let taskId = originalTask._id;
+
+          if (!taskId || typeof taskId !== "string") {
+            // Generate a unique ID using createdAt and index
+            const timestamp =
+              originalTask.createdAt || new Date().toISOString();
+            taskId = `delegated-task-${timestamp}-${index}`;
+          }
+
+          const normalizedTask = {
+            ...originalTask,
+            _id: taskId,
+          };
+
+          processedDelegatedTasks.push(normalizedTask);
+        });
+
+        setDelegatedTasks(processedDelegatedTasks);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDelegatedTasksData();
+  }, [activeTab, taskIdMapping, refreshTrigger]);
 
   // USEEFFECT: Refresh All Tasks when tab is active - runs when tab is active or refresh
   useEffect(() => {
