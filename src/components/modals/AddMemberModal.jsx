@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { Label } from "@/components/ui/label";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import PropTypes from "prop-types";
@@ -26,6 +27,7 @@ const schema = yup.object({
     .string()
     .email("Invalid email format")
     .required("Email is required"),
+  department: yup.string().required("Department is required"),
   whatsappNumber: yup
     .string()
     .required("WhatsApp number is required")
@@ -41,6 +43,24 @@ const schema = yup.object({
  * Modal for adding team members with OTP verification
  */
 const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
+  const departments = [
+    "Sampling",
+    "PPC",
+    "Job Work",
+    "Greige",
+    "Form Lamination",
+    "Flat Knit",
+    "Dyeing",
+    "Dyeing Lab",
+    "Dispatch Dyeing",
+    "Digital Printing",
+    "Biling",
+    "Adhessive",
+    "Accounts",
+  ];
+
+  const [department, setDepartment] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,6 +87,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
     defaultValues: {
       fullname: "",
       email: "",
+      department: "", // Added department field
       whatsappNumber: "",
       accountType: "Team Member", // Changed default to "Team Member"
       password: "",
@@ -269,7 +290,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
           <div className="p-4 space-y-4">
             <div className="text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                We've sent a verification code to
+                We&apos;ve sent a verification code to
               </p>
               <p className="font-medium">{memberEmail}</p>
             </div>
@@ -391,6 +412,51 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     {errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="mb-4">
+                <Label htmlFor="department" className="text-slate-700">
+                  Department
+                </Label>
+                <div className="relative mt-1">
+                  <select
+                    id="department"
+                    {...register("department", {
+                      required: "Department is required",
+                    })}
+                    className={`appearance-none block w-full rounded-md border ${
+                      errors?.department ? "border-red-500" : "border-slate-300"
+                    } bg-white py-2 pl-3 pr-10 text-sm shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500`}
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((dept, index) => (
+                      <option key={index} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                    <svg
+                      className="h-4 w-4 text-slate-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 3a1 1 0 01.894.553l5 10a1 1 0 01-.787 1.447H4.893a1 1 0 01-.787-1.447l5-10A1 1 0 0110 3zm0 2.618L6.618 12h6.764L10 5.618z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                {errors?.department && (
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    {errors.department.message}
                   </p>
                 )}
               </div>

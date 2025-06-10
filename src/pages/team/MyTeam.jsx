@@ -257,6 +257,18 @@ const MyTeam = () => {
       },
     },
     {
+      key: "department",
+      header: "Department",
+      render: (row) => {
+        const memberData = row.newMember || row;
+        return (
+          <span className="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-200 text-purple-600 dark:bg-purple-600 dark:text-purple-200">
+            {memberData.department || "N/A"}
+          </span>
+        );
+      },
+    },
+    {
       key: "createdAt",
       header: "Joined",
       render: (row) => {
