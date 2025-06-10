@@ -64,8 +64,8 @@ const LoginPage = () => {
 
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2 font-sans">
-      <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+      <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-green-500 to-emerald-700 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-20"></div>
         <div className="relative z-10 text-center space-y-10 max-w-lg">
           <Link to="/" className="inline-block">
             <AutomateLogo className="h-14 w-auto text-white drop-shadow-lg" />
