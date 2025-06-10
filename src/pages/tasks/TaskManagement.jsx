@@ -93,6 +93,16 @@ const TaskManagement = () => {
       return response.data.data.tasks
     }
 
+    // Handle delegated tasks API response structure
+    if (response?.data?.data?.allTasks && Array.isArray(response.data.data.allTasks)) {
+      return response.data.data.allTasks
+    }
+
+    // Handle my tasks API response structure
+    if (response?.data?.data?.myTasksAssignedByLeader && Array.isArray(response.data.data.myTasksAssignedByLeader)) {
+      return response.data.data.myTasksAssignedByLeader
+    }
+
     // Handle direct data array in success response
     if (response?.data?.success && response?.data?.data && Array.isArray(response.data.data)) {
       return response.data.data
