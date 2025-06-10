@@ -245,18 +245,6 @@ const MyTeam = () => {
       },
     },
     {
-      key: "accountType",
-      header: "Account Type",
-      render: (row) => {
-        const memberData = row.newMember || row;
-        return (
-          <span className="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-            {memberData.accountType || "Member"}
-          </span>
-        );
-      },
-    },
-    {
       key: "department",
       header: "Department",
       render: (row) => {
@@ -268,6 +256,19 @@ const MyTeam = () => {
         );
       },
     },
+    {
+      key: "accountType",
+      header: "Account Type",
+      render: (row) => {
+        const memberData = row.newMember || row;
+        return (
+          <span className="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+            {memberData.accountType || "Member"}
+          </span>
+        );
+      },
+    },
+
     {
       key: "createdAt",
       header: "Joined",
