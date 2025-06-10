@@ -4,9 +4,40 @@ import API from "./axiosInstance.js";
 const createTask = async (taskData) => {
   return API.post("task/create-task", taskData);
 };
-const myTask = async () => API.get("task/assigned-to-me");
-const delegatedTask = async () => API.get("task/delegated-tasks");
-const allTask = async () => API.get("task/all-tasks");
+// My Tasks - Assigned to Me
+const myTask = async (page = 1, limit = 9) => {
+  try {
+    const response = await API.get(`task/assigned-to-me?page=${page}&limit=${limit}`);
+    return response?.data?.data;
+  } catch (error) {
+    console.error("Failed to fetch assigned tasks:", error);
+    return null;
+  }
+};
+
+// Delegated Tasks - Assigned by Me
+const delegatedTask = async (page = 1, limit = 9) => {
+  try {
+    const response = await API.get(`task/delegated-tasks?page=${page}&limit=${limit}`);
+    return response?.data?.data;
+  } catch (error) {
+    console.error("Failed to fetch delegated tasks:", error);
+    return null;
+  }
+};
+
+// All Tasks
+const allTask = async (page = 1, limit = 9) => {
+  try {
+    const response = await API.get(`task/all-tasks?page=${page}&limit=${limit}`);
+    return response?.data;
+  } catch (error) {
+    console.error("Failed to fetch all tasks:", error);
+    return null;
+  }
+};
+
+
 const viewTask = async (taskId) => API.get(`task/view-task/${taskId}`);
 const editTask = async (taskId, updatedData) =>
   API.put(`task/edit-task/${taskId}`, updatedData);
