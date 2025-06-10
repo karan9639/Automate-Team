@@ -395,7 +395,7 @@ const taskSlice = createSlice({
         state.loading.create = false;
         if (action.payload.data) {
           state.allTasks.unshift(action.payload.data);
-          toast.success(action.payload.message || "Task created successfully!");
+          // toast.success(action.payload.message || "Task created successfully!");
         }
       })
       .addCase(createTask.rejected, (state, action) => {
