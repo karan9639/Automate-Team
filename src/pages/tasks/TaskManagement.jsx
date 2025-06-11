@@ -646,8 +646,10 @@ const TaskManagement = () => {
         const data = await allTask(page, limit); // Assuming it returns response?.data?.data
         const tasks = data?.tasks ?? extractTasksFromResponse(data);
         const mapping = buildTaskIdMapping(tasks);
-
-        setTotalPages(data?.totalPages || 1);
+        
+        // console.log("Total Pages Data:", data); // Debug log
+        setTotalPages(data?.data?.totalPages || 1);
+        // console.log("Total Pages:", data?.data?.totalPages);
         setTaskIdMapping(mapping);
 
         const seenIds = new Set();
