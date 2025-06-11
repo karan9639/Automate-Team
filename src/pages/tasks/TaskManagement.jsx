@@ -337,9 +337,41 @@ const TaskManagement = () => {
 
   // Extract task ID
   const extractTaskId = (task) => {
+    // Try direct _id first
     if (task._id && typeof task._id === "string") {
       return task._id;
     }
+
+    // Try _id with $oid format
+    if (task._id && typeof task._id === "object" && task._id.$oid) {
+      return task._id.$oid;
+    }
+
+    // Try other common ID fields
+    const idFields = ["id", "taskId", "task_id"];
+    for (const field of idFields) {
+      if (task[field]) {
+        if (typeof task[field] === "string") {
+          return task[field];
+        } else if (typeof task[field] === "object" && task[field].$oid) {
+          return task[field].$oid;
+        }
+      }
+    }
+
+    // Try nested task objects
+    if (task.task && task.task._id) {
+      return typeof task.task._id === "string"
+        ? task.task._id
+        : task.task._id.$oid;
+    }
+
+    if (task.taskDetails && task.taskDetails._id) {
+      return typeof task.taskDetails._id === "string"
+        ? task.taskDetails._id
+        : task.taskDetails._id.$oid;
+    }
+
     return null;
   };
 
@@ -572,22 +604,61 @@ const TaskManagement = () => {
 
   // Handle task card click
   const handleTaskClick = (task, taskIndex) => {
-    const taskId = extractTaskId(task);
+    // Try multiple ID extraction methods for better compatibility
+    let taskId = null
 
-    setSelectedTaskId(taskId);
-    setSelectedTaskData(null);
-    setIsViewTaskModalOpen(true);
-    setViewError(null);
+    // Method 1: Direct _id extraction (works for all-tasks)
+    taskId = extractAllTaskId(task)
+
+    // Method 2: Try mapping approach if direct extraction fails
+    if (!taskId) {
+      taskId = getCorrectTaskId(task)
+    }
+
+    // Method 3: Check for other common ID fields
+    if (!taskId) {
+      const idFields = ["id", "taskId", "task_id", "_id"]
+      for (const field of idFields) {
+        if (task[field]) {
+          if (typeof task[field] === "string") {
+            taskId = task[field]
+            break
+          } else if (typeof task[field] === "object" && task[field].$oid) {
+            taskId = task[field].$oid
+            break
+          }
+        }
+      }
+    }
+
+    // Method 4: For my-tasks and delegated-tasks, try extracting from nested objects
+    if (!taskId && (activeTab === "my-tasks" || activeTab === "delegated-tasks")) {
+      // Check if task has nested task object
+      if (task.task && task.task._id) {
+        taskId = typeof task.task._id === "string" ? task.task._id : task.task._id.$oid
+      }
+      // Check for taskDetails
+      if (!taskId && task.taskDetails && task.taskDetails._id) {
+        taskId = typeof task.taskDetails._id === "string" ? task.taskDetails._id : task.taskDetails._id.$oid
+      }
+    }
+
+    // console.log(Task clicked - Tab: ${activeTab}, Task ID: ${taskId}, Task:, task)
+
+    setSelectedTaskId(taskId)
+    setSelectedTaskData(null)
+    setIsViewTaskModalOpen(true)
+    setViewError(null)
 
     if (taskId) {
-      setSearchParams({ id: taskId });
-      fetchTaskDetails(taskId, task, activeTab);
+      setSearchParams({ id: taskId })
+      fetchTaskDetails(taskId, task, activeTab)
     } else {
-      setSelectedTaskData(task);
-      setViewError("No task ID found");
-      setViewTaskLoading(false);
+      setSelectedTaskData(task)
+      setViewError("No task ID found")
+      setViewTaskLoading(false)
     }
-  };
+  }
 
   // Handle modal close
   const handleViewTaskModalClose = () => {
@@ -647,6 +718,7 @@ const TaskManagement = () => {
 
         const data = await allTask(page, limit); // Assuming it returns response?.data?.data
         const tasks = data?.tasks ?? extractTasksFromResponse(data);
+        console.log("All Tasks Data:", tasks); // Debug log
         const mapping = buildTaskIdMapping(tasks);
         
         // console.log("Total Pages Data:", data); // Debug log
@@ -687,33 +759,19 @@ const TaskManagement = () => {
         setError(null);
 
         const response = await myTask(page, limit);
-        setTotalPages(response?.totalPages || 1);
         // console.log("My Tasks Response:", response); // Debug log
+        setTotalPages(response?.totalPages || 1);
         const taskData = response.myTasksAssignedByLeader || [];
-        // console.log("My Tasks Data:", taskData); // Debug log
-        
+        console.log("My Tasks Data:", taskData); // Debug log
 
-        const processedMyTasks = [];
-
-        taskData.forEach((originalTask, index) => {
-          let taskId = originalTask._id;
-
-          if (!taskId || typeof taskId !== "string") {
-            const timestamp =
-              originalTask.createdAt || new Date().toISOString();
-            taskId = `task-${timestamp}-${index}`;
-          }
-
-          const normalizedTask = {
-            ...originalTask,
-            _id: taskId,
-          };
-
-          processedMyTasks.push(normalizedTask);
-        });
+        const processedMyTasks = taskData
+          .filter((task) => /^[a-f\d]{24}$/i.test(task._id)) // Only include tasks with valid MongoDB _id
+          .map((task) => ({
+            ...task,
+            _id: task._id,
+          }));
 
         setTasks(processedMyTasks);
-
       } catch (err) {
         setError(err);
       } finally {
@@ -722,7 +780,8 @@ const TaskManagement = () => {
     };
 
     fetchMyTasksData();
-  }, [activeTab, taskIdMapping, refreshTrigger]);
+  }, [page, limit, activeTab, taskIdMapping, refreshTrigger]);
+  
 
   // USEEFFECT: Fetch Delegated Tasks - runs when tab is active, mapping is ready, or refresh
   useEffect(() => {
@@ -766,8 +825,7 @@ const TaskManagement = () => {
     };
 
     fetchDelegatedTasksData();
-  }, [activeTab, taskIdMapping, refreshTrigger]);
-  
+  }, [page, limit, activeTab, taskIdMapping, refreshTrigger]);
 
   // USEEFFECT: Refresh All Tasks when tab is active - runs when tab is active or refresh
   useEffect(() => {
