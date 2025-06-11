@@ -683,16 +683,14 @@ const TaskManagement = () => {
         setError(null);
 
         const response = await myTask();
-        const taskData = extractTasksFromResponse(response);
+        const taskData = response.myTasksAssignedByLeader || [];
+
         const processedMyTasks = [];
 
         taskData.forEach((originalTask, index) => {
-          // Create a unique ID for tasks that don't have one
-          // Use createdAt timestamp + index as fallback ID
           let taskId = originalTask._id;
 
           if (!taskId || typeof taskId !== "string") {
-            // Generate a unique ID using createdAt and index
             const timestamp =
               originalTask.createdAt || new Date().toISOString();
             taskId = `task-${timestamp}-${index}`;
@@ -707,6 +705,7 @@ const TaskManagement = () => {
         });
 
         setTasks(processedMyTasks);
+
       } catch (err) {
         setError(err);
       } finally {
@@ -731,26 +730,21 @@ const TaskManagement = () => {
         setError(null);
 
         const response = await delegatedTask();
-        const taskData = extractTasksFromResponse(response);
-        const processedDelegatedTasks = [];
+        const taskData = response.allTasks || [];
 
-        taskData.forEach((originalTask, index) => {
-          // Create a unique ID for tasks that don't have one
+        const processedDelegatedTasks = taskData.map((originalTask, index) => {
           let taskId = originalTask._id;
 
           if (!taskId || typeof taskId !== "string") {
-            // Generate a unique ID using createdAt and index
             const timestamp =
               originalTask.createdAt || new Date().toISOString();
             taskId = `delegated-task-${timestamp}-${index}`;
           }
 
-          const normalizedTask = {
+          return {
             ...originalTask,
             _id: taskId,
           };
-
-          processedDelegatedTasks.push(normalizedTask);
         });
 
         setDelegatedTasks(processedDelegatedTasks);
@@ -763,6 +757,7 @@ const TaskManagement = () => {
 
     fetchDelegatedTasksData();
   }, [activeTab, taskIdMapping, refreshTrigger]);
+  
 
   // USEEFFECT: Refresh All Tasks when tab is active - runs when tab is active or refresh
   useEffect(() => {
