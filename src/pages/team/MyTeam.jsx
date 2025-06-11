@@ -334,14 +334,14 @@ const MyTeam = () => {
             placeholder="Search team members by name, email, or WhatsApp..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 border-1 border-gray-300 rounded-md dark:bg-green-800 outline-none dark:border-green-700 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
           />
         </div>
         <div className="flex flex-col sm:flex-row flex-wrap gap-2">
           <select
             value={filters.accountType}
             onChange={(e) => handleFilterChange("accountType", e.target.value)}
-            className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+            className="w-full sm:w-auto border-1 border-gray-300 rounded-md px-3 py-2 dark:bg-green-800 outline-none dark:border-green-700 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
           >
             <option value="">All Types</option>
             <option value="Admin">Admin</option>
