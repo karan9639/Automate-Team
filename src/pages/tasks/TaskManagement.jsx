@@ -17,6 +17,7 @@ import {
   filterTask,
   myTaskFilter,
 } from "../../api/tasksApi";
+import { set } from "date-fns";
 
 const TaskManagement = () => {
   const dispatch = useDispatch();
@@ -684,8 +685,12 @@ const TaskManagement = () => {
         setLoading(true);
         setError(null);
 
-        const response = await myTask();
+        const response = await myTask(page, limit);
+        setTotalPages(response?.totalPages || 1);
+        // console.log("My Tasks Response:", response); // Debug log
         const taskData = response.myTasksAssignedByLeader || [];
+        // console.log("My Tasks Data:", taskData); // Debug log
+        
 
         const processedMyTasks = [];
 
@@ -731,7 +736,9 @@ const TaskManagement = () => {
         setLoading(true);
         setError(null);
 
-        const response = await delegatedTask();
+        const response = await delegatedTask(page, limit);
+        // console.log("Delegated Tasks Response:", response); // Debug log
+        setTotalPages(response?.totalPages || 1);
         const taskData = response.allTasks || [];
 
         const processedDelegatedTasks = taskData.map((originalTask, index) => {
