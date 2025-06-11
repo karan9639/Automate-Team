@@ -24,7 +24,7 @@ import {
 } from "../../api/tasksApi";
 import toast from "react-hot-toast";
 
-const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
+const TaskCard = ({ task, onClick, onStatusChange, onDelete, activeTab }) => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isRequestingDelete, setIsRequestingDelete] = useState(false);
   const [taskIdToDelete, setTaskIdToDelete] = useState(null);
@@ -235,9 +235,7 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
             <DropdownMenuItem
               onSelect={() => handleStatusChange("in progress")}
               disabled={
-                isUpdatingStatus ||
-                isRequestingDelete ||
-                taskStatus === ""
+                isUpdatingStatus || isRequestingDelete || taskStatus === ""
               }
             >
               {isUpdatingStatus && taskStatus !== "in progress"
@@ -269,14 +267,19 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
                 : "Mark as Pending"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={handleInitiateDelete}
-              disabled={isUpdatingStatus || isRequestingDelete}
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {isRequestingDelete ? "Deleting..." : "Delete Task"}
-            </DropdownMenuItem>
+            {activeTab === "delegated-tasks" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={handleInitiateDelete}
+                  disabled={isUpdatingStatus || isRequestingDelete}
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isRequestingDelete ? "Deleting..." : "Delete Task"}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -318,27 +321,6 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete }) => {
             Due: {taskDueDate ? formatDate(taskDueDate) : "No due date"}
           </span>
         </div>
-        {/* <div className="flex -space-x-2">
-          {taskAssignees &&
-            (Array.isArray(taskAssignees)
-              ? taskAssignees
-              : [taskAssignees]
-            ).map((assignee, index) => (
-              <div
-                key={index}
-                className="h-6 w-6 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs font-medium text-muted-foreground"
-                title={
-                  typeof assignee === "string"
-                    ? assignee
-                    : `Assignee ${index + 1}`
-                }
-              >
-                {typeof assignee === "string"
-                  ? assignee.charAt(0).toUpperCase()
-                  : "A"}
-              </div>
-            ))}
-        </div> */}
       </div>
     </Card>
   );
