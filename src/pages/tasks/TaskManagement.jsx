@@ -1212,7 +1212,7 @@ const TaskManagement = () => {
         />
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mt-8 bg-white p-4 rounded-xl shadow-sm border border-green-100">
         {/* Limit Selector */}
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600 font-medium">
@@ -1221,7 +1221,7 @@ const TaskManagement = () => {
           <select
             value={limit}
             onChange={(e) => setLimit(parseInt(e.target.value))}
-            className="rounded-md border-gray-300 text-sm px-2 py-1"
+            className="rounded-lg border border-green-300 text-sm px-3 py-1.5 bg-white text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
           >
             <option value={9}>9</option>
             <option value={15}>15</option>
@@ -1230,14 +1230,14 @@ const TaskManagement = () => {
         </div>
 
         {/* Page Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
             disabled={page === 1}
-            className={`px-3 py-1 rounded-md text-sm font-medium border ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
               page === 1
-                ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                : "text-blue-600 border-blue-500 hover:bg-blue-50"
+                ? "text-gray-400 border-green-200 bg-gray-100 cursor-not-allowed"
+                : "text-white bg-green-600 border-green-600 hover:bg-green-700"
             }`}
           >
             Previous
@@ -1250,10 +1250,10 @@ const TaskManagement = () => {
           <button
             onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
             disabled={page === totalPages}
-            className={`px-3 py-1 rounded-md text-sm font-medium border ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
               page === totalPages
-                ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                : "text-blue-600 border-blue-500 hover:bg-blue-50"
+                ? "text-gray-400 border-green-200 bg-gray-100 cursor-not-allowed"
+                : "text-white bg-green-600 border-green-600 hover:bg-green-700"
             }`}
           >
             Next
