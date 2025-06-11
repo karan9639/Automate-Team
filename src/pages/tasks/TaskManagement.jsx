@@ -18,6 +18,7 @@ import {
   myTaskFilter,
 } from "../../api/tasksApi";
 import { set } from "date-fns";
+import { use } from "react";
 
 const TaskManagement = () => {
   const dispatch = useDispatch();
@@ -824,6 +825,12 @@ const TaskManagement = () => {
   //     setFilteredTasks([]);
   //   }
   // }, [filters, tasks, delegatedTasks, allTasks, activeTab]);
+
+  useEffect(() => {
+    setTotalPages(1);
+    setPage(1);
+    setLimit(9);
+  }, [activeTab]);
 
   // USEEFFECT: Check for task ID in URL
   useEffect(() => {
