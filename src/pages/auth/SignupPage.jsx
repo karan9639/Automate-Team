@@ -236,6 +236,17 @@ export default function SignupPage() {
     handleSubmitAfterOtp();
   };
 
+  const handlePhoneChange = (setter, field) => (e) => {
+    let value = e.target.value;
+
+    if (field === "whatsappNumber") {
+      // Remove any non-digit characters as user types
+      value = value.replace(/\D/g, "");
+    }
+
+    setter(value);
+  };
+
   const handleInputChange = (setter, fieldName) => (e) => {
     setter(e.target.value);
     if (errors[fieldName]) {
@@ -264,16 +275,16 @@ export default function SignupPage() {
             <AutomateLogo className="h-16 w-auto text-white" />
           </Link>
           <h1 className="text-4xl font-bold tracking-tight">
-            Elevate Your Workflow with KPS Automate Task
+            Elevate Your Workflow with Jasmine Automate Task
           </h1>
           <p className="text-lg leading-relaxed text-green-100">
-            Transform your team's productivity with KPS Automate Task, the
+            Transform your team's productivity with Jasmine Automate Task, the
             intelligent solution for seamless project management and workflow
             automation. Our platform offers intuitive task delegation, real-time
             progress tracking, and insightful analytics, all designed to
             simplify complexity and foster collaboration. Step into a more
             efficient future where every task is a step towards success. Join
-            KPS Automate Task and redefine your team's potential.
+            Jasmine Automate Task and redefine your team's potential.
           </p>
           <div className="flex justify-center space-x-6 pt-4">
             <div className="flex flex-col items-center">
@@ -309,7 +320,7 @@ export default function SignupPage() {
             <p className="mt-2 text-sm text-slate-600">
               {showOtpSection
                 ? `Enter the 4-digit code sent to ${email}`
-                : "Join KPS Automate and elevate your business today."}
+                : "Join Jasmine Automate and elevate your business today."}
             </p>
           </div>
 
@@ -438,7 +449,7 @@ export default function SignupPage() {
                     type="tel"
                     placeholder="9876543210"
                     value={whatsappNumber}
-                    onChange={handleInputChange(
+                    onChange={handlePhoneChange(
                       setWhatsappNumber,
                       "whatsappNumber"
                     )}

@@ -21,7 +21,21 @@ const TaskSearchAndFilter = ({ onResultsChange }) => {
   const [sortBy, setSortBy] = useState("createdAt")
   const [sortOrder, setSortOrder] = useState("desc")
 
-  const categories = ["Development", "Design", "Marketing", "Operations"]
+  const categories = [
+    "Sampling",
+    "PPC",
+    "Job Work",
+    "Greige",
+    "Form Lamination",
+    "Flat Knit",
+    "Dyeing",
+    "Dyeing Lab",
+    "Dispatch Dyeing",
+    "Digital Printing",
+    "Biling",
+    "Adhessive",
+    "Accounts",
+  ];
   const priorities = ["High", "Medium", "Low"]
   const statuses = ["Pending", "In Progress", "Completed", "Overdue"]
 

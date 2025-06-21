@@ -1,33 +1,33 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
-import { useDispatch } from "react-redux"
-import { Modal } from "../../components/ui/modal.jsx" // Added .jsx
-import { Button } from "../../components/ui/button.jsx" // Added .jsx
-import { Input } from "../../components/ui/input.jsx" // Added .jsx
-import { Textarea } from "../../components/ui/textarea.jsx" // Added .jsx
-import { Switch } from "../../components/ui/switch.jsx" // Added .jsx
-import { createTask, editTask } from "../../store/slices/taskSlice"
-import { userApi } from "../../apiService/apiService"
-import { Check, FileText, AlertCircle, Loader2, Search } from "lucide-react"
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useDispatch } from "react-redux";
+import { Modal } from "../../components/ui/modal.jsx"; // Added .jsx
+import { Button } from "../../components/ui/button.jsx"; // Added .jsx
+import { Input } from "../../components/ui/input.jsx"; // Added .jsx
+import { Textarea } from "../../components/ui/textarea.jsx"; // Added .jsx
+import { Switch } from "../../components/ui/switch.jsx"; // Added .jsx
+import { createTask, editTask } from "../../store/slices/taskSlice";
+import { userApi } from "../../apiService/apiService";
+import { Check, FileText, AlertCircle, Loader2, Search } from "lucide-react";
 
-import { toast } from "react-hot-toast"
+import { toast } from "react-hot-toast";
 
 const validateTaskForm = (formData, backendSchema) => {
   const errors = {}
 
   if (!formData.taskTitle || !formData.taskTitle.trim()) {
-    errors.taskTitle = "Task title is required"
+    errors.taskTitle = "Task title is required";
   } else if (formData.taskTitle.trim().length < 1) {
-    errors.taskTitle = "Task title must be at least 3 characters long"
+    errors.taskTitle = "Task title must be at least 3 characters long";
   } else if (formData.taskTitle.trim().length > 100) {
     errors.taskTitle = "Task title must not exceed 100 characters"
   }
 
   if (!formData.taskDescription || !formData.taskDescription.trim()) {
-    errors.taskDescription = "Task description is required"
+    errors.taskDescription = "Task description is required";
   } else if (formData.taskDescription.trim().length < 1) {
-    errors.taskDescription = "Description must be at least 10 characters long"
+    errors.taskDescription = "Description must be at least 10 characters long";
   } else if (formData.taskDescription.trim().length > 500) {
     errors.taskDescription = "Description must not exceed 500 characters"
   }
@@ -41,9 +41,9 @@ const validateTaskForm = (formData, backendSchema) => {
   }
 
   if (formData.taskDueDate) {
-    const selectedDate = new Date(formData.taskDueDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const selectedDate = new Date(formData.taskDueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
       errors.taskDueDate = "Due date cannot be in the past"
     }
@@ -70,28 +70,30 @@ const backendTaskSchema = {
 }
 
 const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
-  const dispatch = useDispatch()
-  const fileInputRef = useRef(null)
-  const userSearchInputRef = useRef(null)
+  const dispatch = useDispatch();
+  const fileInputRef = useRef(null);
+  const userSearchInputRef = useRef(null);
 
-  const [taskTitle, setTaskTitle] = useState("")
-  const [taskDescription, setTaskDescription] = useState("")
-  const [taskAssignedTo, setTaskAssignedTo] = useState("")
-  const [taskCategory, setTaskCategory] = useState("")
-  const [taskDueDate, setTaskDueDate] = useState("")
-  const [taskPriority, setTaskPriority] = useState(backendTaskSchema.taskPriority.default)
-  const [taskFrequencyType, setTaskFrequencyType] = useState("one-time")
-  const [taskImage, setTaskImage] = useState(null)
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskAssignedTo, setTaskAssignedTo] = useState("");
+  const [taskCategory, setTaskCategory] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskPriority, setTaskPriority] = useState(
+    backendTaskSchema.taskPriority.default
+  );
+  const [taskFrequencyType, setTaskFrequencyType] = useState("one-time");
+  const [taskImage, setTaskImage] = useState(null);
 
   const [assignMoreTasks, setAssignMoreTasks] = useState(false)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [allUsers, setAllUsers] = useState([])
-  const [isFetchingUsers, setIsFetchingUsers] = useState(false)
-  const [showUserDropdown, setShowUserDropdown] = useState(false)
-  const [userSearchTerm, setUserSearchTerm] = useState("")
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [allUsers, setAllUsers] = useState([]);
+  const [isFetchingUsers, setIsFetchingUsers] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const mockCategories = useMemo(
     () => [
@@ -109,32 +111,40 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       { id: "cat12", name: "Adhessive" },
       { id: "cat13", name: "Accounts" },
     ],
-    [],
-  )
+    []
+  );
 
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       if (allUsers.length === 0 && !isFetchingUsers) {
-        fetchUsersForDropdown()
+        fetchUsersForDropdown();
       }
       if (task) {
-        setTaskTitle(task.taskTitle || "")
-        setTaskDescription(task.taskDescription || "")
+        setTaskTitle(task.taskTitle || "");
+        setTaskDescription(task.taskDescription || "");
         setTaskAssignedTo(
-          typeof task.taskAssignedTo === "string" ? task.taskAssignedTo : task.taskAssignedTo?._id || "",
-        )
-        setTaskCategory(task.taskCategory || "")
-        setTaskDueDate(task.taskDueDate ? new Date(task.taskDueDate).toISOString().split("T")[0] : "")
-        setTaskPriority(task.taskPriority || backendTaskSchema.taskPriority.default)
-        setTaskFrequencyType(task.taskFrequency?.type || "one-time")
-        setTaskImage(task.taskImage || null)
+          typeof task.taskAssignedTo === "string"
+            ? task.taskAssignedTo
+            : task.taskAssignedTo?._id || ""
+        );
+        setTaskCategory(task.taskCategory || "");
+        setTaskDueDate(
+          task.taskDueDate
+            ? new Date(task.taskDueDate).toISOString().split("T")[0]
+            : ""
+        );
+        setTaskPriority(
+          task.taskPriority || backendTaskSchema.taskPriority.default
+        );
+        setTaskFrequencyType(task.taskFrequency?.type || "one-time");
+        setTaskImage(task.taskImage || null);
       } else {
-        resetFormFields()
+        resetFormFields();
       }
-      setErrors({})
-      setUserSearchTerm("")
+      setErrors({});
+      setUserSearchTerm("");
     }
   }, [isOpen, task])
 
@@ -146,25 +156,33 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     }
   }, [showUserDropdown])
 
+  useEffect(() => {
+    if (showUserDropdown && userSearchInputRef.current) {
+      setTimeout(() => {
+        userSearchInputRef.current.focus();
+      }, 100);
+    }
+  }, [showUserDropdown]);
+
   const resetFormFields = (keepDueDate = false) => {
-    setTaskTitle("")
-    setTaskDescription("")
-    setTaskAssignedTo("")
-    setTaskCategory("")
-    setTaskImage(null)
+    setTaskTitle("");
+    setTaskDescription("");
+    setTaskAssignedTo("");
+    setTaskCategory("");
+    setTaskImage(null);
     if (!keepDueDate) {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       setTaskDueDate(tomorrow.toISOString().split("T")[0])
     }
-    setTaskPriority(backendTaskSchema.taskPriority.default)
-    setTaskFrequencyType("one-time")
-    setErrors({})
-    setUserSearchTerm("")
-  }
+    setTaskPriority(backendTaskSchema.taskPriority.default);
+    setTaskFrequencyType("one-time");
+    setErrors({});
+    setUserSearchTerm("");
+  };
 
   const fetchUsersForDropdown = async () => {
-    setIsFetchingUsers(true)
+    setIsFetchingUsers(true);
     try {
       const response = await userApi.fetchAllTeamMembers()
       const fetchedUsers = response.data?.data?.map((item) => item.newMember) || []
@@ -174,9 +192,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           name: u.fullname,
           email: u.email,
           department: u.department || u.category || "General", // Add department/category field
-          avatar: u.avatarUrl || `/placeholder.svg?height=32&width=32&query=${encodeURIComponent(u.fullname)}`,
-        })),
-      )
+          avatar:
+            u.avatarUrl ||
+            `/placeholder.svg?height=32&width=32&query=${encodeURIComponent(
+              u.fullname
+            )}`,
+        }))
+      );
     } catch (error) {
       console.error("Error fetching users:", error)
       toast.error("Failed to fetch users for assignment.")
@@ -187,7 +209,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   }
 
   const handleFileSelect = (event) => {
-    const file = event.target.files[0] // only take the first file
+    const file = event.target.files[0]; // only take the first file
     if (file) {
       const newFile = {
         id: Date.now() + Math.random(),
@@ -195,17 +217,17 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         size: file.size,
         type: file.type,
         file: file,
-      }
-      setTaskImage(newFile) // set a single file object
-      toast.success(`1 file attached successfully`)
+      };
+      setTaskImage(newFile); // set a single file object
+      toast.success(`1 file attached successfully`);
     }
-    event.target.value = "" // reset input
-  }
+    event.target.value = ""; // reset input
+  };
 
   const handleFileRemove = () => {
-    setTaskImage(null)
-    toast.success("File removed successfully")
-  }
+    setTaskImage(null);
+    toast.success("File removed successfully");
+  };
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes"
@@ -216,7 +238,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   }
 
   const getFileIcon = (fileName) => {
-    const extension = fileName.split(".").pop()?.toLowerCase()
+    const extension = fileName.split(".").pop()?.toLowerCase();
     // ... (rest of getFileIcon function remains the same)
     switch (extension) {
       case "pdf":
@@ -251,47 +273,64 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       taskDescription: taskDescription.trim(),
       taskAssignedTo,
       taskCategory: taskCategory.trim(),
-      taskDueDate: taskDueDate ? new Date(taskDueDate).toISOString() : undefined,
+      taskDueDate: taskDueDate
+        ? new Date(taskDueDate).toISOString()
+        : undefined,
       taskPriority,
       taskFrequency: { type: taskFrequencyType },
-    }
+    };
 
-    const validationErrors = validateTaskForm(payload, backendTaskSchema)
+    const validationErrors = validateTaskForm(payload, backendTaskSchema);
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      toast.error("Please fix the validation errors.")
-      return
+      setErrors(validationErrors);
+      toast.error("Please fix the validation errors.");
+      return;
     }
 
-    const file = taskImage?.file // direct access, no array indexing
+    const file = taskImage?.file; // direct access, no array indexing
     if (file) {
       if (!(file instanceof File)) {
-        toast.error("Invalid image file.")
-        return
+        toast.error("Invalid image file.");
+        return;
       }
       if (file.size > 1024 * 1024) {
-        toast.error("Image must be less than 1MB.")
-        return
+        toast.error("Image must be less than 1MB.");
+        return;
       }
     }
 
-    setIsSubmitting(true)
-    setErrors({})
+    setIsSubmitting(true);
+    setErrors({});
     try {
-      const formData = new FormData()
+      const formData = new FormData();
       Object.entries(payload).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          formData.append(key, typeof value === "object" ? JSON.stringify(value) : value)
+          formData.append(
+            key,
+            typeof value === "object" ? JSON.stringify(value) : value
+          );
         }
-      })
+      });
 
       if (file) {
-        formData.append("taskImage", file)
+        formData.append("taskImage", file);
       }
 
       // ✅ Now sending multipart/form-data correctly
       if (task && task._id) {
-        await dispatch(editTask({ taskId: task._id, taskData: formData })).unwrap()
+        await dispatch(
+          editTask({ taskId: task._id, taskData: formData })
+        ).unwrap();
+      } else {
+        await dispatch(createTask(formData)).unwrap();
+      }
+
+      setRefreshTrigger(Date.now());
+      toast.success(
+        task ? "Task updated successfully!" : "Task created successfully!"
+      );
+      if (!assignMoreTasks) {
+        onClose();
       } else {
         await dispatch(createTask(formData)).unwrap()
       }
@@ -308,20 +347,23 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       const errorMessage =
         typeof error === "string"
           ? error
-          : error?.response?.data?.message || error.message || "Unexpected error during task submission"
-      setErrors({ submit: errorMessage })
-      toast.error(errorMessage)
+          : error?.response?.data?.message ||
+            error.message ||
+            "Unexpected error during task submission";
+      setErrors({ submit: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleUserSelect = (userId) => {
-    setTaskAssignedTo(userId)
-    setShowUserDropdown(false)
-    setUserSearchTerm("")
-    if (errors.taskAssignedTo) setErrors((prev) => ({ ...prev, taskAssignedTo: "" }))
-  }
+    setTaskAssignedTo(userId);
+    setShowUserDropdown(false);
+    setUserSearchTerm("");
+    if (errors.taskAssignedTo)
+      setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
+  };
 
   const handleCategorySelect = (categoryName) => {
     setTaskCategory(categoryName)
@@ -349,27 +391,30 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   )
 
   const selectedUserName = useMemo(() => {
-    if (!taskAssignedTo) return "Select User"
-    const user = allUsers.find((u) => u.id === taskAssignedTo)
+    if (!taskAssignedTo) return "Select User";
+    const user = allUsers.find((u) => u.id === taskAssignedTo);
     return user ? (
       <span>
-        {user.name} <span className="px-2 rounded-md bg-purple-200 text-purple-600 font-medium text-xs ml-2">{user.department}</span>
+        {user.name}{" "}
+        <span className="bg-purple-200 rounded-md w-[fit-content] px-2 text-purple-600 font-medium text-xs ml-2">
+          {user.department}
+        </span>
       </span>
     ) : (
       "Select User"
-    )
-  }, [taskAssignedTo, allUsers])
+    );
+  }, [taskAssignedTo, allUsers]);
 
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm.trim()) {
-      return allUsers
+      return allUsers;
     }
     return allUsers.filter(
       (user) =>
         user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-        user.department.toLowerCase().includes(userSearchTerm.toLowerCase()),
-    )
-  }, [allUsers, userSearchTerm])
+        user.department.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [allUsers, userSearchTerm]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={task ? "Edit Task" : "Assign New Task"} className="max-w-2xl">
@@ -426,18 +471,25 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   type="button"
                   id="taskAssignedToButton"
                   onClick={() => {
-                    if (allUsers.length === 0 && !isFetchingUsers) fetchUsersForDropdown()
-                    setShowUserDropdown(!showUserDropdown)
+                    if (allUsers.length === 0 && !isFetchingUsers)
+                      fetchUsersForDropdown();
+                    setShowUserDropdown(!showUserDropdown);
                   }}
                   className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white text-sm ${
                     errors.taskAssignedTo ? "border-red-500" : "border-gray-300"
                   }`}
                 >
-                  <div className="text-gray-700 truncate flex-1 text-left">{selectedUserName}</div>
+                  <div className="text-gray-700 truncate flex-1 text-left">
+                    {selectedUserName}
+                  </div>
                   {isFetchingUsers ? (
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
-                    <span className={`ml-1 transition-transform duration-200 ${showUserDropdown ? "rotate-180" : ""}`}>
+                    <span
+                      className={`ml-1 transition-transform duration-200 ${
+                        showUserDropdown ? "rotate-180" : ""
+                      }`}
+                    >
                       ▼
                     </span>
                   )}
@@ -464,10 +516,14 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                         />
                       </div>
                     </div>
-                    <ul role="listbox" className="py-1 overflow-y-auto flex-grow">
+                    <ul
+                      role="listbox"
+                      className="py-1 overflow-y-auto flex-grow"
+                    >
                       {isFetchingUsers ? (
                         <li className="px-3 py-2 text-gray-500 text-sm text-center flex items-center justify-center">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading users...
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
+                          Loading users...
                         </li>
                       ) : filteredUsers.length > 0 ? (
                         filteredUsers.map((user) => (
@@ -491,22 +547,30 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                               className="w-6 h-6 rounded-full mr-2 flex-shrink-0 object-cover"
                               onError={(e) =>
                                 (e.target.src = `/placeholder.svg?height=24&width=24&query=${encodeURIComponent(
-                                  user.name,
+                                  user.name
                                 )}`)
                               }
                             />
                             <div className="flex-1 min-w-0">
                               <span className="block truncate font-medium">
                                 {user.name}{" "}
-                                <span className="px-2 rounded-md bg-purple-200 text-purple-600 font-medium text-xs ml-2">{user.department}</span>
+                                <p className="bg-purple-200 rounded-md w-[fit-content] px-2 text-purple-600 font-medium text-xs ml-2">
+                                  {user.department}
+                                </p>
                               </span>
-                              {user.email && <span className="block truncate text-xs text-gray-500">{user.email}</span>}
+                              {user.email && (
+                                <span className="block truncate text-xs text-gray-500">
+                                  {user.email}
+                                </span>
+                              )}
                             </div>
                           </li>
                         ))
                       ) : (
                         <li className="px-3 py-2 text-gray-500 text-sm text-center">
-                          {allUsers.length === 0 ? "No users available." : "No users match your search."}
+                          {allUsers.length === 0
+                            ? "No users available."
+                            : "No users match your search."}
                         </li>
                       )}
                     </ul>
@@ -535,6 +599,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   >
                     ▼
                   </span>
+                  <span
+                    className={`ml-1 transition-transform duration-200 ${
+                      showCategoryDropdown ? "rotate-180" : ""
+                    }`}
+                  >
+                    ▼
+                  </span>
                 </button>
                 {errors.taskCategory && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
@@ -550,7 +621,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                           role="option"
                           aria-selected={taskCategory === category.name}
                           className={`px-3 py-2 cursor-pointer text-sm ${
-                            taskCategory === category.name ? "bg-blue-50 font-semibold" : "hover:bg-gray-100"
+                            taskCategory === category.name
+                              ? "bg-blue-50 font-semibold"
+                              : "hover:bg-gray-100"
                           }`}
                           onClick={() => handleCategorySelect(category.name)}
                         >
@@ -590,7 +663,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                       : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {taskPriority === priorityValue && <Check className="h-4 w-4 mr-1.5" />}
+                  {taskPriority === priorityValue && (
+                    <Check className="h-4 w-4 mr-1.5" />
+                  )}
                   {priorityValue}
                 </Button>
               ))}
@@ -619,14 +694,18 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     setTaskFrequencyType(freq.value)
                     if (errors.taskFrequency) setErrors((prev) => ({ ...prev, taskFrequency: "" }))
                   }}
-                  variant={taskFrequencyType === freq.value ? "solid" : "outline"}
+                  variant={
+                    taskFrequencyType === freq.value ? "solid" : "outline"
+                  }
                   className={`flex items-center px-3 py-2 text-sm rounded-md ${
                     taskFrequencyType === freq.value
                       ? "bg-emerald-500 text-white hover:bg-emerald-600"
                       : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {taskFrequencyType === freq.value && <Check className="h-3 w-3 mr-1.5" />}
+                  {taskFrequencyType === freq.value && (
+                    <Check className="h-3 w-3 mr-1.5" />
+                  )}
                   {freq.label}
                 </Button>
               ))}
@@ -666,7 +745,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           <div className="space-y-4">
             {/* Upload button (always visible) */}
             <div className="flex flex-wrap gap-3 pt-2 justify-center sm:justify-start">
-              <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*"
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -683,13 +768,21 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             {/* Show attached file if any */}
             {taskImage && (
               <div className="mt-4 space-y-2">
-                <h4 className="text-sm font-medium text-gray-700">Replace File</h4>
+                <h4 className="text-sm font-medium text-gray-700">
+                  Replace File
+                </h4>
                 <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
                   <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    <span className="text-lg flex-shrink-0">{getFileIcon(taskImage.name)}</span>
+                    <span className="text-lg flex-shrink-0">
+                      {getFileIcon(taskImage.name)}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{taskImage.name}</p>
-                      <p className="text-xs text-gray-500">{formatFileSize(taskImage.size)}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {taskImage.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(taskImage.size)}
+                      </p>
                     </div>
                   </div>
 
@@ -699,8 +792,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     size="sm"
                     className="p-1 h-6 w-6 text-gray-700 hover:text-red-600 hover:bg-red-100 dark:text-gray-300 dark:hover:text-red-400 dark:hover:bg-red-800/10"
                     onClick={() => {
-                      setTaskImage(null)
-                      toast.success("File removed successfully")
+                      setTaskImage(null);
+                      toast.success("File removed successfully");
                     }}
                     title="Remove file"
                   >
@@ -720,7 +813,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
           <div className="pt-4 mt-6 border-t border-gray-200">
             <div className="flex justify-end items-center gap-3 mb-4">
-              <span className="text-sm font-medium text-gray-700">Assign More Tasks</span>
+              <span className="text-sm font-medium text-gray-700">
+                Assign More Tasks
+              </span>
               <Switch
                 checked={assignMoreTasks}
                 onCheckedChange={setAssignMoreTasks}

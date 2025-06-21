@@ -1,6 +1,3 @@
-// No changes needed to Profile.jsx from the previous version.
-// Its useEffect hook correctly populates profileData from currentUser.
-// The previous version is:
 "use client";
 
 import { useState, useEffect } from "react";
@@ -30,15 +27,18 @@ import {
   X,
   KeyRound,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { ROUTES } from "@/constants/routes";
 import { userApi } from "../../api/userApi";
+import DeleteAccountModal from "@/components/profile/DeleteAccountModal";
 
 const Profile = () => {
   const { currentUser, updateUser } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [profileData, setProfileData] = useState({
     fullname: "",
@@ -432,6 +432,32 @@ const Profile = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6 border-destructive">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center text-destructive">
+            <Trash2 className="w-5 h-5 mr-2" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription>
+            Once you delete your account, there is no going back. Please be
+            certain.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="destructive"
+            onClick={() => setIsDeleteModalOpen(true)}
+          >
+            Delete My Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

@@ -82,6 +82,14 @@ export const userApi = {
     return API.put(`${USER_BASE_URL}/edit-profile`, profileData);
   },
 
+  deleteMyAccount: async (otp) => {
+    // The backend needs the OTP to verify the deletion request.
+    // The user's identity is determined by the JWT token sent in the headers.
+    // The backend expects the OTP as a number.
+    const payload = { incomingOTP: Number(otp) };
+    return API.delete(`${USER_BASE_URL}/delete-my-account`, { data: payload });
+  },
+
   fetchActivities: async (params = {}) => {
     return API.get(`${USER_BASE_URL}/activities`, { params });
   },

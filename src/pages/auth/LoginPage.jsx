@@ -64,19 +64,19 @@ const LoginPage = () => {
 
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2 font-sans">
-      <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+      <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-green-500 to-emerald-700 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-20"></div>
         <div className="relative z-10 text-center space-y-10 max-w-lg">
           <Link to="/" className="inline-block">
             <AutomateLogo className="h-14 w-auto text-white drop-shadow-lg" />
           </Link>
           <h1 className="text-4xl font-bold tracking-tight text-balance">
-            Streamline Your Success with KPS Automate Task
+            Streamline Your Success with Jasmine Automate Task
           </h1>
           <p className="text-lg leading-relaxed text-primary-foreground/80 text-balance">
             Unlock peak productivity with intuitive task management, real-time
-            collaboration, and insightful analytics. KPS Automate empowers your
-            team to achieve more, effortlessly.
+            collaboration, and insightful analytics. Jasmine Automate empowers
+            your team to achieve more, effortlessly.
           </p>
           <div className="flex justify-center space-x-8 pt-6">
             {[

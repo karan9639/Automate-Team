@@ -19,7 +19,7 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react"
-import AutomateLogo from "./AutomateLogo"
+import AutomateLogo from "@/components/common/AutomateLogo";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)

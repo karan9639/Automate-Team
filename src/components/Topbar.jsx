@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import { motion } from "framer-motion"
 import { Search, Bell, Menu, X, User, LogOut, Settings } from "lucide-react"
-import AutomateLogo from "./AutomateLogo"
+import AutomateLogo from "@/components/common/AutomateLogo";
 
 const Topbar = ({ toggleSidebar, toggleTaskSidebar, showTaskSidebarToggle }) => {
   const [searchOpen, setSearchOpen] = useState(false)

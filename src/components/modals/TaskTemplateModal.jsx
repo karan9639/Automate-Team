@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { yupResolver } from "@hookform/resolvers/yup"
-import * as yup from "yup"
-import PropTypes from "prop-types"
-import { X, Link, FileText, Download } from "lucide-react"
-import { motion } from "framer-motion"
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import PropTypes from "prop-types";
+import { X, Link, FileText, Download } from "lucide-react";
+import { motion } from "framer-motion";
 
 // Form validation schema
 const schema = yup.object({
@@ -15,7 +15,7 @@ const schema = yup.object({
   category: yup.string().required("Category is required"),
   priority: yup.string().required("Priority is required"),
   repeat: yup.boolean(),
-})
+});
 
 /**
  * Modal for creating or editing task templates
@@ -35,7 +35,7 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
       priority: "Medium",
       repeat: false,
     },
-  })
+  });
 
   // Reset form when template changes
   useEffect(() => {
@@ -46,7 +46,7 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
         category: template.category,
         priority: template.priority,
         repeat: template.repeat || false,
-      })
+      });
     } else {
       reset({
         title: "",
@@ -54,9 +54,9 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
         category: "",
         priority: "Medium",
         repeat: false,
-      })
+      });
     }
-  }, [template, reset])
+  }, [template, reset]);
 
   // Handle form submission
   const onSubmit = (data) => {
@@ -64,10 +64,10 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
       id: template?.id || Date.now().toString(),
       ...data,
       createdAt: template?.createdAt || new Date().toISOString(),
-    })
-  }
+    });
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
@@ -81,7 +81,11 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
           <h2 className="text-xl font-semibold text-white">
             {template ? "Edit Task Template" : "Create Task Template"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+            aria-label="Close"
+          >
             <X size={20} />
           </button>
         </div>
@@ -90,7 +94,10 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
           <div className="space-y-4">
             {/* Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
                 Task Title
               </label>
               <input
@@ -100,12 +107,19 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="Enter task title"
               />
-              {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>}
+              {errors.title && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
                 Description
               </label>
               <textarea
@@ -115,12 +129,19 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="Short description of the task"
               ></textarea>
-              {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description.message}</p>}
+              {errors.description && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
 
             {/* Category */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="category"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
                 Category
               </label>
               <select
@@ -129,18 +150,32 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">Select Category</option>
-                <option value="Sales">Sales</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Operations">Operations</option>
-                <option value="Customer Support">Customer Support</option>
-                <option value="General">General</option>
+                <option value="Sampling">Sampling</option>
+                <option value="PPC">PPC</option>
+                <option value="Job Work">Job Work</option>
+                <option value="Greige">Greige</option>
+                <option value="Form Lamination">Form Lamination</option>
+                <option value="Flat Knit">Flat Knit</option>
+                <option value="Dyeing">Dyeing</option>
+                <option value="Dyeing Lab">Dyeing Lab</option>
+                <option value="Dispatch Dyeing">Dispatch Dyeing</option>
+                <option value="Digital Printing">Digital Printing</option>
+                <option value="Biling">Biling</option>
+                <option value="Adhessive">Adhessive</option>
+                <option value="Accounts">Accounts</option>
               </select>
-              {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category.message}</p>}
+              {errors.category && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.category.message}
+                </p>
+              )}
             </div>
 
             {/* Priority */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Priority</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Priority
+              </label>
               <div className="flex space-x-2">
                 <button
                   type="button"
@@ -176,7 +211,11 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
                   Low
                 </button>
               </div>
-              {errors.priority && <p className="mt-1 text-sm text-red-500">{errors.priority.message}</p>}
+              {errors.priority && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.priority.message}
+                </p>
+              )}
             </div>
 
             {/* Repeat */}
@@ -187,7 +226,10 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
                 {...register("repeat")}
                 className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500"
               />
-              <label htmlFor="repeat" className="ml-2 block text-sm text-gray-300">
+              <label
+                htmlFor="repeat"
+                className="ml-2 block text-sm text-gray-300"
+              >
                 Repeat
               </label>
             </div>
@@ -236,14 +278,14 @@ const TaskTemplateModal = ({ isOpen, onClose, template, onSave }) => {
         </form>
       </motion.div>
     </div>
-  )
-}
+  );
+};
 
 TaskTemplateModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   template: PropTypes.object,
   onSave: PropTypes.func.isRequired,
-}
+};
 
-export default TaskTemplateModal
+export default TaskTemplateModal;

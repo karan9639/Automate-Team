@@ -15,6 +15,7 @@ import {
   MessageSquare,
   UserCircle,
   Send,
+  ImageIcon,
 } from "lucide-react"
 import { formatDate } from "../../utils/helpers"
 import { useState, useEffect, useMemo } from "react"
@@ -50,13 +51,23 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
   // Mock categories - replace with actual API if available
   const mockCategories = useMemo(
     () => [
-      { id: "cat1", name: "Development" },
-      { id: "cat2", name: "Design" },
-      { id: "cat3", name: "Marketing" },
-      { id: "cat4", name: "Operations" },
+      { id: "cat1", name: "Sampling" },
+      { id: "cat2", name: "PPC" },
+      { id: "cat3", name: "Job Work" },
+      { id: "cat4", name: "Greige" },
+      { id: "cat5", name: "Form Lamination" },
+      { id: "cat6", name: "Flat Knit" },
+      { id: "cat7", name: "Dyeing" },
+      { id: "cat8", name: "Dyeing Lab" },
+      { id: "cat9", name: "Dispatch Dyeing" },
+      { id: "cat10", name: "Digital Printing" },
+      { id: "cat11", name: "Biling" },
+      { id: "cat12", name: "Adhessive" },
+      { id: "cat13", name: "Accounts" },
     ],
-    [],
-  )
+    []
+  );
+  
 
   const selectedUserName = editFormData.taskAssignedTo
     ? allUsers.find((u) => u.id === editFormData.taskAssignedTo)?.name || "Select User"
@@ -479,9 +490,16 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
   ]
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center ${isOpen ? "" : "hidden"}`}>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center ${
+        isOpen ? "" : "hidden"
+      }`}
+    >
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50"
+        onClick={onClose}
+      ></div>
 
       {/* Modal */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-10 m-4">
@@ -502,7 +520,10 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
               </span>
             )}
           </div>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
             <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
@@ -512,12 +533,16 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="animate-spin h-12 w-12 text-emerald-500" />
-              <p className="ml-3 text-gray-600 dark:text-gray-400">Loading task details...</p>
+              <p className="ml-3 text-gray-600 dark:text-gray-400">
+                Loading task details...
+              </p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
               <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
-              <p className="text-red-600 font-medium">Error loading task details</p>
+              <p className="text-red-600 font-medium">
+                Error loading task details
+              </p>
               <p className="text-gray-500 dark:text-gray-400 mt-2">{error}</p>
               <button
                 onClick={onClose}
@@ -539,29 +564,47 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                       <input
                         type="text"
                         value={editFormData.taskTitle}
-                        onChange={(e) => handleInputChange("taskTitle", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("taskTitle", e.target.value)
+                        }
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
-                          formErrors.taskTitle ? "border-red-300" : "border-gray-300"
+                          formErrors.taskTitle
+                            ? "border-red-300"
+                            : "border-gray-300"
                         }`}
                         placeholder="Enter task title"
                       />
-                      {formErrors.taskTitle && <p className="mt-1 text-sm text-red-600">{formErrors.taskTitle}</p>}
+                      {formErrors.taskTitle && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.taskTitle}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{taskTitle}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                    {taskTitle}
+                  </h1>
                 )}
 
                 <div className="flex flex-wrap gap-2 mt-2">
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(taskPriority)}`}
+                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(
+                      taskPriority
+                    )}`}
                   >
                     <span className="flex items-center">
                       <AlertCircle className="h-3 w-3 mr-1 inline" />
-                      {taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)} Priority
+                      {taskPriority.charAt(0).toUpperCase() +
+                        taskPriority.slice(1)}{" "}
+                      Priority
                     </span>
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(taskStatus)}`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                      taskStatus
+                    )}`}
+                  >
                     <span className="flex items-center">
                       <Clock className="h-3 w-3 mr-1 inline" />
                       {taskStatus.charAt(0).toUpperCase() + taskStatus.slice(1)}
@@ -588,15 +631,21 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                   <div>
                     <textarea
                       value={editFormData.taskDescription}
-                      onChange={(e) => handleInputChange("taskDescription", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("taskDescription", e.target.value)
+                      }
                       rows={4}
                       className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
-                        formErrors.taskDescription ? "border-red-300" : "border-gray-300"
+                        formErrors.taskDescription
+                          ? "border-red-300"
+                          : "border-gray-300"
                       }`}
                       placeholder="Enter task description"
                     />
                     {formErrors.taskDescription && (
-                      <p className="mt-1 text-sm text-red-600">{formErrors.taskDescription}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {formErrors.taskDescription}
+                      </p>
                     )}
                   </div>
                 ) : (
@@ -616,22 +665,29 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned To *</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Assigned To *
+                      </label>
                       {isEditMode ? (
                         <div className="relative">
                           <button
                             type="button"
                             onClick={() => {
-                              if (allUsers.length === 0) fetchUsersForDropdown()
-                              setShowUserDropdown(!showUserDropdown)
+                              if (allUsers.length === 0)
+                                fetchUsersForDropdown();
+                              setShowUserDropdown(!showUserDropdown);
                             }}
                             className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white dark:bg-gray-700 ${
-                              formErrors.taskAssignedTo ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                              formErrors.taskAssignedTo
+                                ? "border-red-500"
+                                : "border-gray-300 dark:border-gray-600"
                             }`}
                             aria-expanded={showUserDropdown}
                             aria-haspopup="listbox"
                           >
-                            <span className="text-gray-700 dark:text-gray-200 truncate">{selectedUserName}</span>
+                            <span className="text-gray-700 dark:text-gray-200 truncate">
+                              {selectedUserName}
+                            </span>
                             {isFetchingUsers ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
@@ -653,7 +709,9 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                                     <li
                                       key={user.id}
                                       role="option"
-                                      aria-selected={editFormData.taskAssignedTo === user.id}
+                                      aria-selected={
+                                        editFormData.taskAssignedTo === user.id
+                                      }
                                       className={`px-3 py-2 cursor-pointer flex items-center text-gray-900 dark:text-gray-100 ${
                                         editFormData.taskAssignedTo === user.id
                                           ? "bg-blue-100 dark:bg-blue-600 font-semibold"
@@ -661,7 +719,8 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                                       }`}
                                       onClick={() => handleUserSelect(user.id)}
                                     >
-                                      {editFormData.taskAssignedTo === user.id && (
+                                      {editFormData.taskAssignedTo ===
+                                        user.id && (
                                         <Check className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                                       )}
                                       <img
@@ -669,7 +728,9 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                                         alt={user.name}
                                         className="w-6 h-6 rounded-full mr-2"
                                       />
-                                      <span className="truncate">{user.name}</span>
+                                      <span className="truncate">
+                                        {user.name}
+                                      </span>
                                     </li>
                                   ))
                                 ) : (
@@ -693,21 +754,30 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Status
+                      </label>
                       <p className="text-gray-900 dark:text-gray-100">
-                        {taskStatus.charAt(0).toUpperCase() + taskStatus.slice(1)}
+                        {taskStatus.charAt(0).toUpperCase() +
+                          taskStatus.slice(1)}
                       </p>
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Priority *</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Priority *
+                      </label>
                       {isEditMode ? (
                         <div>
                           <select
                             value={editFormData.taskPriority}
-                            onChange={(e) => handleInputChange("taskPriority", e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange("taskPriority", e.target.value)
+                            }
                             className={`mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
-                              formErrors.taskPriority ? "border-red-300" : "border-gray-300"
+                              formErrors.taskPriority
+                                ? "border-red-300"
+                                : "border-gray-300"
                             }`}
                           >
                             {priorityOptions.map((option) => (
@@ -717,23 +787,30 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                             ))}
                           </select>
                           {formErrors.taskPriority && (
-                            <p className="mt-1 text-sm text-red-600">{formErrors.taskPriority}</p>
+                            <p className="mt-1 text-sm text-red-600">
+                              {formErrors.taskPriority}
+                            </p>
                           )}
                         </div>
                       ) : (
                         <p className="text-gray-900 dark:text-gray-100">
-                          {taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)}
+                          {taskPriority.charAt(0).toUpperCase() +
+                            taskPriority.slice(1)}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Category</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Category
+                      </label>
                       {isEditMode ? (
                         <div className="relative">
                           <button
                             type="button"
-                            onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                            onClick={() =>
+                              setShowCategoryDropdown(!showCategoryDropdown)
+                            }
                             className="w-full flex justify-between items-center px-3 py-2 h-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
                             aria-expanded={showCategoryDropdown}
                             aria-haspopup="listbox"
@@ -752,13 +829,19 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                                     <li
                                       key={category.id}
                                       role="option"
-                                      aria-selected={editFormData.taskCategory === category.name}
+                                      aria-selected={
+                                        editFormData.taskCategory ===
+                                        category.name
+                                      }
                                       className={`px-3 py-2 cursor-pointer text-gray-900 dark:text-gray-100 ${
-                                        editFormData.taskCategory === category.name
+                                        editFormData.taskCategory ===
+                                        category.name
                                           ? "bg-blue-50 dark:bg-blue-600"
                                           : "hover:bg-gray-100 dark:hover:bg-gray-600"
                                       }`}
-                                      onClick={() => handleCategorySelect(category.name)}
+                                      onClick={() =>
+                                        handleCategorySelect(category.name)
+                                      }
                                     >
                                       {category.name}
                                     </li>
@@ -773,24 +856,36 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                           )}
                         </div>
                       ) : (
-                        <p className="text-gray-900 dark:text-gray-100">{taskCategory || "No category"}</p>
+                        <p className="text-gray-900 dark:text-gray-100">
+                          {taskCategory || "No category"}
+                        </p>
                       )}
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Created By</label>
-                      <p className="text-gray-900 dark:text-gray-100">{taskCreatedBy}</p>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Created By
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {taskCreatedBy}
+                      </p>
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Frequency *</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Frequency *
+                      </label>
                       {isEditMode ? (
                         <div>
                           <select
                             value={editFormData.taskFrequency}
-                            onChange={(e) => handleInputChange("taskFrequency", e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange("taskFrequency", e.target.value)
+                            }
                             className={`mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
-                              formErrors.taskFrequency ? "border-red-300" : "border-gray-300"
+                              formErrors.taskFrequency
+                                ? "border-red-300"
+                                : "border-gray-300"
                             }`}
                           >
                             <option value="one-time">One-time</option>
@@ -800,11 +895,15 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                             <option value="yearly">Yearly</option>
                           </select>
                           {formErrors.taskFrequency && (
-                            <p className="mt-1 text-sm text-red-600">{formErrors.taskFrequency}</p>
+                            <p className="mt-1 text-sm text-red-600">
+                              {formErrors.taskFrequency}
+                            </p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-gray-900 dark:text-gray-100">{getFrequencyDisplay(taskFrequency)}</p>
+                        <p className="text-gray-900 dark:text-gray-100">
+                          {getFrequencyDisplay(taskFrequency)}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -818,42 +917,92 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Due Date</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Due Date
+                      </label>
                       {isEditMode ? (
                         <div>
                           <input
                             type="date"
                             value={editFormData.taskDueDate}
-                            onChange={(e) => handleInputChange("taskDueDate", e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange("taskDueDate", e.target.value)
+                            }
                             className={`mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
-                              formErrors.taskDueDate ? "border-red-300" : "border-gray-300"
+                              formErrors.taskDueDate
+                                ? "border-red-300"
+                                : "border-gray-300"
                             }`}
                           />
                           {formErrors.taskDueDate && (
-                            <p className="mt-1 text-sm text-red-600">{formErrors.taskDueDate}</p>
+                            <p className="mt-1 text-sm text-red-600">
+                              {formErrors.taskDueDate}
+                            </p>
                           )}
                         </div>
                       ) : (
                         <p className="text-gray-900 dark:text-gray-100">
-                          {taskDueDate ? formatDate(taskDueDate) : "No due date"}
+                          {taskDueDate
+                            ? formatDate(taskDueDate)
+                            : "No due date"}
                         </p>
                       )}
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Created
+                      </label>
                       <p className="text-gray-900 dark:text-gray-100">
-                        {task.createdAt ? formatDate(task.createdAt) : "Unknown"}
+                        {task.createdAt
+                          ? formatDate(task.createdAt)
+                          : "Unknown"}
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</label>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Last Updated
+                      </label>
                       <p className="text-gray-900 dark:text-gray-100">
-                        {task.updatedAt ? formatDate(task.updatedAt) : "Unknown"}
+                        {task.updatedAt
+                          ? formatDate(task.updatedAt)
+                          : "Unknown"}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
+              {task?.taskImage?.url && (
+                <div className="mt-6">
+                  <h3 className="flex items-center text-lg font-medium mb-3 text-gray-900 dark:text-gray-100">
+                    <ImageIcon className="h-5 w-5 mr-2 text-gray-700 dark:text-gray-300" />
+                    Attached Image
+                  </h3>
+                  <div className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700/50">
+                    <img
+                      src={task.taskImage.url || "/placeholder.svg"}
+                      alt={`Attachment for ${taskTitle}`}
+                      className="rounded-md max-w-full h-auto mx-auto block shadow-sm"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const errorText = document.createElement("p");
+                        errorText.textContent = "Image not available.";
+                        errorText.className = "text-center text-red-500 py-4";
+                        e.target.parentNode.appendChild(errorText);
+                      }}
+                    />
+                    <div className="text-center mt-4">
+                      <a
+                        href={task.taskImage.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                      >
+                        View Image
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Comments Section - Added from ViewTaskModal1 */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -865,12 +1014,19 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                   {commentsLoading ? (
                     <div className="flex justify-center items-center py-4">
                       <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                      <p className="ml-2 text-gray-500 dark:text-gray-400">Loading comments...</p>
+                      <p className="ml-2 text-gray-500 dark:text-gray-400">
+                        Loading comments...
+                      </p>
                     </div>
                   ) : commentsError ? (
                     <div className="py-4 text-center text-red-600">
                       <AlertCircle className="h-6 w-6 mx-auto mb-2" />
-                      <p>Error: {typeof commentsError === "string" ? commentsError : "Failed to load comments."}</p>
+                      <p>
+                        Error:{" "}
+                        {typeof commentsError === "string"
+                          ? commentsError
+                          : "Failed to load comments."}
+                      </p>
                     </div>
                   ) : comments && comments.length > 0 ? (
                     comments.map((comment, index) => (
@@ -882,7 +1038,8 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                         <div className="flex-1">
                           <div className="flex items-baseline">
                             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                              {comment.commentedBy?.fullname || "Anonymous User"}
+                              {comment.commentedBy?.fullname ||
+                                "Anonymous User"}
                             </p>
                             <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                               {formatCommentTimestamp(comment.createdAt)}
@@ -890,7 +1047,9 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                           </div>
                           <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap">
                             {comment.comment || (
-                              <span className="italic text-gray-400 dark:text-gray-500">No comment text provided.</span>
+                              <span className="italic text-gray-400 dark:text-gray-500">
+                                No comment text provided.
+                              </span>
                             )}
                           </p>
                         </div>
@@ -898,7 +1057,9 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                     ))
                   ) : (
                     <div className="py-4 text-center">
-                      <p className="text-gray-500 dark:text-gray-400">No comments yet. Be the first to comment!</p>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        No comments yet. Be the first to comment!
+                      </p>
                     </div>
                   )}
                 </div>
@@ -915,7 +1076,11 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                       />
                       <button
                         type="submit"
-                        disabled={!newComment.trim() || isSubmittingComment || createCommentLoading}
+                        disabled={
+                          !newComment.trim() ||
+                          isSubmittingComment ||
+                          createCommentLoading
+                        }
                         className="px-4 py-2 h-[60px] bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center"
                       >
                         {isSubmittingComment || taskLoading.createComment ? (
@@ -927,7 +1092,9 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                     </div>
                     {taskErrors.createComment && (
                       <p className="mt-1 text-sm text-red-600">
-                        {typeof createCommentError === "string" ? createCommentError : "Failed to post comment."}
+                        {typeof createCommentError === "string"
+                          ? createCommentError
+                          : "Failed to post comment."}
                       </p>
                     )}
                   </form>
@@ -938,7 +1105,8 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
               {formErrors.taskId && (
                 <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 px-4 py-3 rounded-md">
                   <p className="text-sm">
-                    <strong>Error:</strong> {formErrors.taskId} - Cannot update task without a valid ID.
+                    <strong>Error:</strong> {formErrors.taskId} - Cannot update
+                    task without a valid ID.
                   </p>
                 </div>
               )}
@@ -1019,7 +1187,7 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default ViewTaskModal

@@ -1,14 +1,24 @@
-const AutomateLogo = () => {
+const AutomateLogo = ({ small = false }) => {
+  if (small) {
+    return (
+      <div className="flex items-center">
+        <img src="/favicon.webp" alt="Jasmine Logo" className="w-6 h-6" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center">
-      <svg
-        className="w-16 h-16 text-yellow-600"
-        fill="currentColor"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-      </svg>
+    <div className="flex items-center space-x-3">
+      <img src="/favicon.webp" alt="Jasmine Logo" className="w-10 h-10" />
+
+      <div className="flex flex-col leading-tight">
+        <span className="text-2xl font-black tracking-wide text-[#c22d2d]">
+          Jasmine
+        </span>
+        <span className="text-sm font-bold tracking-widest text-[#d13232]">
+          AUTOMATE
+        </span>
+      </div>
     </div>
   );
 };

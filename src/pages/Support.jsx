@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { supportApi } from "@/api/supportApi";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,8 @@ import {
   Send,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useEffect } from "react";
+
 
 const Support = () => {
   const [ticket, setTicket] = useState({
@@ -29,9 +32,38 @@ const Support = () => {
     category: "",
     priority: "",
     description: "",
-    attachment: null,
+    attachFile: null,
   });
 
+  const [loading, setLoading] = useState(false);
+
+  const [recentTickets, setRecentTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+
+  useEffect(() => {
+    const fetchTickets = async () => {
+      setLoadingTickets(true);
+      try {
+        const res = await supportApi.getMyTickets();
+        if (res.success) {
+          // res.data is a single ticket object in your example, but often it's an array — adjust accordingly
+          // Assuming multiple tickets returned in res.data as array (if your API returns a single ticket, wrap in array)
+          // If API returns a single ticket object, wrap it in array:
+          const ticketsArray = Array.isArray(res.data) ? res.data : [res.data];
+          setRecentTickets(ticketsArray);
+        } else {
+          toast.error("Failed to load tickets");
+        }
+      } catch (error) {
+        toast.error("Error fetching tickets");
+        console.error(error);
+      } finally {
+        setLoadingTickets(false);
+      }
+    };
+
+    fetchTickets();
+  }, []);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setTicket((prev) => ({
@@ -44,30 +76,50 @@ const Support = () => {
     e.preventDefault();
 
     if (
-      !ticket.subject ||
+      !ticket.subject.trim() ||
       !ticket.category ||
       !ticket.priority ||
-      !ticket.description
+      !ticket.description.trim()
     ) {
       toast.error("Please fill in all required fields");
       return;
     }
 
+    setLoading(true);
+
     try {
-      // TODO: Implement API call to submit support ticket
+      const formData = new FormData();
+      formData.append("subject", ticket.subject);
+      formData.append("category", ticket.category);
+      formData.append("priority", ticket.priority);
+      formData.append("description", ticket.description);
+
+      if (ticket.attachFile) {
+        formData.append("attachFile", ticket.attachFile);
+      }
+
+      // Call API to create ticket
+      await supportApi.createTicket(formData);
+
       toast.success("Support ticket submitted successfully");
+
       // Reset form
       setTicket({
         subject: "",
         category: "",
         priority: "",
         description: "",
-        attachment: null,
+        attachFile: null,
       });
     } catch (error) {
+      console.error(error);
       toast.error("Failed to submit support ticket");
+    } finally {
+      setLoading(false);
     }
   };
+  
+  
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -90,8 +142,8 @@ const Support = () => {
                 <Mail className="w-5 h-5 text-gray-500" />
                 <div>
                   <p className="text-sm font-medium">Email</p>
-                  <p className="text-sm text-gray-600">
-                    support@automateteam.com
+                  <p className="text-sm text-gray-600 ">
+                    jasmineautomate.support@natharts.com
                   </p>
                 </div>
               </div>
@@ -100,13 +152,6 @@ const Support = () => {
                 <div>
                   <p className="text-sm font-medium">Phone</p>
                   <p className="text-sm text-gray-600">+91 9876543210</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MessageSquare className="w-5 h-5 text-gray-500" />
-                <div>
-                  <p className="text-sm font-medium">Live Chat</p>
-                  <p className="text-sm text-gray-600">Available 9 AM - 6 PM</p>
                 </div>
               </div>
             </CardContent>
@@ -120,10 +165,10 @@ const Support = () => {
               <div className="space-y-3">
                 <button className="w-full text-left p-3 rounded hover:bg-gray-50 transition-colors">
                   <p className="text-sm font-medium">
-                    How do I reset my password?
+                    Comming Soon..... {/* How do I reset my password? */}
                   </p>
                 </button>
-                <button className="w-full text-left p-3 rounded hover:bg-gray-50 transition-colors">
+                {/* <button className="w-full text-left p-3 rounded hover:bg-gray-50 transition-colors">
                   <p className="text-sm font-medium">How to apply for leave?</p>
                 </button>
                 <button className="w-full text-left p-3 rounded hover:bg-gray-50 transition-colors">
@@ -131,7 +176,7 @@ const Support = () => {
                 </button>
                 <button className="w-full text-left p-3 rounded hover:bg-gray-50 transition-colors">
                   <p className="text-sm font-medium">How to create a task?</p>
-                </button>
+                </button> */}
               </div>
             </CardContent>
           </Card>
@@ -156,6 +201,7 @@ const Support = () => {
                   onChange={handleInputChange}
                   placeholder="Brief description of your issue"
                   className="mt-1"
+                  required
                 />
               </div>
 
@@ -167,6 +213,7 @@ const Support = () => {
                     onValueChange={(value) =>
                       setTicket((prev) => ({ ...prev, category: value }))
                     }
+                    required
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select category" />
@@ -189,6 +236,7 @@ const Support = () => {
                     onValueChange={(value) =>
                       setTicket((prev) => ({ ...prev, priority: value }))
                     }
+                    required
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select priority" />
@@ -213,25 +261,26 @@ const Support = () => {
                   placeholder="Please provide detailed information about your issue..."
                   className="mt-1"
                   rows={6}
+                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="attachment">Attachment (optional)</Label>
+                <Label htmlFor="attachFile">Attach Image (optional)</Label>
                 <Input
-                  id="attachment"
+                  id="attachFile"
                   type="file"
                   onChange={(e) =>
                     setTicket((prev) => ({
                       ...prev,
-                      attachment: e.target.files[0],
+                      attachFile: e.target.files[0],
                     }))
                   }
                   className="mt-1"
-                  accept="image/*,.pdf,.doc,.docx"
+                  accept="image/*"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Supported formats: Images, PDF, DOC, DOCX (Max 5MB)
+                  Supported formats: Only Images (Max 1MB)
                 </p>
               </div>
 
@@ -266,22 +315,43 @@ const Support = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4 text-sm">#TKT001</td>
-                  <td className="py-3 px-4 text-sm">Login issue</td>
-                  <td className="py-3 px-4 text-sm">Technical</td>
-                  <td className="py-3 px-4">
-                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                      Medium
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                      In Progress
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm">2024-01-15</td>
-                </tr>
+                {loadingTickets ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4">
+                      Loading tickets...
+                    </td>
+                  </tr>
+                ) : recentTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4">
+                      No tickets found.
+                    </td>
+                  </tr>
+                ) : (
+                  recentTickets.map((ticket) => (
+                    <tr
+                      key={ticket.ticketId}
+                      className="border-b hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="py-3 px-4 text-sm">{ticket.ticketId}</td>
+                      <td className="py-3 px-4 text-sm">{ticket.subject}</td>
+                      <td className="py-3 px-4 text-sm">{ticket.category}</td>
+                      <td className="py-3 px-4">
+                        <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                          {ticket.priority}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                          {ticket.ticketStatus}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {new Date(ticket.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
