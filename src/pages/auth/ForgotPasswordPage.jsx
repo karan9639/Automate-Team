@@ -146,7 +146,7 @@ export default function ForgotPasswordPage() {
       if (changePasswordResponse.data.success) {
         toast.success(
           changePasswordResponse.data.message ||
-            "Password changed successfully! Please login."
+          "Password changed successfully! Please login."
         );
         setShowOtpSection(false);
         setEmail("");
@@ -373,18 +373,17 @@ export default function ForgotPasswordPage() {
                       otpVerifying ||
                       passwordChanging
                     }
-                    className={`text-sm ${
-                      resendDisabled
+                    className={`text-sm ${resendDisabled
                         ? "text-gray-400"
                         : "text-green-600 hover:text-green-700"
-                    } flex items-center`}
+                      } flex items-center`}
                   >
                     <Mail className="w-4 h-4 mr-1" />
                     {resendDisabled
                       ? `Resend in ${countdown}s`
                       : otpSending
-                      ? "Sending..."
-                      : "Resend OTP"}
+                        ? "Sending..."
+                        : "Resend OTP"}
                   </button>
                 </div>
               </>
@@ -398,11 +397,11 @@ export default function ForgotPasswordPage() {
           </form>
         </div>
       </div>
-      <div className="hidden bg-muted lg:block">
+      <div className="hidden lg:flex items-center justify-center bg-muted">
         <img
           src="/placeholder.svg?height=1080&width=1920"
           alt="Secure password reset"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          className="max-w-[500px] w-full h-auto object-contain p-6 dark:brightness-[0.2] dark:grayscale"
         />
       </div>
     </div>
