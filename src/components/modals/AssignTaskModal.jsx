@@ -108,6 +108,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       { id: "cat11", name: "Biling" },
       { id: "cat12", name: "Adhessive" },
       { id: "cat13", name: "Accounts" },
+      { id: "cat14", name: "IT" },
+      { id: "cat15", name: "HR" },
     ],
     [],
   )
