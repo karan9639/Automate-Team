@@ -57,6 +57,8 @@ const AddMemberModal = ({ isOpen, onClose, onSave, teamMembers = [] }) => {
     "Biling",
     "Adhessive",
     "Accounts",
+    "IT",
+    "HR",
   ];
 
   const [department, setDepartment] = useState("");
