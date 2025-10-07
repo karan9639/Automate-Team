@@ -373,17 +373,18 @@ export default function ForgotPasswordPage() {
                       otpVerifying ||
                       passwordChanging
                     }
-                    className={`text-sm ${resendDisabled
+                    className={`text-sm ${
+                      resendDisabled
                         ? "text-gray-400"
                         : "text-green-600 hover:text-green-700"
-                      } flex items-center`}
+                    } flex items-center`}
                   >
                     <Mail className="w-4 h-4 mr-1" />
                     {resendDisabled
                       ? `Resend in ${countdown}s`
                       : otpSending
-                        ? "Sending..."
-                        : "Resend OTP"}
+                      ? "Sending..."
+                      : "Resend OTP"}
                   </button>
                 </div>
               </>
@@ -399,7 +400,7 @@ export default function ForgotPasswordPage() {
       </div>
       <div className="hidden lg:flex items-center justify-center bg-muted">
         <img
-          src="/placeholder.svg?height=1080&width=1920"
+          src="/forgot-password.svg?height=1080&width=1920"
           alt="Secure password reset"
           className="max-w-[500px] w-full h-auto object-contain p-6 dark:brightness-[0.2] dark:grayscale"
         />
