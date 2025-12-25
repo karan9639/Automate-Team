@@ -633,11 +633,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                 )}
               </div>
 
-              {assigningToYourself && (
-                <p className="text-xs text-gray-500 mt-2">
-                  This will create a <b>Self Task</b> (backend should assign it to the logged-in user).
-                </p>
-              )}
+              
             </div>
 
             {/* Category */}
