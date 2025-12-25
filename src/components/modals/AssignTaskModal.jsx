@@ -9,9 +9,18 @@ import { Textarea } from "../../components/ui/textarea.jsx"
 import { Switch } from "../../components/ui/switch.jsx"
 import { createTask, editTask } from "../../store/slices/taskSlice"
 import { userApi } from "../../apiService/apiService"
-import { Check, FileText, AlertCircle, Loader2, Search } from "lucide-react"
-
+import { Check, FileText, AlertCircle, Loader2, Search, User, Users } from "lucide-react"
 import { toast } from "react-hot-toast"
+
+/**
+ * Updates made:
+ * - Added "Assign To → Myself / Someone else" UI
+ * - Added boolean `assigningToYourself` in payload + FormData
+ * - If assigningToYourself === true:
+ *    - Disable assignee dropdown
+ *    - Do not require taskAssignedTo in validation
+ *    - Do not append taskAssignedTo to FormData
+ */
 
 const validateTaskForm = (formData, backendSchema) => {
   const errors = {}
@@ -32,8 +41,11 @@ const validateTaskForm = (formData, backendSchema) => {
     errors.taskDescription = "Description must not exceed 500 characters"
   }
 
-  if (!formData.taskAssignedTo || !formData.taskAssignedTo.trim()) {
-    errors.taskAssignedTo = "A user must be assigned"
+  // ✅ Updated: only require assignee when NOT assigning to yourself
+  if (!formData.assigningToYourself) {
+    if (!formData.taskAssignedTo || !String(formData.taskAssignedTo).trim()) {
+      errors.taskAssignedTo = "A user must be assigned"
+    }
   }
 
   if (!formData.taskCategory || !formData.taskCategory.trim()) {
@@ -83,6 +95,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   const [taskFrequencyType, setTaskFrequencyType] = useState("one-time")
   const [taskImage, setTaskImage] = useState(null)
 
+  // ✅ NEW: assign to myself
+  const [assigningToYourself, setAssigningToYourself] = useState(false)
+
   const [assignMoreTasks, setAssignMoreTasks] = useState(false)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -121,12 +136,26 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       if (allUsers.length === 0 && !isFetchingUsers) {
         fetchUsersForDropdown()
       }
+
       if (task) {
         setTaskTitle(task.taskTitle || "")
         setTaskDescription(task.taskDescription || "")
-        setTaskAssignedTo(
-          typeof task.taskAssignedTo === "string" ? task.taskAssignedTo : task.taskAssignedTo?._id || "",
+
+        // ✅ NEW: hydrate self-toggle
+        const selfFlag = Boolean(
+          task.assigningToYourself ?? task.assignedToYourself ?? task.isSelfTask ?? task.assignToMyself,
         )
+        setAssigningToYourself(selfFlag)
+
+        // If it's a self-task, do not force select a user
+        if (selfFlag) {
+          setTaskAssignedTo("")
+        } else {
+          setTaskAssignedTo(
+            typeof task.taskAssignedTo === "string" ? task.taskAssignedTo : task.taskAssignedTo?._id || "",
+          )
+        }
+
         setTaskCategory(task.taskCategory || "")
         setTaskDueDate(task.taskDueDate ? new Date(task.taskDueDate).toISOString().split("T")[0] : "")
         setTaskPriority(task.taskPriority || backendTaskSchema.taskPriority.default)
@@ -135,9 +164,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       } else {
         resetFormFields()
       }
+
       setErrors({})
       setUserSearchTerm("")
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, task])
 
   useEffect(() => {
@@ -148,12 +179,25 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     }
   }, [showUserDropdown])
 
+  // ✅ NEW: when switching to "Myself", clear selected assignee + close dropdown
+  useEffect(() => {
+    if (assigningToYourself) {
+      setTaskAssignedTo("")
+      setShowUserDropdown(false)
+      setUserSearchTerm("")
+      if (errors.taskAssignedTo) setErrors((prev) => ({ ...prev, taskAssignedTo: "" }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assigningToYourself])
+
   const resetFormFields = (keepDueDate = false) => {
     setTaskTitle("")
     setTaskDescription("")
     setTaskAssignedTo("")
     setTaskCategory("")
     setTaskImage(null)
+    setAssigningToYourself(false)
+
     if (!keepDueDate) {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
@@ -250,14 +294,20 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     const payload = {
       taskTitle: taskTitle.trim(),
       taskDescription: taskDescription.trim(),
-      taskAssignedTo,
       taskCategory: taskCategory.trim(),
       taskDueDate: taskDueDate ? new Date(taskDueDate).toISOString() : undefined,
       taskPriority,
       taskFrequency: {
         type: taskFrequencyType,
-        interval: 1, // Default interval as shown in your Postman test
+        interval: 1,
       },
+    }
+
+    // Only add ONE of these fields, never both
+    if (assigningToYourself) {
+      payload.assigningToYourself = true
+    } else {
+      payload.taskAssignedTo = taskAssignedTo
     }
 
     const validationErrors = validateTaskForm(payload, backendTaskSchema)
@@ -284,19 +334,22 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     try {
       const formData = new FormData()
 
-      // Handle regular fields
       formData.append("taskTitle", payload.taskTitle)
       formData.append("taskDescription", payload.taskDescription)
-      formData.append("taskAssignedTo", payload.taskAssignedTo)
+
+      // Strict conditional: only ONE of these will be appended
+      if (assigningToYourself) {
+        formData.append("assigningToYourself", "true")
+      } else {
+        formData.append("taskAssignedTo", payload.taskAssignedTo)
+      }
+
       formData.append("taskCategory", payload.taskCategory)
       if (payload.taskDueDate) {
         formData.append("taskDueDate", payload.taskDueDate)
       }
       formData.append("taskPriority", payload.taskPriority)
 
-      // Handle taskFrequency according to your actual backend API structure
-      // Based on your Postman test, the backend expects:
-      // taskFrequency.type (string) and taskFrequency.interval (number)
       formData.append("taskFrequency[type]", taskFrequencyType)
       formData.append("taskFrequency[interval]", "1")
 
@@ -304,10 +357,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         formData.append("taskImage", file)
       }
 
-      // Debug log to see what's in FormData
-      console.log("FormData entries:")
+      console.log("[v0] FormData entries:")
       for (const [key, value] of formData.entries()) {
-        console.log(`${key}:`, value)
+        console.log(`[v0] ${key}:`, value)
       }
 
       if (task && task._id) {
@@ -324,13 +376,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         resetFormFields(true)
       }
     } catch (error) {
-      console.error("Error saving task:", error)
-      const errorMessage =
-        typeof error === "string"
-          ? error
-          : error?.response?.data?.message || error.message || "Unexpected error during task submission"
-      setErrors({ submit: errorMessage })
-      toast.error(errorMessage)
+      console.error("Task save failed:", error)
+      toast.error(error?.message || "Failed to save task. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -369,6 +416,19 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
   )
 
   const selectedUserName = useMemo(() => {
+    // ✅ NEW: show Myself label
+    if (assigningToYourself) {
+      return (
+        <span className="flex items-center gap-2">
+          <User className="h-4 w-4 text-emerald-600" />
+          <span className="font-medium text-emerald-700">Myself</span>
+          <span className="bg-emerald-100 rounded-md w-[fit-content] px-2 text-emerald-700 font-medium text-xs">
+            Self Task
+          </span>
+        </span>
+      )
+    }
+
     if (!taskAssignedTo) return "Select User"
     const user = allUsers.find((u) => u.id === taskAssignedTo)
     return user ? (
@@ -381,7 +441,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
     ) : (
       "Select User"
     )
-  }, [taskAssignedTo, allUsers])
+  }, [taskAssignedTo, allUsers, assigningToYourself])
 
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm.trim()) {
@@ -439,25 +499,56 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
           {/* Two-column layout for Users and Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Assign To (Single Select) */}
+            {/* Assign To */}
             <div className="space-y-2">
               <label htmlFor="taskAssignedToButton" className="block text-sm font-medium text-gray-700">
                 Assign To <span className="text-red-500">*</span>
               </label>
+
+              {/* ✅ NEW: Myself / Someone else toggle */}
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setAssigningToYourself(true)}
+                  className={`px-3 py-1.5 rounded-md text-sm border transition flex items-center gap-2 ${
+                    assigningToYourself
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <User className="h-4 w-4" /> Myself
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAssigningToYourself(false)}
+                  className={`px-3 py-1.5 rounded-md text-sm border transition flex items-center gap-2 ${
+                    !assigningToYourself
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <Users className="h-4 w-4" /> Someone else
+                </button>
+              </div>
+
               <div className="relative">
                 <button
                   type="button"
                   id="taskAssignedToButton"
                   onClick={() => {
+                    // ✅ NEW: disable opening dropdown for self tasks
+                    if (assigningToYourself) return
                     if (allUsers.length === 0 && !isFetchingUsers) fetchUsersForDropdown()
                     setShowUserDropdown(!showUserDropdown)
                   }}
-                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md bg-white text-sm ${
-                    errors.taskAssignedTo ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md text-sm ${
+                    assigningToYourself ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+                  } ${errors.taskAssignedTo ? "border-red-500" : "border-gray-300"}`}
+                  aria-disabled={assigningToYourself}
                 >
                   <div className="text-gray-700 truncate flex-1 text-left">{selectedUserName}</div>
-                  {isFetchingUsers ? (
+                  {assigningToYourself ? null : isFetchingUsers ? (
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
                     <span className={`ml-1 transition-transform duration-200 ${showUserDropdown ? "rotate-180" : ""}`}>
@@ -465,12 +556,15 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     </span>
                   )}
                 </button>
-                {errors.taskAssignedTo && (
+
+                {/* Only show this error when not self */}
+                {!assigningToYourself && errors.taskAssignedTo && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
                     <AlertCircle className="h-4 w-4 mr-1" /> {errors.taskAssignedTo}
                   </p>
                 )}
-                {showUserDropdown && (
+
+                {showUserDropdown && !assigningToYourself && (
                   <div className="absolute z-20 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 flex flex-col max-h-72">
                     <div className="p-2 border-b border-gray-200 flex-shrink-0">
                       <div className="relative">
@@ -538,6 +632,12 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   </div>
                 )}
               </div>
+
+              {assigningToYourself && (
+                <p className="text-xs text-gray-500 mt-2">
+                  This will create a <b>Self Task</b> (backend should assign it to the logged-in user).
+                </p>
+              )}
             </div>
 
             {/* Category */}
