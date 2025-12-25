@@ -755,7 +755,7 @@ const TaskManagement = () => {
     }
 
     fetchAllTasksData()
-  }, [page, limit, refreshTrigger, dispatch, activeTab])
+  }, [page, limit, refreshTrigger, dispatch])
 
   // USEEFFECT: Fetch My Tasks - runs when tab is active, mapping is ready, or refresh
   useEffect(() => {
@@ -848,23 +848,50 @@ const TaskManagement = () => {
         setLoading(true)
         setError(null)
 
+        console.log("[v0] Fetching personal tasks...")
         const data = await personalTasks(page, limit)
-        const tasks = data?.tasks ?? extractTasksFromResponse(data)
+        console.log("[v0] Personal Tasks Response:", data)
 
-        console.log("[v0] Personal Tasks Data:", tasks)
+        let tasks = []
+        if (data) {
+          // If data is directly the tasks array
+          if (Array.isArray(data)) {
+            tasks = data
+          }
+          // If data has a tasks property
+          else if (data.tasks && Array.isArray(data.tasks)) {
+            tasks = data.tasks
+          }
+          // If data has filteredTasks property
+          else if (data.filteredTasks && Array.isArray(data.filteredTasks)) {
+            tasks = data.filteredTasks
+          }
+          // Try extracting with helper function
+          else {
+            tasks = extractTasksFromResponse({ data: { data } })
+          }
+        }
 
-        if (Array.isArray(tasks)) {
+        console.log("[v0] Extracted Personal Tasks:", tasks)
+
+        if (Array.isArray(tasks) && tasks.length > 0) {
           const normalizedTasks = tasks.map((task) => normalizeTask(task))
+          console.log("[v0] Normalized Personal Tasks:", normalizedTasks)
           setSelfTasks(normalizedTasks)
-          setTotalPages(data?.totalPages || 1)
+          setTotalPages(data?.totalPages || Math.ceil((data?.total || tasks.length) / limit) || 1)
+          setTotalTasks(data?.total || tasks.length)
         } else {
+          console.log("[v0] No personal tasks found or empty array")
           setSelfTasks([])
           setTotalPages(1)
+          setTotalTasks(0)
         }
       } catch (err) {
-        console.error("Error fetching personal tasks:", err)
+        console.error("[v0] Error fetching personal tasks:", err)
         setError(err)
         setSelfTasks([])
+        setTotalPages(1)
+        setTotalTasks(0)
       } finally {
         setLoading(false)
       }
@@ -951,6 +978,12 @@ const TaskManagement = () => {
       fetchTaskDetails(taskId, foundTask, activeTab)
     }
   }, [searchParams, selectedTaskId, tasks, delegatedTasks, allTasks])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("taskManagementActiveTab", activeTab)
+    }
+  }, [activeTab])
 
   const displayTasks = getDisplayTasks()
 
