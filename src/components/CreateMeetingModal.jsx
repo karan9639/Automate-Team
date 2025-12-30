@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { X, Calendar, Briefcase, FileText, Video } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import {
+  X,
+  Calendar,
+  Briefcase,
+  FileText,
+  Video,
+  Users,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -10,13 +19,31 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     department: "IT",
     type: "Online",
     description: "1. ",
+    members: [],
   });
 
   const [errors, setErrors] = useState({});
+  const [newMember, setNewMember] = useState({ name: "", role: "" });
+  const descriptionRef = useRef(null);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: "",
+        date: "",
+        department: "IT",
+        type: "Online",
+        description: "1. ",
+        members: [],
+      });
+      setErrors({});
+      setNewMember({ name: "", role: "" });
+    }
+  }, [isOpen]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -33,8 +60,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
       const lines = textBefore.split("\n");
       const currentLine = lines[lines.length - 1];
 
-      // Find the current number
-      const match = currentLine.match(/^(\d+)\.\s/);
+      const match = currentLine.match(/^(\d+)\.\s?/);
       if (match) {
         const currentNum = Number.parseInt(match[1]);
         const nextNum = currentNum + 1;
@@ -42,13 +68,65 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
 
         setFormData((prev) => ({ ...prev, description: newText }));
 
-        // Set cursor position after the number
         setTimeout(() => {
           const newPos = cursorPos + nextNum.toString().length + 3;
           textarea.setSelectionRange(newPos, newPos);
         }, 0);
+      } else {
+        // If no number found, just add next line with number
+        const lineCount = lines.length;
+        const newText = textBefore + "\n" + (lineCount + 1) + ". " + textAfter;
+        setFormData((prev) => ({ ...prev, description: newText }));
       }
     }
+
+    // Handle backspace to renumber
+    if (e.key === "Backspace") {
+      setTimeout(() => {
+        const value = descriptionRef.current?.value || "";
+        const lines = value.split("\n");
+        let needsRenumber = false;
+
+        // Check if renumbering is needed
+        lines.forEach((line, index) => {
+          const match = line.match(/^(\d+)\.\s?/);
+          if (match && Number.parseInt(match[1]) !== index + 1) {
+            needsRenumber = true;
+          }
+        });
+
+        if (needsRenumber) {
+          const renumbered = lines
+            .map((line, index) => {
+              return line.replace(/^(\d+)\.\s?/, `${index + 1}. `);
+            })
+            .join("\n");
+          setFormData((prev) => ({ ...prev, description: renumbered }));
+        }
+      }, 0);
+    }
+  };
+
+  const handleAddMember = () => {
+    if (newMember.name.trim() && newMember.role.trim()) {
+      const member = {
+        id: Date.now(),
+        name: newMember.name.trim(),
+        role: newMember.role.trim(),
+      };
+      setFormData((prev) => ({
+        ...prev,
+        members: [...prev.members, member],
+      }));
+      setNewMember({ name: "", role: "" });
+    }
+  };
+
+  const handleRemoveMember = (memberId) => {
+    setFormData((prev) => ({
+      ...prev,
+      members: prev.members.filter((m) => m.id !== memberId),
+    }));
   };
 
   const validate = () => {
@@ -81,6 +159,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
         department: "IT",
         type: "Online",
         description: "1. ",
+        members: [],
       });
       setErrors({});
     }
@@ -93,6 +172,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
       department: "IT",
       type: "Online",
       description: "1. ",
+      members: [],
     });
     setErrors({});
     onClose();
@@ -221,6 +301,78 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <Users className="h-4 w-4" />
+                Meeting Members
+              </label>
+
+              {/* Add Member Form */}
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={newMember.name}
+                  onChange={(e) =>
+                    setNewMember((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder="Member name"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                />
+                <input
+                  type="text"
+                  value={newMember.role}
+                  onChange={(e) =>
+                    setNewMember((prev) => ({ ...prev, role: e.target.value }))
+                  }
+                  placeholder="Role"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddMember}
+                  disabled={!newMember.name.trim() || !newMember.role.trim()}
+                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Members List */}
+              {formData.members.length > 0 ? (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-32 overflow-y-auto">
+                  {formData.members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {member.name}
+                          </p>
+                          <p className="text-xs text-gray-500">{member.role}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(member.id)}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  No members added yet
+                </p>
+              )}
+            </div>
+
             {/* Meeting Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
@@ -228,6 +380,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                 Meeting Description <span className="text-red-500">*</span>
               </label>
               <textarea
+                ref={descriptionRef}
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
                 onKeyDown={handleDescriptionKeyDown}
