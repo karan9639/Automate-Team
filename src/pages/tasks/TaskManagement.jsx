@@ -101,11 +101,8 @@ const TaskManagement = () => {
   // ----------------------------
   // Self Tasks (UI-only) helpers
   // ----------------------------
-  // A task is considered a "Self Task" when backend sends `assigningToYourself: true`.
-  // The extra checks below make the UI resilient to naming variations.
   const isSelfTask = (task) => {
     const flag = task?.assigningToYourself ?? task?.assignedToYourself ?? task?.isSelfTask ?? task?.assignToMyself
-
     return flag === true || flag === "true"
   }
 
@@ -119,7 +116,6 @@ const TaskManagement = () => {
     return { self, others }
   }
 
-  // Merge tasks uniquely (best-effort) for UI-only self task list
   const mergeUniqueTasks = (existing = [], incoming = []) => {
     const map = new Map()
     const toKey = (t) => {
@@ -141,11 +137,9 @@ const TaskManagement = () => {
     return Array.from(map.values())
   }
 
-  // Helper function to extract tasks from different API response structures
   const extractTasksFromResponse = (response) => {
-    console.log("Extracting tasks from response:", response) // Debug log
+    console.log("Extracting tasks from response:", response)
 
-    // Handle the specific response structure from your backend
     if (response?.data?.data?.filteredTasks && Array.isArray(response.data.data.filteredTasks)) {
       return response.data.data.filteredTasks
     }
@@ -154,17 +148,14 @@ const TaskManagement = () => {
       return response.data.data.tasks
     }
 
-    // Handle delegated tasks API response structure
     if (response?.data?.data?.allTasks && Array.isArray(response.data.data.allTasks)) {
       return response.data.data.allTasks
     }
 
-    // Handle my tasks API response structure
     if (response?.data?.data?.myTasksAssignedByLeader && Array.isArray(response.data.data.myTasksAssignedByLeader)) {
       return response.data.data.myTasksAssignedByLeader
     }
 
-    // Handle direct data array in success response
     if (response?.data?.success && response?.data?.data && Array.isArray(response.data.data)) {
       return response.data.data
     }
@@ -181,11 +172,9 @@ const TaskManagement = () => {
       return response.data
     }
 
-    // Handle case where response.data.data is the task array directly
     if (response?.data?.data && typeof response.data.data === "object" && !Array.isArray(response.data.data)) {
-      // Check if it has task-like properties
       if (response.data.data.title || response.data.data.taskTitle || response.data.data._id) {
-        return [response.data.data] // Single task wrapped in array
+        return [response.data.data]
       }
     }
 
@@ -193,201 +182,118 @@ const TaskManagement = () => {
     return []
   }
 
-  // Extract task ID from All Tasks format (this is the correct ID format)
   const extractAllTaskId = (task) => {
     if (!task) return null
-
-    // Direct _id field (string format)
-    if (task._id && typeof task._id === "string") {
-      return task._id
-    }
-
-    // _id in $oid format
-    if (task._id && typeof task._id === "object" && task._id.$oid) {
-      return task._id.$oid
-    }
-
+    if (task._id && typeof task._id === "string") return task._id
+    if (task._id && typeof task._id === "object" && task._id.$oid) return task._id.$oid
     return null
   }
 
-  // Create a unique key for a task that can be used to match across tabs
   const createTaskMatchKey = (task) => {
-    // Use a combination of fields that should be unique and present in both APIs
     const title = task.title || task.taskTitle || task.name || ""
     const dueDate = task.dueDate || task.due_date || task.deadline || ""
     const assignedTo = task.assignedTo?.name || task.assigned_to?.name || ""
-
     return `${title}|${dueDate}|${assignedTo}`.toLowerCase().trim()
   }
 
-  // Build a mapping of task match keys to their correct IDs from allTasks
   const buildTaskIdMapping = (allTasksData) => {
     const mapping = {}
-    const titleMapping = {} // Additional mapping by title only
-    const idMapping = {} // Direct ID mapping
+    const titleMapping = {}
+    const idMapping = {}
 
-    allTasksData.forEach((task, index) => {
+    allTasksData.forEach((task) => {
       const id = extractAllTaskId(task)
       if (id) {
-        // Primary mapping using full match key
         const matchKey = createTaskMatchKey(task)
         mapping[matchKey] = id
 
-        // Secondary mapping using just title (fallback)
         const title = (task.title || task.taskTitle || task.name || "").toLowerCase().trim()
-        if (title) {
-          titleMapping[title] = id
-        }
+        if (title) titleMapping[title] = id
 
-        // Tertiary mapping using any existing ID fields
         if (task._id) {
-          if (typeof task._id === "string") {
-            idMapping[task._id] = id
-          } else if (task._id.$oid) {
-            idMapping[task._id.$oid] = id
-          }
+          if (typeof task._id === "string") idMapping[task._id] = id
+          else if (task._id.$oid) idMapping[task._id.$oid] = id
         }
       }
     })
 
-    // Store all mappings in a single object
-    const enhancedMapping = {
-      ...mapping,
-      titleMapping,
-      idMapping,
-    }
-
-    return enhancedMapping
+    return { ...mapping, titleMapping, idMapping }
   }
 
-  // Get the correct ID for a task using enhanced mapping
   const getCorrectTaskId = (task) => {
-    // Method 1: Try full match key
     const matchKey = createTaskMatchKey(task)
     let correctId = taskIdMapping[matchKey]
+    if (correctId) return correctId
 
-    if (correctId) {
-      return correctId
-    }
-
-    // Method 2: Try title-only mapping
     const title = (task.title || task.taskTitle || task.name || "").toLowerCase().trim()
     if (title && taskIdMapping.titleMapping) {
       correctId = taskIdMapping.titleMapping[title]
-      if (correctId) {
-        return correctId
-      }
+      if (correctId) return correctId
     }
 
-    // Method 3: Try direct ID mapping
     if (taskIdMapping.idMapping) {
-      // Check current _id
       if (task._id) {
         const currentId = typeof task._id === "string" ? task._id : task._id.$oid
         correctId = taskIdMapping.idMapping[currentId]
-        if (correctId) {
-          return correctId
-        }
+        if (correctId) return correctId
       }
 
-      // Check other ID fields
       const idFields = ["id", "taskId", "task_id"]
       for (const field of idFields) {
         if (task[field]) {
           const fieldValue = typeof task[field] === "object" ? task[field].$oid : String(task[field])
           correctId = taskIdMapping.idMapping[fieldValue]
-          if (correctId) {
-            return correctId
-          }
+          if (correctId) return correctId
         }
       }
     }
 
-    // Method 4: Fallback to original extraction
-    if (task._id && typeof task._id === "string") {
-      return task._id
-    }
+    if (task._id && typeof task._id === "string") return task._id
+    if (task._id && typeof task._id === "object" && task._id.$oid) return task._id.$oid
 
-    if (task._id && typeof task._id === "object" && task._id.$oid) {
-      return task._id.$oid
-    }
-
-    // Check other common ID fields
     const idFields = ["id", "taskId", "task_id"]
     for (const field of idFields) {
       if (task[field]) {
-        if (typeof task[field] === "object" && task[field].$oid) {
-          return task[field].$oid
-        }
-        if (typeof task[field] === "string" || typeof task[field] === "number") {
-          return String(task[field])
-        }
+        if (typeof task[field] === "object" && task[field].$oid) return task[field].$oid
+        if (typeof task[field] === "string" || typeof task[field] === "number") return String(task[field])
       }
     }
 
     return null
   }
 
-  // Normalize task with correct ID
   const normalizeTask = (task) => {
     const correctId = getCorrectTaskId(task)
-
     if (correctId) {
-      return {
-        ...task,
-        _id: correctId,
-      }
+      return { ...task, _id: correctId }
     }
-
     return task
   }
 
-  // Normalize all tasks
-  const normalizeAllTasks = (tasks) => {
-    return tasks.map((task) => normalizeTask(task))
-  }
+  const normalizeAllTasks = (tasks) => tasks.map((task) => normalizeTask(task))
 
-  // Extract task ID
   const extractTaskId = (task) => {
-    // Try direct _id first
-    if (task._id && typeof task._id === "string") {
-      return task._id
-    }
+    if (task._id && typeof task._id === "string") return task._id
+    if (task._id && typeof task._id === "object" && task._id.$oid) return task._id.$oid
 
-    // Try _id with $oid format
-    if (task._id && typeof task._id === "object" && task._id.$oid) {
-      return task._id.$oid
-    }
-
-    // Try other common ID fields
     const idFields = ["id", "taskId", "task_id"]
     for (const field of idFields) {
       if (task[field]) {
-        if (typeof task[field] === "string") {
-          return task[field]
-        } else if (typeof task[field] === "object" && task[field].$oid) {
-          return task[field].$oid
-        }
+        if (typeof task[field] === "string") return task[field]
+        if (typeof task[field] === "object" && task[field].$oid) return task[field].$oid
       }
     }
 
-    // Try nested task objects
-    if (task.task && task.task._id) {
-      return typeof task.task._id === "string" ? task.task._id : task.task._id.$oid
-    }
-
-    if (task.taskDetails && task.taskDetails._id) {
+    if (task.task && task.task._id) return typeof task.task._id === "string" ? task.task._id : task.task._id.$oid
+    if (task.taskDetails && task.taskDetails._id)
       return typeof task.taskDetails._id === "string" ? task.taskDetails._id : task.taskDetails._id.$oid
-    }
 
     return null
   }
 
-  // Apply local filters to tasks
   const applyLocalFilters = (taskList) => {
     let filtered = [...taskList]
 
-    // Apply category filter
     if (filters.taskCategory) {
       filtered = filtered.filter((task) => {
         const category = task.taskCategory || task.category || ""
@@ -395,7 +301,6 @@ const TaskManagement = () => {
       })
     }
 
-    // Apply priority filter
     if (filters.taskPriority) {
       filtered = filtered.filter((task) => {
         const priority = task.taskPriority || task.priority || ""
@@ -403,24 +308,16 @@ const TaskManagement = () => {
       })
     }
 
-    // Apply status filter
     if (filters.taskStatus) {
       filtered = filtered.filter((task) => {
         const status = task.taskStatus || task.status || ""
-        // Handle different status formats
         const normalizedStatus = status.toLowerCase()
         const filterStatus = filters.taskStatus.toLowerCase()
 
-        // Map status variations
-        if (filterStatus === "pending" && (normalizedStatus === "to do" || normalizedStatus === "todo")) {
+        if (filterStatus === "pending" && (normalizedStatus === "to do" || normalizedStatus === "todo")) return true
+        if (filterStatus === "completed" && (normalizedStatus === "done" || normalizedStatus === "finished"))
           return true
-        }
-        if (filterStatus === "completed" && (normalizedStatus === "done" || normalizedStatus === "finished")) {
-          return true
-        }
-        if (filterStatus === "in progress" && normalizedStatus === "in progress") {
-          return true
-        }
+        if (filterStatus === "in progress" && normalizedStatus === "in progress") return true
 
         return normalizedStatus === filterStatus
       })
@@ -429,15 +326,10 @@ const TaskManagement = () => {
     return filtered
   }
 
-  // Handle filter change
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }))
+    setFilters((prev) => ({ ...prev, [filterType]: value }))
   }
 
-  // Clear all filters
   const clearAllFilters = () => {
     setFilters({
       taskCategory: "",
@@ -446,61 +338,14 @@ const TaskManagement = () => {
     })
   }
 
-  // Check if any filters are active
-  const hasActiveFilters = () => {
-    return !!filters.taskCategory || !!filters.taskPriority || !!filters.taskStatus
-  }
-
-  // Apply filters with API integration
-  // const applyFiltersWithAPI = async () => {
-  //   try {
-  //     setIsFilterLoading(true);
-
-  //     // Prepare filter parameters for API - use correct field names that match backend
-  //     const filterParams = {};
-  //     if (filters.taskCategory !== "all")
-  //       filterParams.taskCategory = filters.taskCategory;
-  //     if (filters.taskPriority !== "all")
-  //       filterParams.taskPriority = filters.taskPriority;
-  //     if (filters.taskStatus !== "all")
-  //       filterParams.taskStatus = filters.taskStatus;
-
-  //     // If no filters are active, use local data
-  //     if (Object.keys(filterParams).length === 0) {
-  //       setFilteredTasks(getCurrentTasks());
-  //       return;
-  //     }
-
-  //     console.log("Sending filter params:", filterParams); // Debug log
-
-  //     // Call filter API
-  //     const response = await filterTask(filterParams);
-  //     const filteredData = extractTasksFromResponse(response);
-
-  //     // Normalize the filtered tasks
-  //     const normalizedFilteredTasks = filteredData.map((task) =>
-  //       normalizeTask(task)
-  //     );
-  //     setFilteredTasks(normalizedFilteredTasks);
-  //   } catch (error) {
-  //     console.error("Error applying filters:", error);
-  //     // Fallback to local filtering if API fails
-  //     const currentTasks = getCurrentTasks();
-  //     const locallyFiltered = applyLocalFilters(currentTasks);
-  //     setFilteredTasks(locallyFiltered);
-  //   } finally {
-  //     setIsFilterLoading(false);
-  //   }
-  // };
+  const hasActiveFilters = () => !!filters.taskCategory || !!filters.taskPriority || !!filters.taskStatus
 
   const applyFilters = async () => {
     if (!hasActiveFilters()) {
-      // No filters, just show all tasks for active tab
       setFilteredTasks(getCurrentTasks())
       return
     }
 
-    // Self Tasks tab is UI-only for now → local filtering
     if (activeTab === "self-tasks") {
       const locallyFiltered = applyLocalFilters(getCurrentTasks())
       setFilteredTasks(locallyFiltered)
@@ -514,41 +359,25 @@ const TaskManagement = () => {
 
       if (activeTab === "my-tasks") {
         response = await myTaskFilter(filters)
-        console.log("My Task Filter Response:", response) // Debug log
+        console.log("My Task Filter Response:", response)
 
-        if (response?.data?.success) {
-          // Extract tasks using the same helper function
-          filteredData = extractTasksFromResponse(response)
-        } else if (response?.data?.data) {
-          filteredData = Array.isArray(response.data.data) ? response.data.data : []
-        }
+        if (response?.data?.success) filteredData = extractTasksFromResponse(response)
+        else if (response?.data?.data) filteredData = Array.isArray(response.data.data) ? response.data.data : []
       } else if (activeTab === "delegated-tasks") {
         response = await filterTask(filters)
-        console.log("Filter Task Response:", response) // Debug log
+        console.log("Filter Task Response:", response)
 
-        if (response?.data?.success) {
-          // Extract tasks using the same helper function
-          filteredData = extractTasksFromResponse(response)
-        } else if (response?.data?.data) {
-          filteredData = Array.isArray(response.data.data) ? response.data.data : []
-        }
+        if (response?.data?.success) filteredData = extractTasksFromResponse(response)
+        else if (response?.data?.data) filteredData = Array.isArray(response.data.data) ? response.data.data : []
       } else {
-        // For all-tasks tab, use local filtering as fallback
         const currentTasks = getCurrentTasks()
         filteredData = applyLocalFilters(currentTasks)
       }
 
-      console.log("Extracted filtered data:", filteredData) // Debug log
-
-      // Normalize the filtered tasks using the same process as other task fetching
       const normalizedFilteredTasks = filteredData.map((task) => normalizeTask(task))
-
-      console.log("Normalized filtered tasks:", normalizedFilteredTasks) // Debug log
-
       setFilteredTasks(normalizedFilteredTasks)
     } catch (err) {
       console.error("Filter error:", err)
-      // Fallback to local filtering if API fails
       const currentTasks = getCurrentTasks()
       const locallyFiltered = applyLocalFilters(currentTasks)
       setFilteredTasks(locallyFiltered)
@@ -557,11 +386,11 @@ const TaskManagement = () => {
     }
   }
 
-  // Trigger applyFilters whenever filters or activeTab changes
   useEffect(() => {
     applyFilters()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, activeTab])
-  // API CALL: Use extracted ID to call view API
+
   const fetchTaskDetails = async (taskId, task, tabName) => {
     try {
       setViewTaskLoading(true)
@@ -576,14 +405,9 @@ const TaskManagement = () => {
       const response = await viewTask(taskId)
 
       let taskData = null
-
-      if (response?.data?.data) {
-        taskData = response.data.data
-      } else if (response?.data?.task) {
-        taskData = response.data.task
-      } else if (response?.data) {
-        taskData = response.data
-      }
+      if (response?.data?.data) taskData = response.data.data
+      else if (response?.data?.task) taskData = response.data.task
+      else if (response?.data) taskData = response.data
 
       if (taskData) {
         setSelectedTaskData(taskData)
@@ -600,20 +424,15 @@ const TaskManagement = () => {
     }
   }
 
-  // Handle task card click
   const handleTaskClick = (task, taskIndex) => {
-    // Try multiple ID extraction methods for better compatibility
     let taskId = null
 
-    // Method 1: Direct _id extraction (works for all-tasks)
     taskId = extractAllTaskId(task)
 
-    // Method 2: Try mapping approach if direct extraction fails
     if (!taskId) {
       taskId = getCorrectTaskId(task)
     }
 
-    // Method 3: Check for other common ID fields
     if (!taskId) {
       const idFields = ["id", "taskId", "task_id", "_id"]
       for (const field of idFields) {
@@ -629,19 +448,11 @@ const TaskManagement = () => {
       }
     }
 
-    // Method 4: For my-tasks and delegated-tasks, try extracting from nested objects
     if (!taskId && (activeTab === "my-tasks" || activeTab === "delegated-tasks")) {
-      // Check if task has nested task object
-      if (task.task && task.task._id) {
-        taskId = typeof task.task._id === "string" ? task.task._id : task.task._id.$oid
-      }
-      // Check for taskDetails
-      if (!taskId && task.taskDetails && task.taskDetails._id) {
+      if (task.task && task.task._id) taskId = typeof task.task._id === "string" ? task.task._id : task.task._id.$oid
+      if (!taskId && task.taskDetails && task.taskDetails._id)
         taskId = typeof task.taskDetails._id === "string" ? task.taskDetails._id : task.taskDetails._id.$oid
-      }
     }
-
-    // console.log(Task clicked - Tab: ${activeTab}, Task ID: ${taskId}, Task:, task)
 
     setSelectedTaskId(taskId)
     setSelectedTaskData(null)
@@ -658,7 +469,6 @@ const TaskManagement = () => {
     }
   }
 
-  // Handle modal close
   const handleViewTaskModalClose = () => {
     setIsViewTaskModalOpen(false)
     setSelectedTaskId(null)
@@ -668,18 +478,14 @@ const TaskManagement = () => {
     setSearchParams({})
   }
 
-  // Handle task update from modal
   const handleTaskUpdate = (taskId, updatedData) => {
-    // Trigger a refresh to get the latest data
     setRefreshTrigger((prev) => prev + 1)
   }
 
-  // Handle refresh
   const handleRefresh = () => {
     setRefreshTrigger((prev) => prev + 1)
   }
 
-  // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     if (typeof window !== "undefined") {
@@ -691,7 +497,6 @@ const TaskManagement = () => {
     }
   }
 
-  // Get the appropriate tasks based on active tab
   const getCurrentTasks = () => {
     switch (activeTab) {
       case "my-tasks":
@@ -707,45 +512,62 @@ const TaskManagement = () => {
     }
   }
 
-  // Get display tasks (filtered or current)
   const getDisplayTasks = () => {
     return hasActiveFilters() ? filteredTasks : getCurrentTasks()
   }
 
-  // USEEFFECT: Fetch All Tasks (with pagination support)
+  /**
+   * ✅ FIXED: Fetch All Tasks (pagination)
+   * - DO NOT filter out self tasks from All Tasks list
+   * - Always use allTask(page, limit) only
+   */
   useEffect(() => {
     const fetchAllTasksData = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        const data = await allTask(page, limit) // Assuming it returns response?.data?.data
-        const tasks = data?.tasks ?? extractTasksFromResponse(data)
+        const data = await allTask(page, limit)
+        console.log("[v0] All Tasks API Response:", data)
 
-        // Split self tasks (assigningToYourself=true) from team tasks
-        const { self: selfFromAll, others: nonSelfFromAll } = splitSelfAndNonSelf(tasks)
+        const tasksFromApi = extractTasksFromResponse({ data })
+        console.log("[v0] Extracted tasks from allTask:", tasksFromApi)
+
+        // Keep self tasks list updated (optional)
+        const { self: selfFromAll } = splitSelfAndNonSelf(tasksFromApi)
         if (selfFromAll.length) {
           setSelfTasks((prev) => mergeUniqueTasks(prev, selfFromAll))
         }
-        console.log("All Tasks Data:", tasks) // Debug log
-        const mapping = buildTaskIdMapping(tasks)
 
-        // console.log("Total Pages Data:", data); // Debug log
-        setTotalPages(data?.data?.totalPages || 1)
-        // console.log("Total Pages:", data?.data?.totalPages);
+        // mapping for view task correctness
+        const mapping = buildTaskIdMapping(tasksFromApi)
         setTaskIdMapping(mapping)
 
+        // Only set totalPages for the All Tasks tab (avoid clashes)
+        if (activeTab === "all-tasks") {
+          setTotalPages(data?.data?.totalPages || 1)
+        }
+
+        // ✅ IMPORTANT: show the full page list (up to limit)
         const seenIds = new Set()
         const cleanedTasks = []
 
-        nonSelfFromAll.forEach((task) => {
-          const id = extractAllTaskId(task)
-          if (id && !seenIds.has(id)) {
+        tasksFromApi.forEach((task, idx) => {
+          let id = extractAllTaskId(task)
+
+          // fallback id so we don't drop cards
+          if (!id) {
+            const ts = task?.createdAt || task?.updatedAt || new Date().toISOString()
+            id = `all-task-${ts}-${idx}`
+          }
+
+          if (!seenIds.has(id)) {
             cleanedTasks.push({ ...task, _id: id })
             seenIds.add(id)
           }
         })
 
+        console.log("[v0] Final cleaned all tasks:", cleanedTasks.length)
         setAllTasks(cleanedTasks)
       } catch (err) {
         setError(err)
@@ -755,9 +577,9 @@ const TaskManagement = () => {
     }
 
     fetchAllTasksData()
-  }, [page, limit, refreshTrigger, dispatch])
+  }, [page, limit, refreshTrigger, activeTab])
 
-  // USEEFFECT: Fetch My Tasks - runs when tab is active, mapping is ready, or refresh
+  // USEEFFECT: Fetch My Tasks
   useEffect(() => {
     if (activeTab !== "my-tasks" || Object.keys(taskIdMapping).length === 0) return
 
@@ -767,7 +589,6 @@ const TaskManagement = () => {
         setError(null)
 
         const response = await myTask(page, limit)
-        // console.log("My Tasks Response:", response); // Debug log
         setTotalPages(response?.totalPages || 1)
         const taskData = response.myTasksAssignedByLeader || []
 
@@ -775,10 +596,11 @@ const TaskManagement = () => {
         if (selfFromMy.length) {
           setSelfTasks((prev) => mergeUniqueTasks(prev, selfFromMy))
         }
-        console.log("My Tasks Data:", taskData) // Debug log
+
+        console.log("My Tasks Data:", taskData)
 
         const processedMyTasks = nonSelfFromMy
-          .filter((task) => /^[a-f\d]{24}$/i.test(task._id)) // Only include tasks with valid MongoDB _id
+          .filter((task) => /^[a-f\d]{24}$/i.test(task._id))
           .map((task) => ({
             ...task,
             _id: task._id,
@@ -795,9 +617,13 @@ const TaskManagement = () => {
     fetchMyTasksData()
   }, [page, limit, activeTab, taskIdMapping, refreshTrigger])
 
-  // USEEFFECT: Fetch Delegated Tasks - runs when tab is active, mapping is ready, or refresh
+  /**
+   * ✅ FIXED: Fetch Delegated Tasks
+   * - DO NOT filter out tasks using nonSelfFromDelegated
+   * - Render full page list (up to limit)
+   */
   useEffect(() => {
-    if (activeTab !== "delegated-tasks" || Object.keys(taskIdMapping).length === 0) return
+    if (activeTab !== "delegated-tasks") return
 
     const fetchDelegatedTasksData = async () => {
       try {
@@ -805,31 +631,52 @@ const TaskManagement = () => {
         setError(null)
 
         const response = await delegatedTask(page, limit)
-        // console.log("Delegated Tasks Response:", response); // Debug log
-        setTotalPages(response?.totalPages || 1)
-        const taskData = response.allTasks || []
+        console.log("[v0] Delegated Tasks API Response:", response)
+        console.log("[v0] Delegated Tasks Full Response Structure:", JSON.stringify(response, null, 2))
 
-        const { self: selfFromDelegated, others: nonSelfFromDelegated } = splitSelfAndNonSelf(taskData)
+        setTotalPages(response?.totalPages || 1)
+
+        let taskData = []
+
+        if (response?.allTasks && Array.isArray(response.allTasks)) taskData = response.allTasks
+        else if (response?.data?.data?.allTasks && Array.isArray(response.data.data.allTasks)) taskData = response.data.data.allTasks
+        else if (response?.data?.allTasks && Array.isArray(response.data.allTasks)) taskData = response.data.allTasks
+        else if (response?.tasks && Array.isArray(response.tasks)) taskData = response.tasks
+        else taskData = extractTasksFromResponse({ data: { data: response } })
+
+        console.log("[v0] Extracted delegated tasks:", taskData.length, taskData)
+
+        // Keep self tasks list updated (optional)
+        const { self: selfFromDelegated } = splitSelfAndNonSelf(taskData)
         if (selfFromDelegated.length) {
           setSelfTasks((prev) => mergeUniqueTasks(prev, selfFromDelegated))
         }
 
-        const processedDelegatedTasks = nonSelfFromDelegated.map((originalTask, index) => {
-          let taskId = originalTask._id
+        // ✅ IMPORTANT: show full page list (up to limit)
+        const seen = new Set()
+        const processedDelegatedTasks = []
+
+        taskData.forEach((originalTask, index) => {
+          let taskId = originalTask?._id
 
           if (!taskId || typeof taskId !== "string") {
-            const timestamp = originalTask.createdAt || new Date().toISOString()
+            const timestamp = originalTask?.createdAt || originalTask?.updatedAt || new Date().toISOString()
             taskId = `delegated-task-${timestamp}-${index}`
           }
 
-          return {
-            ...originalTask,
-            _id: taskId,
+          if (!seen.has(taskId)) {
+            processedDelegatedTasks.push({
+              ...originalTask,
+              _id: taskId,
+            })
+            seen.add(taskId)
           }
         })
 
+        console.log("[v0] Final processed delegated tasks:", processedDelegatedTasks.length)
         setDelegatedTasks(processedDelegatedTasks)
       } catch (err) {
+        console.error("[v0] Delegated tasks fetch error:", err)
         setError(err)
       } finally {
         setLoading(false)
@@ -837,12 +684,12 @@ const TaskManagement = () => {
     }
 
     fetchDelegatedTasksData()
-  }, [page, limit, activeTab, taskIdMapping, refreshTrigger])
+  }, [page, limit, activeTab, refreshTrigger])
 
-  // USEEFFECT: Fetch Personal Tasks (Self Tasks) from API
+  // USEEFFECT: Fetch Personal Tasks (Self Tasks)
   useEffect(() => {
     const fetchPersonalTasksData = async () => {
-      if (activeTab !== "self-tasks") return // Only fetch when self-tasks tab is active
+      if (activeTab !== "self-tasks") return
 
       try {
         setLoading(true)
@@ -852,36 +699,22 @@ const TaskManagement = () => {
         const data = await personalTasks(page, limit)
         console.log("[v0] Personal Tasks Response:", data)
 
-        let tasks = []
+        let tasksFromApi = []
         if (data) {
-          // If data is directly the tasks array
-          if (Array.isArray(data)) {
-            tasks = data
-          }
-          // If data has a tasks property
-          else if (data.tasks && Array.isArray(data.tasks)) {
-            tasks = data.tasks
-          }
-          // If data has filteredTasks property
-          else if (data.filteredTasks && Array.isArray(data.filteredTasks)) {
-            tasks = data.filteredTasks
-          }
-          // Try extracting with helper function
-          else {
-            tasks = extractTasksFromResponse({ data: { data } })
-          }
+          if (Array.isArray(data)) tasksFromApi = data
+          else if (data.tasks && Array.isArray(data.tasks)) tasksFromApi = data.tasks
+          else if (data.filteredTasks && Array.isArray(data.filteredTasks)) tasksFromApi = data.filteredTasks
+          else tasksFromApi = extractTasksFromResponse({ data: { data } })
         }
 
-        console.log("[v0] Extracted Personal Tasks:", tasks)
+        console.log("[v0] Extracted Personal Tasks:", tasksFromApi)
 
-        if (Array.isArray(tasks) && tasks.length > 0) {
-          const normalizedTasks = tasks.map((task) => normalizeTask(task))
-          console.log("[v0] Normalized Personal Tasks:", normalizedTasks)
+        if (Array.isArray(tasksFromApi) && tasksFromApi.length > 0) {
+          const normalizedTasks = tasksFromApi.map((task) => normalizeTask(task))
           setSelfTasks(normalizedTasks)
-          setTotalPages(data?.totalPages || Math.ceil((data?.total || tasks.length) / limit) || 1)
-          setTotalTasks(data?.total || tasks.length)
+          setTotalPages(data?.totalPages || Math.ceil((data?.total || tasksFromApi.length) / limit) || 1)
+          setTotalTasks(data?.total || tasksFromApi.length)
         } else {
-          console.log("[v0] No personal tasks found or empty array")
           setSelfTasks([])
           setTotalPages(1)
           setTotalTasks(0)
@@ -900,64 +733,11 @@ const TaskManagement = () => {
     fetchPersonalTasksData()
   }, [page, limit, activeTab, refreshTrigger])
 
-  // USEEFFECT: Refresh All Tasks when tab is active - runs when tab is active or refresh
-  useEffect(() => {
-    if (activeTab !== "all-tasks") return
-
-    const refreshAllTasksData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const response = await allTask()
-        const taskData = response?.data?.data?.tasks || extractTasksFromResponse(response)
-
-        // Update mapping if needed
-        const mapping = buildTaskIdMapping(taskData)
-        setTaskIdMapping(mapping)
-
-        // Split self tasks (assigningToYourself=true) from team tasks
-        const { self: selfFromAll, others: nonSelfFromAll } = splitSelfAndNonSelf(taskData)
-        if (selfFromAll.length) {
-          setSelfTasks((prev) => mergeUniqueTasks(prev, selfFromAll))
-        }
-
-        const processedRefreshedAllTasks = []
-        const seenRefreshedAllTaskIds = new Set()
-        nonSelfFromAll.forEach((task) => {
-          const id = extractAllTaskId(task)
-          if (id) {
-            if (!seenRefreshedAllTaskIds.has(id)) {
-              processedRefreshedAllTasks.push({ ...task, _id: id })
-              seenRefreshedAllTaskIds.add(id)
-            } else {
-              console.warn(
-                `[refreshAllTasksData] Duplicate task ID ${id} found in source data from allTask API. Skipping.`,
-              )
-            }
-          } else {
-            console.warn("[refreshAllTasksData] Task from allTask API without a valid ID, skipping:", task)
-          }
-        })
-        setAllTasks(processedRefreshedAllTasks)
-      } catch (err) {
-        setError(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    refreshAllTasksData()
-  }, [activeTab, refreshTrigger])
-
-  // USEEFFECT: Apply filters when filters change or tasks change
-  // useEffect(() => {
-  //   if (hasActiveFilters()) {
-  //     applyFiltersWithAPI();
-  //   } else {
-  //     setFilteredTasks([]);
-  //   }
-  // }, [filters, tasks, delegatedTasks, allTasks, activeTab]);
+  /**
+   * ✅ REMOVED:
+   * The old "Refresh All Tasks when tab is active" effect that called allTask() WITHOUT page/limit,
+   * which was overwriting page-1 with default (3) tasks.
+   */
 
   useEffect(() => {
     setTotalPages(1)
@@ -965,7 +745,6 @@ const TaskManagement = () => {
     setLimit(9)
   }, [activeTab])
 
-  // USEEFFECT: Check for task ID in URL
   useEffect(() => {
     const taskId = searchParams.get("id")
     if (taskId && taskId !== selectedTaskId) {
@@ -977,6 +756,7 @@ const TaskManagement = () => {
 
       fetchTaskDetails(taskId, foundTask, activeTab)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, selectedTaskId, tasks, delegatedTasks, allTasks])
 
   useEffect(() => {
@@ -1030,7 +810,6 @@ const TaskManagement = () => {
       {showFilters && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end mb-4">
-            {/* Category Filter */}
             <div className="flex flex-col w-full">
               <label htmlFor="filter-category" className="text-sm text-gray-600 mb-1">
                 Category
@@ -1049,7 +828,6 @@ const TaskManagement = () => {
               </select>
             </div>
 
-            {/* Priority Filter */}
             <div className="flex flex-col w-full">
               <label htmlFor="filter-priority" className="text-sm text-gray-600 mb-1">
                 Priority
@@ -1068,7 +846,6 @@ const TaskManagement = () => {
               </select>
             </div>
 
-            {/* Status Filter */}
             <div className="flex flex-col w-full">
               <label htmlFor="filter-status" className="text-sm text-gray-600 mb-1">
                 Status
@@ -1087,7 +864,6 @@ const TaskManagement = () => {
               </select>
             </div>
 
-            {/* Clear Filters Button */}
             {hasActiveFilters() && (
               <div className="flex items-end h-full">
                 <Button
@@ -1103,7 +879,6 @@ const TaskManagement = () => {
             )}
           </div>
 
-          {/* Active Filters Display */}
           {hasActiveFilters() && (
             <div className="flex flex-wrap gap-2">
               <span className="text-sm text-gray-600">Active filters:</span>
@@ -1147,7 +922,6 @@ const TaskManagement = () => {
         </div>
       </div>
 
-      {/* Results Summary */}
       {hasActiveFilters() && (
         <div className="mb-4 text-sm text-gray-600">
           {isFilterLoading ? (
@@ -1157,30 +931,20 @@ const TaskManagement = () => {
             </span>
           ) : (
             <span>
-              Showing {displayTasks.length} filtered result
-              {displayTasks.length !== 1 ? "s" : ""}
+              Showing {displayTasks.length} filtered result{displayTasks.length !== 1 ? "s" : ""}
               {displayTasks.length > 0 && ` out of ${getCurrentTasks().length} total tasks`}
             </span>
           )}
         </div>
       )}
 
-      {/* Error Display */}
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
           <div className="flex items-start">
             <div className="flex-1">
               <h3 className="font-medium">Error loading {activeTab.replace("-", " ")}</h3>
-              <p className="text-sm mt-1">
-                {error.response?.data?.message || error.message || "Unknown error occurred"}
-              </p>
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                size="sm"
-                className="mt-2 bg-transparent"
-                disabled={loading}
-              >
+              <p className="text-sm mt-1">{error.response?.data?.message || error.message || "Unknown error occurred"}</p>
+              <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-2 bg-transparent" disabled={loading}>
                 Try Again
               </Button>
             </div>
@@ -1196,10 +960,10 @@ const TaskManagement = () => {
             {activeTab === "my-tasks"
               ? "your tasks"
               : activeTab === "self-tasks"
-                ? "self tasks"
-                : activeTab === "delegated-tasks"
-                  ? "delegated tasks"
-                  : "all tasks"}
+              ? "self tasks"
+              : activeTab === "delegated-tasks"
+              ? "delegated tasks"
+              : "all tasks"}
             ...
           </p>
         </div>
@@ -1215,9 +979,7 @@ const TaskManagement = () => {
               <TaskCard
                 key={taskId || `task-${index}`}
                 task={task}
-                onClick={() => {
-                  handleTaskClick(task, index)
-                }}
+                onClick={() => handleTaskClick(task, index)}
                 onDelete={(deletedTaskId) => {
                   console.log(`Task ${deletedTaskId} deleted, refreshing lists.`)
                   handleRefresh()
@@ -1234,13 +996,7 @@ const TaskManagement = () => {
       ) : (
         <EmptyState
           icon={
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-16 w-16 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -1253,33 +1009,35 @@ const TaskManagement = () => {
             activeTab === "my-tasks"
               ? "Tasks"
               : activeTab === "self-tasks"
-                ? "Self Tasks"
-                : activeTab === "delegated-tasks"
-                  ? "Delegated Tasks"
-                  : "Tasks"
+              ? "Self Tasks"
+              : activeTab === "delegated-tasks"
+              ? "Delegated Tasks"
+              : "Tasks"
           } Found`}
           description={
             hasActiveFilters()
               ? "No tasks match your current filter criteria. Try adjusting your filters."
               : activeTab === "my-tasks"
-                ? "You don't have any tasks assigned to you."
-                : activeTab === "self-tasks"
-                  ? "You don't have any self-assigned tasks yet. Use Assign Task → Assign To → Myself to create one."
-                  : activeTab === "delegated-tasks"
-                    ? "You haven't delegated any tasks yet."
-                    : "There are no tasks in the system."
+              ? "You don't have any tasks assigned to you."
+              : activeTab === "self-tasks"
+              ? "You don't have any self-assigned tasks yet. Use Assign Task → Assign To → Myself to create one."
+              : activeTab === "delegated-tasks"
+              ? "You haven't delegated any tasks yet."
+              : "There are no tasks in the system."
           }
           className="py-16"
         />
       )}
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mt-8 bg-white p-4 rounded-xl shadow-sm border border-green-100">
-        {/* Limit Selector */}
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600 font-medium">Items per page:</label>
           <select
             value={limit}
-            onChange={(e) => setLimit(Number.parseInt(e.target.value))}
+            onChange={(e) => {
+              setLimit(Number.parseInt(e.target.value))
+              setPage(1)
+            }}
             className="rounded-lg border border-green-300 text-sm px-3 py-1.5 bg-white text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
           >
             <option value={9}>9</option>
@@ -1288,7 +1046,6 @@ const TaskManagement = () => {
           </select>
         </div>
 
-        {/* Page Controls */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
@@ -1320,7 +1077,6 @@ const TaskManagement = () => {
         </div>
       </div>
 
-      {/* Modals */}
       <AssignTaskModal
         isOpen={isAssignTaskModalOpen}
         onClose={() => setIsAssignTaskModalOpen(false)}
@@ -1328,8 +1084,6 @@ const TaskManagement = () => {
         onSuccess={(createdTask) => {
           setIsAssignTaskModalOpen(false)
 
-          // UI-only optimistic add: if the modal returns createdTask and it's a self task,
-          // show it immediately under "Self Tasks".
           if (createdTask && isSelfTask(createdTask)) {
             setSelfTasks((prev) => mergeUniqueTasks(prev, [createdTask]))
           }
@@ -1337,6 +1091,7 @@ const TaskManagement = () => {
           handleRefresh()
         }}
       />
+
       <ViewTaskModal
         isOpen={isViewTaskModalOpen}
         onClose={handleViewTaskModalClose}
