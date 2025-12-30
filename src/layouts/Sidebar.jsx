@@ -6,7 +6,16 @@ import PropTypes from "prop-types";
 import { ROUTES } from "../constants/routes";
 import AutomateLogo from "@/components/common/AutomateLogo";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, CheckSquare, Users, ChevronDown, Menu, X, HelpCircle } from "lucide-react";
+import {
+  Home,
+  CheckSquare,
+  Users,
+  ChevronDown,
+  Menu,
+  X,
+  HelpCircle,
+  Video,
+} from "lucide-react";
 
 const Sidebar = ({
   isOpen = true,
@@ -84,6 +93,16 @@ const Sidebar = ({
           title: "Tasks",
           icon: <CheckSquare size={20} />,
           path: ROUTES.TASKS.MANAGEMENT,
+        },
+      ],
+    },
+    {
+      id: "meetings",
+      items: [
+        {
+          title: "Meetings",
+          icon: <Video size={20} />,
+          path: ROUTES.MEETINGS,
         },
       ],
     },

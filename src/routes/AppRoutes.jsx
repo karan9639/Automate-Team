@@ -38,6 +38,9 @@ import Holidays from "../pages/events/Holidays";
 // Team Pages
 import MyTeam from "../pages/team/MyTeam";
 
+// Meetings Pages
+import Meetings from "../pages/meetings/Meetings";
+
 // Other Pages
 import MobileApp from "../pages/MobileApp";
 import Checklist from "../pages/Checklist";
@@ -45,7 +48,7 @@ import Links from "../pages/Links";
 import ReferAndEarn from "../pages/ReferAndEarn";
 import Settings from "../pages/settings/Settings";
 import Profile from "../pages/profile/Profile";
-import ChangePasswordPage from "../pages/profile/ChangePasswordPage"; // Import new page
+import ChangePasswordPage from "../pages/profile/ChangePasswordPage";
 import Support from "../pages/Support";
 
 // Loading Component
@@ -111,8 +114,6 @@ const AppRoutes = () => {
         path={ROUTES.AUTH.FORGOT_PASSWORD}
         element={
           <AuthRoute>
-            {" "}
-            {/* ForgotPasswordPage should typically be public, adjust if needed */}
             <ForgotPasswordPage />
           </AuthRoute>
         }
@@ -124,7 +125,6 @@ const AppRoutes = () => {
       {/* Protected routes with MainLayout */}
       <Route
         element={
-          // Grouping protected routes under MainLayout more effectively
           <ProtectedRoute>
             <MainLayout />
           </ProtectedRoute>
@@ -151,6 +151,8 @@ const AppRoutes = () => {
         <Route path={ROUTES.EVENTS.HOLIDAYS} element={<Holidays />} />
         {/* Team Routes */}
         <Route path={ROUTES.TEAM.MY_TEAM} element={<MyTeam />} />
+        {/* Meetings Routes */}
+        <Route path={ROUTES.MEETINGS} element={<Meetings />} />
         {/* Other Routes */}
         <Route path={ROUTES.MOBILE_APP} element={<MobileApp />} />
         <Route path={ROUTES.CHECKLIST} element={<Checklist />} />
@@ -158,7 +160,6 @@ const AppRoutes = () => {
         <Route path={ROUTES.REFER_EARN} element={<ReferAndEarn />} />
         <Route path={ROUTES.SETTINGS} element={<Settings />} />
         <Route path={ROUTES.PROFILE} element={<Profile />} />
-        {/* THIS IS THE NEWLY ADDED ROUTE */}
         <Route
           path={ROUTES.PROFILE_CHANGE_PASSWORD}
           element={<ChangePasswordPage />}
