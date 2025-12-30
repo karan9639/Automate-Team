@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import {
   X,
   Calendar,
@@ -16,37 +16,53 @@ import {
   UserCircle,
   Send,
   ImageIcon,
-} from "lucide-react"
-import { formatDate } from "../../utils/helpers"
-import { useState, useEffect, useMemo } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { editTask, fetchTaskComments, createTaskComment } from "../../store/slices/taskSlice"
-import { userApi } from "../../apiService/apiService"
-import { toast } from "react-hot-toast"
-import { formatDistanceToNow } from "date-fns"
+} from "lucide-react";
+import { formatDate } from "../../utils/helpers";
+import { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  editTask,
+  fetchTaskComments,
+  createTaskComment,
+} from "../../store/slices/taskSlice";
+import { userApi } from "../../apiService/apiService";
+import { toast } from "react-hot-toast";
+import { formatDistanceToNow } from "date-fns";
 
-const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedTab = false, onTaskUpdate }) => {
-  const dispatch = useDispatch()
+const ViewTaskModal = ({
+  isOpen,
+  onClose,
+  task,
+  loading,
+  error,
+  isFromDelegatedTab = false,
+  onTaskUpdate,
+}) => {
+  const dispatch = useDispatch();
 
   // Redux state - includes comments from ViewTaskModal1
-  const { comments, loading: taskLoadingState, error: taskErrorState } = useSelector((state) => state.tasks)
-  const { user: loggedInUser } = useSelector((state) => state.auth)
+  const {
+    comments,
+    loading: taskLoadingState,
+    error: taskErrorState,
+  } = useSelector((state) => state.tasks);
+  const { user: loggedInUser } = useSelector((state) => state.auth);
 
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [editFormData, setEditFormData] = useState({})
-  const [formErrors, setFormErrors] = useState({})
-  const [taskId, setTaskId] = useState(null)
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [formErrors, setFormErrors] = useState({});
+  const [taskId, setTaskId] = useState(null);
 
-  const [showUserDropdown, setShowUserDropdown] = useState(false)
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   // Comment functionality from ViewTaskModal1
-  const [newComment, setNewComment] = useState("")
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+  const [newComment, setNewComment] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   // User API integration from AssignTaskModal
-  const [allUsers, setAllUsers] = useState([])
-  const [isFetchingUsers, setIsFetchingUsers] = useState(false)
+  const [allUsers, setAllUsers] = useState([]);
+  const [isFetchingUsers, setIsFetchingUsers] = useState(false);
 
   // Mock categories - replace with actual API if available
   const mockCategories = useMemo(
@@ -67,48 +83,51 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
     ],
     []
   );
-  
 
   const selectedUserName = editFormData.taskAssignedTo
-    ? allUsers.find((u) => u.id === editFormData.taskAssignedTo)?.name || "Select User"
-    : "Select User"
+    ? allUsers.find((u) => u.id === editFormData.taskAssignedTo)?.name ||
+      "Select User"
+    : "Select User";
 
   const fetchUsersForDropdown = async () => {
-    if (allUsers.length > 0 && !isFetchingUsers) return
-    setIsFetchingUsers(true)
+    if (allUsers.length > 0 && !isFetchingUsers) return;
+    setIsFetchingUsers(true);
     try {
-      const response = await userApi.fetchAllTeamMembers()
-      const fetchedUsers = response.data?.data?.map((item) => item.newMember) || []
+      const response = await userApi.fetchAllTeamMembers();
+      const fetchedUsers =
+        response.data?.data?.map((item) => item.newMember) || [];
       setAllUsers(
         fetchedUsers.map((u) => ({
           id: u._id,
           name: u.fullname,
-          avatar: u.avatarUrl || `/placeholder.svg?height=32&width=32&query=${u.fullname}`,
-        })),
-      )
+          avatar:
+            u.avatarUrl ||
+            `/placeholder.svg?height=32&width=32&query=${u.fullname}`,
+        }))
+      );
     } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error("Failed to fetch users for assignment.")
-      setAllUsers([])
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users for assignment.");
+      setAllUsers([]);
     } finally {
-      setIsFetchingUsers(false)
+      setIsFetchingUsers(false);
     }
-  }
+  };
 
   // Extract and store task ID when task changes
   useEffect(() => {
     if (task) {
       // Fetch users when modal opens
-      fetchUsersForDropdown()
+      fetchUsersForDropdown();
 
       // First try to extract ID from URL
-      const urlId = extractTaskIdFromUrl()
+      const urlId = extractTaskIdFromUrl();
       // Then try to extract from task object as fallback
-      const taskObjectId = extractTaskId(task)
+      const taskObjectId = extractTaskId(task);
 
       // Prioritize URL ID over task object ID
-      const extractedId = urlId || taskObjectId
-      setTaskId(extractedId)
+      const extractedId = urlId || taskObjectId;
+      setTaskId(extractedId);
 
       setEditFormData({
         taskTitle: task?.taskTitle || task?.title || "",
@@ -122,61 +141,62 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
           typeof task?.taskAssignedTo === "string"
             ? task.taskAssignedTo
             : task?.taskAssignedTo?._id || task?.assignedTo?._id || "",
-        taskFrequency: task?.taskFrequency?.type || task?.frequency?.type || "one-time",
-      })
-      setFormErrors({})
-      setIsEditMode(false)
+        taskFrequency:
+          task?.taskFrequency?.type || task?.frequency?.type || "one-time",
+      });
+      setFormErrors({});
+      setIsEditMode(false);
     }
-  }, [task, isOpen])
+  }, [task, isOpen]);
 
   // Fetch comments when modal opens and taskId is available
   useEffect(() => {
     if (isOpen && taskId) {
-      console.log("ViewTaskModal: Fetching comments for task ID:", taskId)
-      dispatch(fetchTaskComments(taskId))
+      console.log("ViewTaskModal: Fetching comments for task ID:", taskId);
+      dispatch(fetchTaskComments(taskId));
     }
-  }, [isOpen, taskId, dispatch])
+  }, [isOpen, taskId, dispatch]);
 
   // Helper function to extract task ID from various formats
   const extractTaskId = (task) => {
-    if (!task) return null
+    if (!task) return null;
 
     // Method 1: Direct _id field (string format)
     if (task._id) {
       if (typeof task._id === "string") {
-        return task._id
+        return task._id;
       }
       // MongoDB ObjectId format with $oid
       if (typeof task._id === "object" && task._id.$oid) {
-        return task._id.$oid
+        return task._id.$oid;
       }
     }
 
     // Method 2: Check other common ID fields
-    const idFields = ["id", "taskId", "task_id"]
+    const idFields = ["id", "taskId", "task_id"];
     for (const field of idFields) {
       if (task[field]) {
         if (typeof task[field] === "object" && task[field].$oid) {
-          return task[field].$oid
+          return task[field].$oid;
         }
         if (typeof task[field] === "string") {
-          return task[field]
+          return task[field];
         }
         if (typeof task[field] === "number") {
-          return String(task[field])
+          return String(task[field]);
         }
       }
     }
 
-    console.warn("❌ No valid ID found in task object")
-    return null
-  }
+    console.warn("❌ No valid ID found in task object");
+    return null;
+  };
 
   // Helper function to extract task ID from URL
   const extractTaskIdFromUrl = () => {
     try {
       // Get current URL
-      const currentUrl = window.location.href
+      const currentUrl = window.location.href;
 
       // Try different URL patterns to extract task ID
       const urlPatterns = [
@@ -185,213 +205,238 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
         /taskId=([a-fA-F0-9]{24})/, // ?taskId=id
         /id=([a-fA-F0-9]{24})/, // ?id=id
         /\/([a-fA-F0-9]{24})(?:\/|$|\?)/, // /id/ or /id at end
-      ]
+      ];
 
       for (const pattern of urlPatterns) {
-        const match = currentUrl.match(pattern)
+        const match = currentUrl.match(pattern);
         if (match && match[1]) {
-          return match[1]
+          return match[1];
         }
       }
 
       // Try URL search params
-      const urlParams = new URLSearchParams(window.location.search)
-      const paramId = urlParams.get("taskId") || urlParams.get("id")
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramId = urlParams.get("taskId") || urlParams.get("id");
       if (paramId && /^[a-fA-F0-9]{24}$/.test(paramId)) {
-        return paramId
+        return paramId;
       }
 
-      return null
+      return null;
     } catch (error) {
-      console.error("❌ Error extracting ID from URL:", error)
-      return null
+      console.error("❌ Error extracting ID from URL:", error);
+      return null;
     }
-  }
+  };
 
   // Comment functionality from ViewTaskModal1
   const handleCommentSubmit = async (e) => {
-    e.preventDefault()
-    if (!newComment.trim() || !taskId || !loggedInUser) return
-    setIsSubmittingComment(true)
+    e.preventDefault();
+    if (!newComment.trim() || !taskId || !loggedInUser) return;
+    setIsSubmittingComment(true);
     try {
-      const commentData = { comment: newComment.trim() }
-      await dispatch(createTaskComment({ taskId, commentData }))
-      setNewComment("")
+      const commentData = { comment: newComment.trim() };
+      await dispatch(createTaskComment({ taskId, commentData }));
+      setNewComment("");
     } catch (error) {
-      console.error("Failed to submit comment:", error)
-      toast.error("Failed to post comment.")
+      console.error("Failed to submit comment:", error);
+      toast.error("Failed to post comment.");
     } finally {
-      setIsSubmittingComment(false)
+      setIsSubmittingComment(false);
     }
-  }
+  };
 
   // UI Helper functions from ViewTaskModal1
   const formatCommentTimestamp = (timestamp) => {
-    if (!timestamp) return "Just now"
+    if (!timestamp) return "Just now";
     try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
     } catch (error) {
-      return "Invalid date"
+      return "Invalid date";
     }
-  }
+  };
 
   const handleUserSelect = (userId) => {
     setEditFormData((prev) => ({
       ...prev,
       taskAssignedTo: userId, // Store as single user ID, not array
-    }))
-    setShowUserDropdown(false)
-    if (formErrors.taskAssignedTo) setFormErrors((prev) => ({ ...prev, taskAssignedTo: "" }))
-  }
+    }));
+    setShowUserDropdown(false);
+    if (formErrors.taskAssignedTo)
+      setFormErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
+  };
 
   const handleCategorySelect = (categoryName) => {
     setEditFormData((prev) => ({
       ...prev,
       taskCategory: categoryName,
-    }))
-    setShowCategoryDropdown(false)
-    if (formErrors.taskCategory) setFormErrors((prev) => ({ ...prev, taskCategory: "" }))
-  }
+    }));
+    setShowCategoryDropdown(false);
+    if (formErrors.taskCategory)
+      setFormErrors((prev) => ({ ...prev, taskCategory: "" }));
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
-        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700"
+        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700";
       case "medium":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700";
       case "low":
-        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700"
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600";
     }
-  }
+  };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
-        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700"
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700";
       case "in progress":
-        return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700"
+        return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700";
       case "overdue":
-        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700"
+        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600";
     }
-  }
+  };
 
   const getFrequencyDisplay = (frequency) => {
-    if (!frequency) return "One-time"
+    if (!frequency) return "One-time";
 
-    if (frequency.type === "weekly" && frequency.details?.daysOfWeek?.length > 0) {
-      const days = frequency.details.daysOfWeek.map((d) => d.day).join(", ")
-      return `Weekly (${days})`
+    if (
+      frequency.type === "weekly" &&
+      frequency.details?.daysOfWeek?.length > 0
+    ) {
+      const days = frequency.details.daysOfWeek.map((d) => d.day).join(", ");
+      return `Weekly (${days})`;
     }
 
-    return frequency.type || "One-time"
-  }
+    return frequency.type || "One-time";
+  };
 
   // Handle different API response field names
-  const taskTitle = isEditMode ? editFormData.taskTitle : task?.taskTitle || task?.title || "Untitled Task"
-  const taskDescription = isEditMode ? editFormData.taskDescription : task?.taskDescription || task?.description || ""
-  const taskStatus = isEditMode ? editFormData.taskStatus : task?.status || task?.taskStatus || "pending"
-  const taskPriority = isEditMode ? editFormData.taskPriority : task?.taskPriority || task?.priority || "medium"
-  const taskCategory = isEditMode ? editFormData.taskCategory : task?.taskCategory || task?.category || ""
-  const taskDueDate = isEditMode ? editFormData.taskDueDate : task?.taskDueDate || task?.dueDate || task?.due_date
+  const taskTitle = isEditMode
+    ? editFormData.taskTitle
+    : task?.taskTitle || task?.title || "Untitled Task";
+  const taskDescription = isEditMode
+    ? editFormData.taskDescription
+    : task?.taskDescription || task?.description || "";
+  const taskStatus = isEditMode
+    ? editFormData.taskStatus
+    : task?.status || task?.taskStatus || "pending";
+  const taskPriority = isEditMode
+    ? editFormData.taskPriority
+    : task?.taskPriority || task?.priority || "medium";
+  const taskCategory = isEditMode
+    ? editFormData.taskCategory
+    : task?.taskCategory || task?.category || "";
+  const taskDueDate = isEditMode
+    ? editFormData.taskDueDate
+    : task?.taskDueDate || task?.dueDate || task?.due_date;
   const taskAssignedTo = isEditMode
     ? editFormData.taskAssignedTo
     : task?.taskAssignedTo?.fullname ||
       task?.assignedTo?.fullname ||
       task?.taskAssignedTo ||
       task?.assignedTo ||
-      "Not assigned"
+      "Not assigned";
   const taskCreatedBy =
-    task?.taskCreatedBy?.fullname || task?.createdBy?.fullname || task?.taskCreatedBy || task?.createdBy || "Unknown"
-  const taskFrequency = task?.taskFrequency || task?.frequency
+    task?.taskCreatedBy?.fullname ||
+    task?.createdBy?.fullname ||
+    task?.taskCreatedBy ||
+    task?.createdBy ||
+    "Unknown";
+  const taskFrequency = task?.taskFrequency || task?.frequency;
 
   // Loading and error states for specific operations
-  const commentsLoading = taskLoadingState?.fetchComments
-  const commentsError = taskErrorState?.fetchComments
-  const createCommentLoading = taskLoadingState?.createComment
-  const createCommentError = taskErrorState?.createComment
-  const editTaskLoading = taskLoadingState?.edit
+  const commentsLoading = taskLoadingState?.fetchComments;
+  const commentsError = taskErrorState?.fetchComments;
+  const createCommentLoading = taskLoadingState?.createComment;
+  const createCommentError = taskErrorState?.createComment;
+  const editTaskLoading = taskLoadingState?.edit;
 
   // Form validation
   const validateForm = () => {
-    const errors = {}
+    const errors = {};
 
     // Trim and check for actual content
-    const trimmedTitle = (editFormData.taskTitle || "").trim()
-    const trimmedDescription = (editFormData.taskDescription || "").trim()
+    const trimmedTitle = (editFormData.taskTitle || "").trim();
+    const trimmedDescription = (editFormData.taskDescription || "").trim();
 
     if (!trimmedTitle) {
-      errors.taskTitle = "Task title is required and cannot be empty"
+      errors.taskTitle = "Task title is required and cannot be empty";
     }
 
     if (!trimmedDescription) {
-      errors.taskDescription = "Task description is required and cannot be empty"
+      errors.taskDescription =
+        "Task description is required and cannot be empty";
     }
 
     // Fix: Check for single user assignment, not array
     if (!editFormData.taskAssignedTo) {
-      errors.taskAssignedTo = "A user must be assigned"
+      errors.taskAssignedTo = "A user must be assigned";
     }
 
-    if (!editFormData.taskFrequency || editFormData.taskFrequency.trim() === "") {
-      errors.taskFrequency = "Task frequency is required"
+    if (
+      !editFormData.taskFrequency ||
+      editFormData.taskFrequency.trim() === ""
+    ) {
+      errors.taskFrequency = "Task frequency is required";
     }
 
     if (!editFormData.taskPriority || editFormData.taskPriority.trim() === "") {
-      errors.taskPriority = "Task priority is required"
+      errors.taskPriority = "Task priority is required";
     }
 
     if (editFormData.taskDueDate) {
-      const dueDate = new Date(editFormData.taskDueDate)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const dueDate = new Date(editFormData.taskDueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
       if (isNaN(dueDate.getTime())) {
-        errors.taskDueDate = "Please enter a valid date"
+        errors.taskDueDate = "Please enter a valid date";
       } else if (dueDate < today) {
-        errors.taskDueDate = "Due date cannot be in the past"
+        errors.taskDueDate = "Due date cannot be in the past";
       }
     }
 
     // Validate task ID
     if (!taskId) {
-      errors.taskId = "Task ID is missing"
+      errors.taskId = "Task ID is missing";
     }
 
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleInputChange = (field, value) => {
     setEditFormData((prev) => ({
       ...prev,
       [field]: value,
-    }))
+    }));
 
     // Clear error for this field when user starts typing
     if (formErrors[field]) {
       setFormErrors((prev) => ({
         ...prev,
         [field]: "",
-      }))
+      }));
     }
-  }
+  };
 
   const handleEditClick = () => {
-    setIsEditMode(true)
-    setFormErrors({})
-  }
+    setIsEditMode(true);
+    setFormErrors({});
+  };
 
   const handleCancelEdit = () => {
-    setIsEditMode(false)
-    setFormErrors({})
+    setIsEditMode(false);
+    setFormErrors({});
     // Reset form data to original task data
     setEditFormData({
       taskTitle: task?.taskTitle || task?.title || "",
@@ -404,21 +449,22 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
         typeof task?.taskAssignedTo === "string"
           ? task.taskAssignedTo
           : task?.taskAssignedTo?._id || task?.assignedTo?._id || "",
-      taskFrequency: task?.taskFrequency?.type || task?.frequency?.type || "one-time",
-    })
-  }
+      taskFrequency:
+        task?.taskFrequency?.type || task?.frequency?.type || "one-time",
+    });
+  };
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      console.error("❌ Form validation failed:", formErrors)
-      return
+      console.error("❌ Form validation failed:", formErrors);
+      return;
     }
 
     // Double-check task ID before submission
     if (!taskId) {
-      console.error("❌ Cannot submit: Task ID is missing")
-      setFormErrors((prev) => ({ ...prev, taskId: "Task ID is missing" }))
-      return
+      console.error("❌ Cannot submit: Task ID is missing");
+      setFormErrors((prev) => ({ ...prev, taskId: "Task ID is missing" }));
+      return;
     }
 
     try {
@@ -428,58 +474,69 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
         taskDescription: editFormData.taskDescription.trim(),
         taskAssignedTo: editFormData.taskAssignedTo, // Single user ID
         taskCategory: editFormData.taskCategory.trim(),
-        taskDueDate: editFormData.taskDueDate ? new Date(editFormData.taskDueDate).toISOString() : undefined,
+        taskDueDate: editFormData.taskDueDate
+          ? new Date(editFormData.taskDueDate).toISOString()
+          : undefined,
         taskPriority: editFormData.taskPriority,
         taskFrequency: { type: editFormData.taskFrequency },
-      }
+      };
 
       // Remove any undefined values
       Object.keys(payload).forEach((key) => {
-        if (payload[key] === undefined || payload[key] === null || payload[key] === "") {
-          delete payload[key]
+        if (
+          payload[key] === undefined ||
+          payload[key] === null ||
+          payload[key] === ""
+        ) {
+          delete payload[key];
         }
-      })
+      });
 
       // Dispatch Redux action to update task
-      const result = await dispatch(editTask({ taskId, taskData: payload }))
+      const result = await dispatch(editTask({ taskId, taskData: payload }));
 
       if (editTask.fulfilled.match(result)) {
         // Only show toast if the Redux action didn't already show one
         if (!result.payload?.message) {
-          toast.success("Task updated successfully!")
+          toast.success("Task updated successfully!");
         }
 
         // Call parent update handler if provided
         if (onTaskUpdate) {
-          onTaskUpdate(taskId, result.payload?.data || payload)
+          onTaskUpdate(taskId, result.payload?.data || payload);
         }
 
         // Exit edit mode on success
-        setIsEditMode(false)
-        setFormErrors({})
+        setIsEditMode(false);
+        setFormErrors({});
 
         // Close modal after successful update with a slight delay to show success
         setTimeout(() => {
-          onClose()
-        }, 1500)
+          onClose();
+        }, 1500);
       } else {
-        console.error("❌ Task update failed:", result.payload)
+        console.error("❌ Task update failed:", result.payload);
         const errorMessage =
-          typeof result.payload === "string" ? result.payload : result.payload?.message || "Failed to update task."
-        toast.error(errorMessage)
+          typeof result.payload === "string"
+            ? result.payload
+            : result.payload?.message || "Failed to update task.";
+        toast.error(errorMessage);
       }
     } catch (error) {
-      console.error("❌ Error in handleSubmit:", error)
-      const errorMessage = typeof error === "string" ? error : error.message || "Failed to update task."
-      toast.error(errorMessage)
+      console.error("❌ Error in handleSubmit:", error);
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : error.message || "Failed to update task.";
+      toast.error(errorMessage);
     }
-  }
+  };
 
   const priorityOptions = [
     { value: "low", label: "Low" },
     { value: "medium", label: "Medium" },
     { value: "high", label: "High" },
-  ]
+  ];
 
   const frequencyOptions = [
     { value: "one-time", label: "One-time" },
@@ -487,7 +544,7 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
     { value: "weekly", label: "Weekly" },
     { value: "monthly", label: "Monthly" },
     { value: "yearly", label: "Yearly" },
-  ]
+  ];
 
   return (
     <div
@@ -622,9 +679,9 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
               </div>
 
               {/* Task Description */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="flex items-center text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">
-                  <FileText className="h-5 w-5 mr-2" />
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                <h3 className="flex items-center text-lg font-medium mb-3 text-gray-900 dark:text-gray-100">
+                  <FileText className="h-5 w-5 mr-2 text-emerald-600" />
                   Description
                 </h3>
                 {isEditMode ? (
@@ -649,9 +706,40 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
                     )}
                   </div>
                 ) : (
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {taskDescription || "No description provided"}
-                  </p>
+                  <div className="text-gray-700 dark:text-gray-300">
+                    <div className="space-y-1">
+                      {(taskDescription || "No description provided")
+                        .split("\n")
+                        .map((line, index) => {
+                          const isNumberedItem = /^\d+\.\s/.test(line.trim());
+                          return (
+                            <div
+                              key={index}
+                              className={`${
+                                isNumberedItem
+                                  ? "flex items-start gap-3 py-1.5"
+                                  : line.trim()
+                                  ? "py-1"
+                                  : ""
+                              }`}
+                            >
+                              {isNumberedItem ? (
+                                <>
+                                  <span className="inline-flex items-center justify-center min-w-[24px] h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                                    {line.match(/^(\d+)\./)[1]}
+                                  </span>
+                                  <span className="flex-1 pt-0.5 leading-relaxed">
+                                    {line.replace(/^\d+\.\s/, "")}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="leading-relaxed">{line}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1188,6 +1276,6 @@ const ViewTaskModal = ({ isOpen, onClose, task, loading, error, isFromDelegatedT
       </div>
     </div>
   );
-}
+};
 
-export default ViewTaskModal
+export default ViewTaskModal;
