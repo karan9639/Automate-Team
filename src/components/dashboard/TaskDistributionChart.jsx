@@ -76,12 +76,14 @@ const TaskDistributionChart = ({ tasks = [] }) => {
       const inProgressTasks =
         getStatusCount(createdByMe.counts, [
           "In Progress",
+          "in progress",
           "in-progress",
           "InProgress",
           "in_progress",
         ]) +
         getStatusCount(assignedToMe.counts, [
           "In Progress",
+          "in progress",
           "in-progress",
           "InProgress",
           "in_progress",

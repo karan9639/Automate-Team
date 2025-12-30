@@ -195,7 +195,7 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-muted-foreground">
+          {/* <p className="mt-8 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
               to={ROUTES.AUTH.SIGNUP}
@@ -203,7 +203,7 @@ const LoginPage = () => {
             >
               Sign up now
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>
