@@ -96,16 +96,16 @@ const Sidebar = ({
         },
       ],
     },
-    {
-      id: "meetings",
-      items: [
-        {
-          title: "Meetings",
-          icon: <Video size={20} />,
-          path: ROUTES.MEETINGS,
-        },
-      ],
-    },
+    // {
+    //   id: "meetings",
+    //   items: [
+    //     {
+    //       title: "Meetings",
+    //       icon: <Video size={20} />,
+    //       path: ROUTES.MEETINGS,
+    //     },
+    //   ],
+    // },
     {
       id: "team",
       items: [
