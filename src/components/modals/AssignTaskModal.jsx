@@ -1,16 +1,24 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo, useRef } from "react"
-import { useDispatch } from "react-redux"
-import { Modal } from "../../components/ui/modal.jsx"
-import { Button } from "../../components/ui/button.jsx"
-import { Input } from "../../components/ui/input.jsx"
-import { Textarea } from "../../components/ui/textarea.jsx"
-import { Switch } from "../../components/ui/switch.jsx"
-import { createTask, editTask } from "../../store/slices/taskSlice"
-import { userApi } from "../../apiService/apiService"
-import { Check, FileText, AlertCircle, Loader2, Search, User, Users } from "lucide-react"
-import { toast } from "react-hot-toast"
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useDispatch } from "react-redux";
+import { Modal } from "../../components/ui/modal.jsx";
+import { Button } from "../../components/ui/button.jsx";
+import { Input } from "../../components/ui/input.jsx";
+import { Textarea } from "../../components/ui/textarea.jsx";
+import { Switch } from "../../components/ui/switch.jsx";
+import { createTask, editTask } from "../../store/slices/taskSlice";
+import { userApi } from "../../apiService/apiService";
+import {
+  Check,
+  FileText,
+  AlertCircle,
+  Loader2,
+  Search,
+  User,
+  Users,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
 
 /**
  * Updates made:
@@ -23,90 +31,116 @@ import { toast } from "react-hot-toast"
  */
 
 const validateTaskForm = (formData, backendSchema) => {
-  const errors = {}
+  const errors = {};
 
   if (!formData.taskTitle || !formData.taskTitle.trim()) {
-    errors.taskTitle = "Task title is required"
+    errors.taskTitle = "Task title is required";
   } else if (formData.taskTitle.trim().length < 1) {
-    errors.taskTitle = "Task title must be at least 3 characters long"
+    errors.taskTitle = "Task title must be at least 3 characters long";
   } else if (formData.taskTitle.trim().length > 100) {
-    errors.taskTitle = "Task title must not exceed 100 characters"
+    errors.taskTitle = "Task title must not exceed 100 characters";
   }
 
   if (!formData.taskDescription || !formData.taskDescription.trim()) {
-    errors.taskDescription = "Task description is required"
+    errors.taskDescription = "Task description is required";
   } else if (formData.taskDescription.trim().length < 1) {
-    errors.taskDescription = "Description must be at least 10 characters long"
+    errors.taskDescription = "Description must be at least 10 characters long";
   } else if (formData.taskDescription.trim().length > 500) {
-    errors.taskDescription = "Description must not exceed 500 characters"
+    errors.taskDescription = "Description must not exceed 500 characters";
   }
 
   // ✅ Updated: only require assignee when NOT assigning to yourself
   if (!formData.assigningToYourself) {
     if (!formData.taskAssignedTo || !String(formData.taskAssignedTo).trim()) {
-      errors.taskAssignedTo = "A user must be assigned"
+      errors.taskAssignedTo = "A user must be assigned";
     }
   }
 
   if (!formData.taskCategory || !formData.taskCategory.trim()) {
-    errors.taskCategory = "Task category is required"
+    errors.taskCategory = "Task category is required";
   }
 
   if (formData.taskDueDate) {
-    const selectedDate = new Date(formData.taskDueDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const selectedDate = new Date(formData.taskDueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
-      errors.taskDueDate = "Due date cannot be in the past"
+      errors.taskDueDate = "Due date cannot be in the past";
     }
   }
 
-  const validPriorities = backendSchema.taskPriority.enum
-  if (!formData.taskPriority || !validPriorities.includes(formData.taskPriority)) {
-    errors.taskPriority = `Please select a valid priority (${validPriorities.join(", ")})`
+  const validPriorities = backendSchema.taskPriority.enum;
+  if (
+    !formData.taskPriority ||
+    !validPriorities.includes(formData.taskPriority)
+  ) {
+    errors.taskPriority = `Please select a valid priority (${validPriorities.join(
+      ", "
+    )})`;
   }
 
-  const validFrequenciesUI = ["one-time", "daily", "weekly", "monthly", "yearly", "periodically"]
-  if (!formData.taskFrequency || !validFrequenciesUI.includes(formData.taskFrequency.type)) {
-    errors.taskFrequency = "Please select a valid frequency type"
+  const validFrequenciesUI = [
+    "one-time",
+    "daily",
+    "weekly",
+    "monthly",
+    "yearly",
+    "periodically",
+  ];
+  if (
+    !formData.taskFrequency ||
+    !validFrequenciesUI.includes(formData.taskFrequency.type)
+  ) {
+    errors.taskFrequency = "Please select a valid frequency type";
   }
 
-  return errors
-}
+  return errors;
+};
 
 const backendTaskSchema = {
   taskPriority: { enum: ["High", "Medium", "Low"], default: "Low" },
   taskFrequency: {
-    type: { enum: ["one-time", "daily", "weekly", "monthly", "yearly", "periodically"] },
+    type: {
+      enum: [
+        "one-time",
+        "daily",
+        "weekly",
+        "monthly",
+        "yearly",
+        "periodically",
+      ],
+    },
   },
-}
+};
 
 const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
-  const dispatch = useDispatch()
-  const fileInputRef = useRef(null)
-  const userSearchInputRef = useRef(null)
+  const dispatch = useDispatch();
+  const fileInputRef = useRef(null);
+  const userSearchInputRef = useRef(null);
 
-  const [taskTitle, setTaskTitle] = useState("")
-  const [taskDescription, setTaskDescription] = useState("")
-  const [taskAssignedTo, setTaskAssignedTo] = useState("")
-  const [taskCategory, setTaskCategory] = useState("")
-  const [taskDueDate, setTaskDueDate] = useState("")
-  const [taskPriority, setTaskPriority] = useState(backendTaskSchema.taskPriority.default)
-  const [taskFrequencyType, setTaskFrequencyType] = useState("one-time")
-  const [taskImage, setTaskImage] = useState(null)
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("1. ");
+  const [taskAssignedTo, setTaskAssignedTo] = useState("");
+  const [taskCategory, setTaskCategory] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskPriority, setTaskPriority] = useState(
+    backendTaskSchema.taskPriority.default
+  );
+  const [taskFrequencyType, setTaskFrequencyType] = useState("one-time");
+  const [taskImage, setTaskImage] = useState(null);
 
   // ✅ NEW: assign to myself
-  const [assigningToYourself, setAssigningToYourself] = useState(false)
+  const [assigningToYourself, setAssigningToYourself] = useState(false);
 
-  const [assignMoreTasks, setAssignMoreTasks] = useState(false)
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [assignMoreTasks, setAssignMoreTasks] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [allUsers, setAllUsers] = useState([])
-  const [isFetchingUsers, setIsFetchingUsers] = useState(false)
-  const [showUserDropdown, setShowUserDropdown] = useState(false)
-  const [userSearchTerm, setUserSearchTerm] = useState("")
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [allUsers, setAllUsers] = useState([]);
+  const [isFetchingUsers, setIsFetchingUsers] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const mockCategories = useMemo(
     () => [
@@ -126,114 +160,131 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       { id: "cat14", name: "IT" },
       { id: "cat15", name: "HR" },
     ],
-    [],
-  )
+    []
+  );
 
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       if (allUsers.length === 0 && !isFetchingUsers) {
-        fetchUsersForDropdown()
+        fetchUsersForDropdown();
       }
 
       if (task) {
-        setTaskTitle(task.taskTitle || "")
-        setTaskDescription(task.taskDescription || "")
+        setTaskTitle(task.taskTitle || "");
+        setTaskDescription(task.taskDescription || "1. ");
 
         // ✅ NEW: hydrate self-toggle
         const selfFlag = Boolean(
-          task.assigningToYourself ?? task.assignedToYourself ?? task.isSelfTask ?? task.assignToMyself,
-        )
-        setAssigningToYourself(selfFlag)
+          task.assigningToYourself ??
+            task.assignedToYourself ??
+            task.isSelfTask ??
+            task.assignToMyself
+        );
+        setAssigningToYourself(selfFlag);
 
         // If it's a self-task, do not force select a user
         if (selfFlag) {
-          setTaskAssignedTo("")
+          setTaskAssignedTo("");
         } else {
           setTaskAssignedTo(
-            typeof task.taskAssignedTo === "string" ? task.taskAssignedTo : task.taskAssignedTo?._id || "",
-          )
+            typeof task.taskAssignedTo === "string"
+              ? task.taskAssignedTo
+              : task.taskAssignedTo?._id || ""
+          );
         }
 
-        setTaskCategory(task.taskCategory || "")
-        setTaskDueDate(task.taskDueDate ? new Date(task.taskDueDate).toISOString().split("T")[0] : "")
-        setTaskPriority(task.taskPriority || backendTaskSchema.taskPriority.default)
-        setTaskFrequencyType(task.taskFrequency?.type || "one-time")
-        setTaskImage(task.taskImage || null)
+        setTaskCategory(task.taskCategory || "");
+        setTaskDueDate(
+          task.taskDueDate
+            ? new Date(task.taskDueDate).toISOString().split("T")[0]
+            : ""
+        );
+        setTaskPriority(
+          task.taskPriority || backendTaskSchema.taskPriority.default
+        );
+        setTaskFrequencyType(task.taskFrequency?.type || "one-time");
+        setTaskImage(task.taskImage || null);
       } else {
-        resetFormFields()
+        resetFormFields();
       }
 
-      setErrors({})
-      setUserSearchTerm("")
+      setErrors({});
+      setUserSearchTerm("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, task])
+  }, [isOpen, task]);
 
   useEffect(() => {
     if (showUserDropdown && userSearchInputRef.current) {
       setTimeout(() => {
-        userSearchInputRef.current.focus()
-      }, 100)
+        userSearchInputRef.current.focus();
+      }, 100);
     }
-  }, [showUserDropdown])
+  }, [showUserDropdown]);
 
   // ✅ NEW: when switching to "Myself", clear selected assignee + close dropdown
   useEffect(() => {
     if (assigningToYourself) {
-      setTaskAssignedTo("")
-      setShowUserDropdown(false)
-      setUserSearchTerm("")
-      if (errors.taskAssignedTo) setErrors((prev) => ({ ...prev, taskAssignedTo: "" }))
+      setTaskAssignedTo("");
+      setShowUserDropdown(false);
+      setUserSearchTerm("");
+      if (errors.taskAssignedTo)
+        setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assigningToYourself])
+  }, [assigningToYourself]);
 
   const resetFormFields = (keepDueDate = false) => {
-    setTaskTitle("")
-    setTaskDescription("")
-    setTaskAssignedTo("")
-    setTaskCategory("")
-    setTaskImage(null)
-    setAssigningToYourself(false)
+    setTaskTitle("");
+    setTaskDescription("1. ");
+    setTaskAssignedTo("");
+    setTaskCategory("");
+    setTaskImage(null);
+    setAssigningToYourself(false);
 
     if (!keepDueDate) {
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      setTaskDueDate(tomorrow.toISOString().split("T")[0])
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setTaskDueDate(tomorrow.toISOString().split("T")[0]);
     }
-    setTaskPriority(backendTaskSchema.taskPriority.default)
-    setTaskFrequencyType("one-time")
-    setErrors({})
-    setUserSearchTerm("")
-  }
+    setTaskPriority(backendTaskSchema.taskPriority.default);
+    setTaskFrequencyType("one-time");
+    setErrors({});
+    setUserSearchTerm("");
+  };
 
   const fetchUsersForDropdown = async () => {
-    setIsFetchingUsers(true)
+    setIsFetchingUsers(true);
     try {
-      const response = await userApi.fetchAllTeamMembers()
-      const fetchedUsers = response.data?.data?.map((item) => item.newMember) || []
+      const response = await userApi.fetchAllTeamMembers();
+      const fetchedUsers =
+        response.data?.data?.map((item) => item.newMember) || [];
       setAllUsers(
         fetchedUsers.map((u) => ({
           id: u._id,
           name: u.fullname,
           email: u.email,
           department: u.department || u.category || "General",
-          avatar: u.avatarUrl || `/placeholder.svg?height=32&width=32&query=${encodeURIComponent(u.fullname)}`,
-        })),
-      )
+          avatar:
+            u.avatarUrl ||
+            `/placeholder.svg?height=32&width=32&query=${encodeURIComponent(
+              u.fullname
+            )}`,
+        }))
+      );
     } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error("Failed to fetch users for assignment.")
-      setAllUsers([])
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users for assignment.");
+      setAllUsers([]);
     } finally {
-      setIsFetchingUsers(false)
+      setIsFetchingUsers(false);
     }
-  }
+  };
 
   const handleFileSelect = (event) => {
-    const file = event.target.files[0]
+    const file = event.target.files[0];
     if (file) {
       const newFile = {
         id: Date.now() + Math.random(),
@@ -241,169 +292,256 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         size: file.size,
         type: file.type,
         file: file,
-      }
-      setTaskImage(newFile)
-      toast.success(`1 file attached successfully`)
+      };
+      setTaskImage(newFile);
+      toast.success(`1 file attached successfully`);
     }
-    event.target.value = ""
-  }
+    event.target.value = "";
+  };
 
   const handleFileRemove = () => {
-    setTaskImage(null)
-    toast.success("File removed successfully")
-  }
+    setTaskImage(null);
+    toast.success("File removed successfully");
+  };
 
   const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  }
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (
+      Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    );
+  };
 
   const getFileIcon = (fileName) => {
-    const extension = fileName.split(".").pop()?.toLowerCase()
+    const extension = fileName.split(".").pop()?.toLowerCase();
     switch (extension) {
       case "pdf":
-        return "📄"
+        return "📄";
       case "doc":
       case "docx":
-        return "📝"
+        return "📝";
       case "xls":
       case "xlsx":
-        return "📊"
+        return "📊";
       case "ppt":
       case "pptx":
-        return "📋"
+        return "📋";
       case "jpg":
       case "jpeg":
       case "png":
       case "gif":
-        return "🖼️"
+        return "🖼️";
       case "zip":
       case "rar":
-        return "🗜️"
+        return "🗜️";
       default:
-        return "📎"
+        return "📎";
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     const payload = {
       taskTitle: taskTitle.trim(),
       taskDescription: taskDescription.trim(),
       taskCategory: taskCategory.trim(),
-      taskDueDate: taskDueDate ? new Date(taskDueDate).toISOString() : undefined,
+      taskDueDate: taskDueDate
+        ? new Date(taskDueDate).toISOString()
+        : undefined,
       taskPriority,
       taskFrequency: {
         type: taskFrequencyType,
         interval: 1,
       },
-    }
+    };
 
     // Only add ONE of these fields, never both
     if (assigningToYourself) {
-      payload.assigningToYourself = true
+      payload.assigningToYourself = true;
     } else {
-      payload.taskAssignedTo = taskAssignedTo
+      payload.taskAssignedTo = taskAssignedTo;
     }
 
-    const validationErrors = validateTaskForm(payload, backendTaskSchema)
+    const validationErrors = validateTaskForm(payload, backendTaskSchema);
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      toast.error("Please fix the validation errors.")
-      return
+      setErrors(validationErrors);
+      toast.error("Please fix the validation errors.");
+      return;
     }
 
-    const file = taskImage?.file
+    const file = taskImage?.file;
     if (file) {
       if (!(file instanceof File)) {
-        toast.error("Invalid image file.")
-        return
+        toast.error("Invalid image file.");
+        return;
       }
       if (file.size > 1024 * 1024) {
-        toast.error("Image must be less than 1MB.")
-        return
+        toast.error("Image must be less than 1MB.");
+        return;
       }
     }
 
-    setIsSubmitting(true)
-    setErrors({})
+    setIsSubmitting(true);
+    setErrors({});
     try {
-      const formData = new FormData()
+      const formData = new FormData();
 
-      formData.append("taskTitle", payload.taskTitle)
-      formData.append("taskDescription", payload.taskDescription)
+      formData.append("taskTitle", payload.taskTitle);
+      formData.append("taskDescription", payload.taskDescription);
 
       // Strict conditional: only ONE of these will be appended
       if (assigningToYourself) {
-        formData.append("assigningToYourself", "true")
+        formData.append("assigningToYourself", "true");
       } else {
-        formData.append("taskAssignedTo", payload.taskAssignedTo)
+        formData.append("taskAssignedTo", payload.taskAssignedTo);
       }
 
-      formData.append("taskCategory", payload.taskCategory)
+      formData.append("taskCategory", payload.taskCategory);
       if (payload.taskDueDate) {
-        formData.append("taskDueDate", payload.taskDueDate)
+        formData.append("taskDueDate", payload.taskDueDate);
       }
-      formData.append("taskPriority", payload.taskPriority)
+      formData.append("taskPriority", payload.taskPriority);
 
-      formData.append("taskFrequency[type]", taskFrequencyType)
-      formData.append("taskFrequency[interval]", "1")
+      formData.append("taskFrequency[type]", taskFrequencyType);
+      formData.append("taskFrequency[interval]", "1");
 
       if (file) {
-        formData.append("taskImage", file)
+        formData.append("taskImage", file);
       }
 
-      console.log("[v0] FormData entries:")
+      console.log("[v0] FormData entries:");
       for (const [key, value] of formData.entries()) {
-        console.log(`[v0] ${key}:`, value)
+        console.log(`[v0] ${key}:`, value);
       }
 
       if (task && task._id) {
-        await dispatch(editTask({ taskId: task._id, taskData: formData })).unwrap()
+        await dispatch(
+          editTask({ taskId: task._id, taskData: formData })
+        ).unwrap();
       } else {
-        await dispatch(createTask(formData)).unwrap()
+        await dispatch(createTask(formData)).unwrap();
       }
 
-      setRefreshTrigger(Date.now())
-      toast.success(task ? "Task updated successfully!" : "Task created successfully!")
+      setRefreshTrigger(Date.now());
+      toast.success(
+        task ? "Task updated successfully!" : "Task created successfully!"
+      );
       if (!assignMoreTasks) {
-        onClose()
+        onClose();
       } else {
-        resetFormFields(true)
+        resetFormFields(true);
       }
     } catch (error) {
-      console.error("Task save failed:", error)
-      toast.error(error?.message || "Failed to save task. Please try again.")
+      console.error("Task save failed:", error);
+      toast.error(error?.message || "Failed to save task. Please try again.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleUserSelect = (userId) => {
-    setTaskAssignedTo(userId)
-    setShowUserDropdown(false)
-    setUserSearchTerm("")
-    if (errors.taskAssignedTo) setErrors((prev) => ({ ...prev, taskAssignedTo: "" }))
-  }
+    setTaskAssignedTo(userId);
+    setShowUserDropdown(false);
+    setUserSearchTerm("");
+    if (errors.taskAssignedTo)
+      setErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
+  };
 
   const handleCategorySelect = (categoryName) => {
-    setTaskCategory(categoryName)
-    setShowCategoryDropdown(false)
-    if (errors.taskCategory) setErrors((prev) => ({ ...prev, taskCategory: "" }))
-  }
+    setTaskCategory(categoryName);
+    setShowCategoryDropdown(false);
+    if (errors.taskCategory)
+      setErrors((prev) => ({ ...prev, taskCategory: "" }));
+  };
 
   const handleInputChange = (field, value) => {
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }))
-    if (field === "taskTitle") setTaskTitle(value)
-    if (field === "taskDescription") setTaskDescription(value)
-    if (field === "taskDueDate") setTaskDueDate(value)
-  }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+    if (field === "taskTitle") setTaskTitle(value);
+    if (field === "taskDescription") setTaskDescription(value);
+    if (field === "taskDueDate") setTaskDueDate(value);
+  };
 
-  const priorityOptions = backendTaskSchema.taskPriority.enum
+  const handleDescriptionKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+
+      const textarea = e.target;
+      const cursorPosition = textarea.selectionStart;
+      const textBeforeCursor = taskDescription.substring(0, cursorPosition);
+      const textAfterCursor = taskDescription.substring(cursorPosition);
+
+      // Split by lines to analyze the content
+      const lines = textBeforeCursor.split("\n");
+      const currentLine = lines[lines.length - 1];
+
+      // Check if the current line starts with a number followed by a period
+      const numberMatch = currentLine.match(/^(\d+)\.\s/);
+
+      if (numberMatch) {
+        const currentNumber = Number.parseInt(numberMatch[1], 10);
+        const nextNumber = currentNumber + 1;
+
+        // Add new numbered line - don't remove empty lines, just continue numbering
+        const newText = `${textBeforeCursor}\n${nextNumber}. ${textAfterCursor}`;
+        setTaskDescription(newText);
+
+        // Set cursor position after the new number
+        setTimeout(() => {
+          const newCursorPos = cursorPosition + `\n${nextNumber}. `.length;
+          textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+        }, 0);
+      } else {
+        // If no numbering exists, start with 1.
+        const newText =
+          textBeforeCursor === ""
+            ? `1. ${textAfterCursor}`
+            : `${textBeforeCursor}\n1. ${textAfterCursor}`;
+        setTaskDescription(newText);
+
+        // Set cursor position after "1. "
+        setTimeout(() => {
+          const newCursorPos =
+            textBeforeCursor === "" ? 3 : cursorPosition + "\n1. ".length;
+          textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+        }, 0);
+      }
+    } else if (e.key === "Backspace") {
+      const textarea = e.target;
+      setTimeout(() => {
+        const allLines = taskDescription.split("\n");
+        const hasNumbering = allLines.some((line) =>
+          /^\d+\.\s/.test(line.trim())
+        );
+
+        if (hasNumbering) {
+          // Renumber all lines that start with a number
+          let renumbered = false;
+          const updatedLines = allLines.map((line, idx) => {
+            const match = line.match(/^(\d+)\.\s(.*)/);
+            if (match) {
+              const expectedNumber = idx + 1;
+              const currentNumber = Number.parseInt(match[1], 10);
+              if (currentNumber !== expectedNumber) {
+                renumbered = true;
+                return `${expectedNumber}. ${match[2]}`;
+              }
+            }
+            return line;
+          });
+
+          if (renumbered) {
+            const newValue = updatedLines.join("\n");
+            setTaskDescription(newValue);
+          }
+        }
+      }, 0);
+    }
+  };
+
+  const priorityOptions = backendTaskSchema.taskPriority.enum;
   const frequencyOptionsUI = useMemo(
     () => [
       { value: "one-time", label: "One-time" },
@@ -412,8 +550,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       { value: "monthly", label: "Monthly" },
       { value: "yearly", label: "Yearly" },
     ],
-    [],
-  )
+    []
+  );
 
   const selectedUserName = useMemo(() => {
     // ✅ NEW: show Myself label
@@ -426,11 +564,11 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             Self Task
           </span>
         </span>
-      )
+      );
     }
 
-    if (!taskAssignedTo) return "Select User"
-    const user = allUsers.find((u) => u.id === taskAssignedTo)
+    if (!taskAssignedTo) return "Select User";
+    const user = allUsers.find((u) => u.id === taskAssignedTo);
     return user ? (
       <span>
         {user.name}{" "}
@@ -440,27 +578,35 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
       </span>
     ) : (
       "Select User"
-    )
-  }, [taskAssignedTo, allUsers, assigningToYourself])
+    );
+  }, [taskAssignedTo, allUsers, assigningToYourself]);
 
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm.trim()) {
-      return allUsers
+      return allUsers;
     }
     return allUsers.filter(
       (user) =>
         user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-        user.department.toLowerCase().includes(userSearchTerm.toLowerCase()),
-    )
-  }, [allUsers, userSearchTerm])
+        user.department.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [allUsers, userSearchTerm]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={task ? "Edit Task" : "Assign New Task"} className="max-w-2xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={task ? "Edit Task" : "Assign New Task"}
+      className="max-w-2xl"
+    >
       <form onSubmit={handleSubmit} className="px-1 py-2 md:px-2">
         <div className="space-y-6">
           {/* Task Title */}
           <div className="space-y-2">
-            <label htmlFor="taskTitle" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="taskTitle"
+              className="block text-sm font-medium text-gray-700"
+            >
               Task Title <span className="text-red-500">*</span>
             </label>
             <Input
@@ -468,7 +614,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               value={taskTitle}
               onChange={(e) => handleInputChange("taskTitle", e.target.value)}
               placeholder="Enter task title"
-              className={`h-10 ${errors.taskTitle ? "border-red-500" : "border-gray-300"}`}
+              className={`h-10 ${
+                errors.taskTitle ? "border-red-500" : "border-gray-300"
+              }`}
             />
             {errors.taskTitle && (
               <p className="mt-1 text-sm text-red-500 flex items-center">
@@ -479,20 +627,29 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
           {/* Task Description */}
           <div className="space-y-2">
-            <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="taskDescription"
+              className="block text-sm font-medium text-gray-700"
+            >
               Task Description <span className="text-red-500">*</span>
             </label>
             <Textarea
               id="taskDescription"
               value={taskDescription}
-              onChange={(e) => handleInputChange("taskDescription", e.target.value)}
-              placeholder="Short description of the task..."
-              className={`min-h-[100px] ${errors.taskDescription ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) =>
+                handleInputChange("taskDescription", e.target.value)
+              }
+              onKeyDown={handleDescriptionKeyDown}
+              placeholder="Start typing your first point here..."
+              className={`min-h-[100px] ${
+                errors.taskDescription ? "border-red-500" : "border-gray-300"
+              }`}
               rows={4}
             />
             {errors.taskDescription && (
               <p className="mt-1 text-sm text-red-500 flex items-center">
-                <AlertCircle className="h-4 w-4 mr-1" /> {errors.taskDescription}
+                <AlertCircle className="h-4 w-4 mr-1" />{" "}
+                {errors.taskDescription}
               </p>
             )}
           </div>
@@ -501,7 +658,10 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assign To */}
             <div className="space-y-2">
-              <label htmlFor="taskAssignedToButton" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="taskAssignedToButton"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Assign To <span className="text-red-500">*</span>
               </label>
 
@@ -538,20 +698,31 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   id="taskAssignedToButton"
                   onClick={() => {
                     // ✅ NEW: disable opening dropdown for self tasks
-                    if (assigningToYourself) return
-                    if (allUsers.length === 0 && !isFetchingUsers) fetchUsersForDropdown()
-                    setShowUserDropdown(!showUserDropdown)
+                    if (assigningToYourself) return;
+                    if (allUsers.length === 0 && !isFetchingUsers)
+                      fetchUsersForDropdown();
+                    setShowUserDropdown(!showUserDropdown);
                   }}
                   className={`w-full flex justify-between items-center px-3 py-2 h-10 border rounded-md text-sm ${
-                    assigningToYourself ? "bg-gray-100 cursor-not-allowed" : "bg-white"
-                  } ${errors.taskAssignedTo ? "border-red-500" : "border-gray-300"}`}
+                    assigningToYourself
+                      ? "bg-gray-100 cursor-not-allowed"
+                      : "bg-white"
+                  } ${
+                    errors.taskAssignedTo ? "border-red-500" : "border-gray-300"
+                  }`}
                   aria-disabled={assigningToYourself}
                 >
-                  <div className="text-gray-700 truncate flex-1 text-left">{selectedUserName}</div>
+                  <div className="text-gray-700 truncate flex-1 text-left">
+                    {selectedUserName}
+                  </div>
                   {assigningToYourself ? null : isFetchingUsers ? (
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
-                    <span className={`ml-1 transition-transform duration-200 ${showUserDropdown ? "rotate-180" : ""}`}>
+                    <span
+                      className={`ml-1 transition-transform duration-200 ${
+                        showUserDropdown ? "rotate-180" : ""
+                      }`}
+                    >
                       ▼
                     </span>
                   )}
@@ -560,7 +731,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                 {/* Only show this error when not self */}
                 {!assigningToYourself && errors.taskAssignedTo && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-1" /> {errors.taskAssignedTo}
+                    <AlertCircle className="h-4 w-4 mr-1" />{" "}
+                    {errors.taskAssignedTo}
                   </p>
                 )}
 
@@ -581,10 +753,14 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                         />
                       </div>
                     </div>
-                    <ul role="listbox" className="py-1 overflow-y-auto flex-grow">
+                    <ul
+                      role="listbox"
+                      className="py-1 overflow-y-auto flex-grow"
+                    >
                       {isFetchingUsers ? (
                         <li className="px-3 py-2 text-gray-500 text-sm text-center flex items-center justify-center">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading users...
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
+                          Loading users...
                         </li>
                       ) : filteredUsers.length > 0 ? (
                         filteredUsers.map((user) => (
@@ -608,7 +784,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                               className="w-6 h-6 rounded-full mr-2 flex-shrink-0 object-cover"
                               onError={(e) =>
                                 (e.target.src = `/placeholder.svg?height=24&width=24&query=${encodeURIComponent(
-                                  user.name,
+                                  user.name
                                 )}`)
                               }
                             />
@@ -619,26 +795,33 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                                   {user.department}
                                 </p>
                               </span>
-                              {user.email && <span className="block truncate text-xs text-gray-500">{user.email}</span>}
+                              {user.email && (
+                                <span className="block truncate text-xs text-gray-500">
+                                  {user.email}
+                                </span>
+                              )}
                             </div>
                           </li>
                         ))
                       ) : (
                         <li className="px-3 py-2 text-gray-500 text-sm text-center">
-                          {allUsers.length === 0 ? "No users available." : "No users match your search."}
+                          {allUsers.length === 0
+                            ? "No users available."
+                            : "No users match your search."}
                         </li>
                       )}
                     </ul>
                   </div>
                 )}
               </div>
-
-              
             </div>
 
             {/* Category */}
             <div className="space-y-2">
-              <label htmlFor="taskCategoryButton" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="taskCategoryButton"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Category <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -650,16 +833,21 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     errors.taskCategory ? "border-red-500" : "border-gray-300"
                   }`}
                 >
-                  <span className="text-gray-700 truncate">{taskCategory || "Select Category"}</span>
+                  <span className="text-gray-700 truncate">
+                    {taskCategory || "Select Category"}
+                  </span>
                   <span
-                    className={`ml-1 transition-transform duration-200 ${showCategoryDropdown ? "rotate-180" : ""}`}
+                    className={`ml-1 transition-transform duration-200 ${
+                      showCategoryDropdown ? "rotate-180" : ""
+                    }`}
                   >
                     ▼
                   </span>
                 </button>
                 {errors.taskCategory && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-1" /> {errors.taskCategory}
+                    <AlertCircle className="h-4 w-4 mr-1" />{" "}
+                    {errors.taskCategory}
                   </p>
                 )}
                 {showCategoryDropdown && (
@@ -671,7 +859,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                           role="option"
                           aria-selected={taskCategory === category.name}
                           className={`px-3 py-2 cursor-pointer text-sm ${
-                            taskCategory === category.name ? "bg-blue-50 font-semibold" : "hover:bg-gray-100"
+                            taskCategory === category.name
+                              ? "bg-blue-50 font-semibold"
+                              : "hover:bg-gray-100"
                           }`}
                           onClick={() => handleCategorySelect(category.name)}
                         >
@@ -699,8 +889,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   key={priorityValue}
                   type="button"
                   onClick={() => {
-                    setTaskPriority(priorityValue)
-                    if (errors.taskPriority) setErrors((prev) => ({ ...prev, taskPriority: "" }))
+                    setTaskPriority(priorityValue);
+                    if (errors.taskPriority)
+                      setErrors((prev) => ({ ...prev, taskPriority: "" }));
                   }}
                   variant={taskPriority === priorityValue ? "solid" : "outline"}
                   className={`flex items-center px-4 py-2 text-sm rounded-md ${
@@ -709,7 +900,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                       : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {taskPriority === priorityValue && <Check className="h-4 w-4 mr-1.5" />}
+                  {taskPriority === priorityValue && (
+                    <Check className="h-4 w-4 mr-1.5" />
+                  )}
                   {priorityValue}
                 </Button>
               ))}
@@ -735,17 +928,22 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                   key={freq.value}
                   type="button"
                   onClick={() => {
-                    setTaskFrequencyType(freq.value)
-                    if (errors.taskFrequency) setErrors((prev) => ({ ...prev, taskFrequency: "" }))
+                    setTaskFrequencyType(freq.value);
+                    if (errors.taskFrequency)
+                      setErrors((prev) => ({ ...prev, taskFrequency: "" }));
                   }}
-                  variant={taskFrequencyType === freq.value ? "solid" : "outline"}
+                  variant={
+                    taskFrequencyType === freq.value ? "solid" : "outline"
+                  }
                   className={`flex items-center px-3 py-2 text-sm rounded-md ${
                     taskFrequencyType === freq.value
                       ? "bg-emerald-500 text-white hover:bg-emerald-600"
                       : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {taskFrequencyType === freq.value && <Check className="h-3 w-3 mr-1.5" />}
+                  {taskFrequencyType === freq.value && (
+                    <Check className="h-3 w-3 mr-1.5" />
+                  )}
                   {freq.label}
                 </Button>
               ))}
@@ -768,14 +966,17 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                 <Input
                   type="date"
                   value={taskDueDate}
-                  onChange={(e) => handleInputChange("taskDueDate", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("taskDueDate", e.target.value)
+                  }
                   className={`h-10 border ${
                     errors.taskDueDate ? "border-red-500" : "border-gray-300"
                   } rounded-md bg-white px-3 py-2 w-full text-sm`}
                 />
                 {errors.taskDueDate && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-1" /> {errors.taskDueDate}
+                    <AlertCircle className="h-4 w-4 mr-1" />{" "}
+                    {errors.taskDueDate}
                   </p>
                 )}
               </div>
@@ -785,7 +986,13 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
           <div className="space-y-4">
             {/* Upload button (always visible) */}
             <div className="flex flex-wrap gap-3 pt-2 justify-center sm:justify-start">
-              <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*"
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -802,13 +1009,21 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
             {/* Show attached file if any */}
             {taskImage && (
               <div className="mt-4 space-y-2">
-                <h4 className="text-sm font-medium text-gray-700">Replace File</h4>
+                <h4 className="text-sm font-medium text-gray-700">
+                  Replace File
+                </h4>
                 <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
                   <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    <span className="text-lg flex-shrink-0">{getFileIcon(taskImage.name)}</span>
+                    <span className="text-lg flex-shrink-0">
+                      {getFileIcon(taskImage.name)}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{taskImage.name}</p>
-                      <p className="text-xs text-gray-500">{formatFileSize(taskImage.size)}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {taskImage.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(taskImage.size)}
+                      </p>
                     </div>
                   </div>
 
@@ -818,8 +1033,8 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
                     size="sm"
                     className="p-1 h-6 w-6 text-gray-700 hover:text-red-600 hover:bg-red-100 dark:text-gray-300 dark:hover:text-red-400 dark:hover:bg-red-800/10"
                     onClick={() => {
-                      setTaskImage(null)
-                      toast.success("File removed successfully")
+                      setTaskImage(null);
+                      toast.success("File removed successfully");
                     }}
                     title="Remove file"
                   >
@@ -839,7 +1054,9 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
 
           <div className="pt-4 mt-6 border-t border-gray-200">
             <div className="flex justify-end items-center gap-3 mb-4">
-              <span className="text-sm font-medium text-gray-700">Assign More Tasks</span>
+              <span className="text-sm font-medium text-gray-700">
+                Assign More Tasks
+              </span>
               <Switch
                 checked={assignMoreTasks}
                 onCheckedChange={setAssignMoreTasks}
@@ -868,7 +1085,7 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
         </div>
       </form>
     </Modal>
-  )
-}
+  );
+};
 
-export default AssignTaskModal
+export default AssignTaskModal;
