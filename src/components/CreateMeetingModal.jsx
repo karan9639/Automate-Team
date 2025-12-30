@@ -190,7 +190,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               <Video className="h-5 w-5 text-white" />
             </div>
             <h2 className="text-xl font-bold text-gray-900">
-              Create New Meeting
+              Minutes of Meeting
             </h2>
           </div>
           <button
@@ -415,7 +415,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               type="submit"
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
             >
-              Create Meeting
+              Save
             </button>
           </div>
         </form>

@@ -102,7 +102,9 @@ const Meetings = () => {
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Meetings</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Minutes of Meetings
+              </h1>
               <p className="text-sm text-gray-600 mt-1">
                 Manage and view all your meetings
               </p>
@@ -112,7 +114,7 @@ const Meetings = () => {
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
             >
               <Plus className="h-5 w-5" />
-              Create Meeting
+              Create
             </button>
           </div>
 
@@ -169,7 +171,7 @@ const Meetings = () => {
               className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200"
             >
               <Plus className="h-5 w-5" />
-              Create Your First Meeting
+              Create Your First Minutes of Meeting
             </button>
           </div>
         ) : filteredMeetings.length === 0 ? (
