@@ -238,7 +238,10 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete, activeTab }) => {
       }}
     >
       <div className="flex justify-between items-start mb-3">
-        <h3 className="font-semibold text-base sm:text-lg text-card-foreground">
+        <h3
+          className="font-semibold text-base sm:text-lg text-card-foreground break-words line-clamp-2 flex-1 mr-2"
+          style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+        >
           {taskTitle}
         </h3>
         <DropdownMenu modal={false}>
@@ -331,7 +334,10 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete, activeTab }) => {
         <div className="mb-3">
           {isNumberedList ? (
             <div className="space-y-2">
-              <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
+              <div
+                className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed break-words"
+                style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+              >
                 {descriptionData.preview}
               </div>
               {descriptionData.hasMore && (
@@ -346,7 +352,10 @@ const TaskCard = ({ task, onClick, onStatusChange, onDelete, activeTab }) => {
               )}
             </div>
           ) : (
-            <div className="text-muted-foreground text-sm leading-relaxed">
+            <div
+              className="text-muted-foreground text-sm leading-relaxed break-words line-clamp-3"
+              style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+            >
               {descriptionData}
             </div>
           )}

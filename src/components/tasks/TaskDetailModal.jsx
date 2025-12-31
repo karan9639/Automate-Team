@@ -117,7 +117,10 @@ const TaskDetailModal = ({ isOpen, onClose, taskId, onEdit, onDelete }) => {
         {/* Header with actions */}
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2
+              className="text-2xl font-bold text-gray-900 mb-2 break-words"
+              style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+            >
               {task.taskTitle}
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -179,7 +182,10 @@ const TaskDetailModal = ({ isOpen, onClose, taskId, onEdit, onDelete }) => {
               Description
             </h3>
             <div className="text-gray-700 bg-gradient-to-br from-gray-50 to-gray-100/50 p-5 rounded-lg border border-gray-200 shadow-sm">
-              <div className="whitespace-pre-wrap leading-7 space-y-1">
+              <div
+                className="whitespace-pre-wrap leading-7 space-y-1 break-words"
+                style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+              >
                 {task.taskDescription.split("\n").map((line, index) => {
                   const isNumberedItem = /^\d+\.\s/.test(line.trim());
                   return (
@@ -191,19 +197,37 @@ const TaskDetailModal = ({ isOpen, onClose, taskId, onEdit, onDelete }) => {
                           : line.trim()
                           ? "py-1"
                           : ""
-                      }`}
+                      } break-words`}
+                      style={{
+                        overflowWrap: "break-word",
+                        wordBreak: "break-word",
+                      }}
                     >
                       {isNumberedItem ? (
                         <>
-                          <span className="inline-flex items-center justify-center min-w-[24px] h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                          <span className="inline-flex items-center justify-center min-w-[24px] h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold flex-shrink-0">
                             {line.match(/^(\d+)\./)[1]}
                           </span>
-                          <span className="flex-1 pt-0.5">
+                          <span
+                            className="flex-1 pt-0.5 break-words"
+                            style={{
+                              overflowWrap: "break-word",
+                              wordBreak: "break-word",
+                            }}
+                          >
                             {line.replace(/^\d+\.\s/, "")}
                           </span>
                         </>
                       ) : (
-                        <span>{line}</span>
+                        <span
+                          className="break-words"
+                          style={{
+                            overflowWrap: "break-word",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {line}
+                        </span>
                       )}
                     </div>
                   );

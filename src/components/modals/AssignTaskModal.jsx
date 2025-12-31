@@ -614,9 +614,10 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               value={taskTitle}
               onChange={(e) => handleInputChange("taskTitle", e.target.value)}
               placeholder="Enter task title"
-              className={`h-10 ${
+              className={`h-10 break-words ${
                 errors.taskTitle ? "border-red-500" : "border-gray-300"
               }`}
+              style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
             />
             {errors.taskTitle && (
               <p className="mt-1 text-sm text-red-500 flex items-center">
@@ -641,9 +642,10 @@ const AssignTaskModal = ({ isOpen, onClose, task = null }) => {
               }
               onKeyDown={handleDescriptionKeyDown}
               placeholder="Start typing your first point here..."
-              className={`min-h-[100px] ${
+              className={`min-h-[100px] break-words ${
                 errors.taskDescription ? "border-red-500" : "border-gray-300"
               }`}
+              style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
               rows={4}
             />
             {errors.taskDescription && (

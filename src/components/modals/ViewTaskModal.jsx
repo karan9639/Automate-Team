@@ -624,11 +624,15 @@ const ViewTaskModal = ({
                         onChange={(e) =>
                           handleInputChange("taskTitle", e.target.value)
                         }
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 break-words ${
                           formErrors.taskTitle
                             ? "border-red-300"
                             : "border-gray-300"
                         }`}
+                        style={{
+                          overflowWrap: "break-word",
+                          wordBreak: "break-word",
+                        }}
                         placeholder="Enter task title"
                       />
                       {formErrors.taskTitle && (
@@ -639,7 +643,13 @@ const ViewTaskModal = ({
                     </div>
                   </div>
                 ) : (
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  <h1
+                    className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 break-words line-clamp-2"
+                    style={{
+                      overflowWrap: "break-word",
+                      wordBreak: "break-word",
+                    }}
+                  >
                     {taskTitle}
                   </h1>
                 )}
@@ -692,11 +702,15 @@ const ViewTaskModal = ({
                         handleInputChange("taskDescription", e.target.value)
                       }
                       rows={4}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 break-words ${
                         formErrors.taskDescription
                           ? "border-red-300"
                           : "border-gray-300"
                       }`}
+                      style={{
+                        overflowWrap: "break-word",
+                        wordBreak: "break-word",
+                      }}
                       placeholder="Enter task description"
                     />
                     {formErrors.taskDescription && (
@@ -706,7 +720,13 @@ const ViewTaskModal = ({
                     )}
                   </div>
                 ) : (
-                  <div className="text-gray-700 dark:text-gray-300">
+                  <div
+                    className="text-gray-700 dark:text-gray-300 break-words"
+                    style={{
+                      overflowWrap: "break-word",
+                      wordBreak: "break-word",
+                    }}
+                  >
                     <div className="space-y-1">
                       {(taskDescription || "No description provided")
                         .split("\n")
@@ -832,11 +852,7 @@ const ViewTaskModal = ({
                         </div>
                       ) : (
                         <p className="text-gray-900 dark:text-gray-100">
-                          {task?.taskAssignedTo?.fullname ||
-                            task?.assignedTo?.fullname ||
-                            task?.taskAssignedTo ||
-                            task?.assignedTo ||
-                            "Not assigned"}
+                          {taskAssignedTo}
                         </p>
                       )}
                     </div>
