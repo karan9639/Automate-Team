@@ -862,7 +862,7 @@ const Dashboard = () => {
         <div className="flex flex-col xs:flex-row sm:flex-row justify-between items-start xs:items-center sm:items-center gap-2 xs:gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           <p className="text-center xs:text-left sm:text-left order-2 xs:order-1 w-full xs:w-auto">
             <span className="block xs:inline sm:inline">
-              © All rights reserved 2025
+              �� All rights reserved 2025
             </span>
             <span className="block xs:inline sm:inline xs:ml-1 sm:ml-1">
               Jasmine Automate
