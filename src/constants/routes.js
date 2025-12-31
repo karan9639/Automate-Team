@@ -4,8 +4,7 @@ export const ROUTES = {
     SIGNUP: "/signup",
     FORGOT_PASSWORD: "/forgot-password",
   },
-  DASHBOARD: "/dashboard", // Assuming this is the main dashboard path
-  // ... other main routes
+  DASHBOARD: "/dashboard",
   TASKS: {
     MANAGEMENT: "/tasks/management",
     DIRECTORY: "/tasks/directory",
@@ -28,13 +27,13 @@ export const ROUTES = {
   TEAM: {
     MY_TEAM: "/team/my-team",
   },
+  MEETINGS: "/meetings",
   MOBILE_APP: "/mobile-app",
   CHECKLIST: "/checklist",
   LINKS: "/links",
   REFER_EARN: "/refer-earn",
   SUPPORT: "/support",
   PROFILE: "/profile",
-  SETTINGS: "/settings", // General settings page
-  PROFILE_CHANGE_PASSWORD: "/profile/change-password", // New route
-  // Add other routes as needed
+  SETTINGS: "/settings",
+  PROFILE_CHANGE_PASSWORD: "/profile/change-password",
 };

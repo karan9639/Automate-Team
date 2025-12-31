@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavLink, useLocation } from "react-router-dom"
-import { motion } from "framer-motion"
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -18,33 +18,34 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
-} from "lucide-react"
+  Video,
+} from "lucide-react";
 import AutomateLogo from "@/components/common/AutomateLogo";
 
 const Sidebar = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({
     tasks: false,
     leaves: false,
     attendance: false,
-  })
-  const location = useLocation()
+  });
+  const location = useLocation();
 
   const toggleMenu = (menu) => {
     setExpandedMenus((prev) => ({
       ...prev,
       [menu]: !prev[menu],
-    }))
-  }
+    }));
+  };
 
   const isActive = (path) => {
-    return location.pathname === path
-  }
+    return location.pathname === path;
+  };
 
   const isSubActive = (paths) => {
-    return paths.some((path) => location.pathname === path)
-  }
+    return paths.some((path) => location.pathname === path);
+  };
 
   const sidebarItems = [
     {
@@ -98,6 +99,11 @@ const Sidebar = () => {
       path: "/holidays",
     },
     {
+      icon: <Video size={20} />,
+      label: "Meetings",
+      path: "/meetings",
+    },
+    {
       icon: <Users size={20} />,
       label: "My Team",
       path: "/my-team",
@@ -137,21 +143,24 @@ const Sidebar = () => {
       label: "Support",
       path: "/support",
     },
-  ]
+  ];
 
   const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
+    setIsCollapsed(!isCollapsed);
+  };
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen)
-  }
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
 
   return (
     <>
       {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button onClick={toggleMobileMenu} className="p-2 rounded-md bg-green-500 text-white hover:bg-green-600">
+        <button
+          onClick={toggleMobileMenu}
+          className="p-2 rounded-md bg-green-500 text-white hover:bg-green-600"
+        >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -166,8 +175,15 @@ const Sidebar = () => {
           <div className={`${isCollapsed ? "hidden" : "block"}`}>
             <AutomateLogo />
           </div>
-          <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-green-600 text-white">
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          <button
+            onClick={toggleSidebar}
+            className="p-1 rounded-md hover:bg-green-600 text-white"
+          >
+            {isCollapsed ? (
+              <ChevronRight size={20} />
+            ) : (
+              <ChevronLeft size={20} />
+            )}
           </button>
         </div>
 
@@ -180,21 +196,33 @@ const Sidebar = () => {
                     <button
                       onClick={() => toggleMenu(item.key)}
                       className={`w-full flex items-center justify-between px-4 py-2 rounded-md text-white hover:bg-green-600 ${
-                        isSubActive(item.items.map((subItem) => subItem.path)) ? "bg-green-600" : ""
+                        isSubActive(item.items.map((subItem) => subItem.path))
+                          ? "bg-green-600"
+                          : ""
                       }`}
                     >
                       <div className="flex items-center">
                         {item.icon}
-                        {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                        {!isCollapsed && (
+                          <span className="ml-3">{item.label}</span>
+                        )}
                       </div>
                       {!isCollapsed && (
-                        <div>{expandedMenus[item.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</div>
+                        <div>
+                          {expandedMenus[item.key] ? (
+                            <ChevronDown size={16} />
+                          ) : (
+                            <ChevronRight size={16} />
+                          )}
+                        </div>
                       )}
                     </button>
                     {(expandedMenus[item.key] || isCollapsed) && (
                       <div
                         className={`mt-1 space-y-1 ${
-                          isCollapsed ? "absolute left-16 bg-green-500 rounded-md p-2 w-48" : ""
+                          isCollapsed
+                            ? "absolute left-16 bg-green-500 rounded-md p-2 w-48"
+                            : ""
                         }`}
                       >
                         {item.items.map((subItem, subIndex) => (
@@ -207,8 +235,12 @@ const Sidebar = () => {
                               }`
                             }
                           >
-                            {isCollapsed && <div className="w-5">{item.icon}</div>}
-                            <span className={isCollapsed ? "ml-3" : "ml-8"}>{subItem.label}</span>
+                            {isCollapsed && (
+                              <div className="w-5">{item.icon}</div>
+                            )}
+                            <span className={isCollapsed ? "ml-3" : "ml-8"}>
+                              {subItem.label}
+                            </span>
                           </NavLink>
                         ))}
                       </div>
@@ -242,7 +274,10 @@ const Sidebar = () => {
       >
         <div className="flex items-center justify-between p-4">
           <AutomateLogo />
-          <button onClick={toggleMobileMenu} className="p-1 rounded-md hover:bg-green-600 text-white">
+          <button
+            onClick={toggleMobileMenu}
+            className="p-1 rounded-md hover:bg-green-600 text-white"
+          >
             <X size={20} />
           </button>
         </div>
@@ -256,14 +291,22 @@ const Sidebar = () => {
                     <button
                       onClick={() => toggleMenu(item.key)}
                       className={`w-full flex items-center justify-between px-4 py-2 rounded-md text-white hover:bg-green-600 ${
-                        isSubActive(item.items.map((subItem) => subItem.path)) ? "bg-green-600" : ""
+                        isSubActive(item.items.map((subItem) => subItem.path))
+                          ? "bg-green-600"
+                          : ""
                       }`}
                     >
                       <div className="flex items-center">
                         {item.icon}
                         <span className="ml-3">{item.label}</span>
                       </div>
-                      <div>{expandedMenus[item.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</div>
+                      <div>
+                        {expandedMenus[item.key] ? (
+                          <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
+                        )}
+                      </div>
                     </button>
                     {expandedMenus[item.key] && (
                       <div className="mt-1 space-y-1">
@@ -316,7 +359,7 @@ const Sidebar = () => {
         ></motion.div>
       )}
     </>
-  )
-}
+  );
+};
 
-export default Sidebar
+export default Sidebar;
