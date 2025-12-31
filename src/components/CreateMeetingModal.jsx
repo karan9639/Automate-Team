@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   X,
   Calendar,
@@ -12,10 +12,30 @@ import {
   Trash2,
 } from "lucide-react";
 
+const departments = [
+  "Sampling",
+  "PPC",
+  "Job Work",
+  "Greige",
+  "Form Lamination",
+  "Flat Knit",
+  "Dyeing",
+  "Dyeing Lab",
+  "Dispatch Dyeing",
+  "Digital Printing",
+  "Biling",
+  "Adhessive",
+  "Accounts",
+  "IT",
+  "HR",
+];
+
+const departmentOptions = [...departments, "Other"];
+
 const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     title: "",
-    date: "",
+    date: "", // YYYY-MM-DD
     department: "IT",
     type: "Online",
     description: "1. ",
@@ -23,10 +43,25 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   });
 
   const [errors, setErrors] = useState({});
-  const [newMember, setNewMember] = useState({ name: "", role: "" });
+  const [newMember, setNewMember] = useState({ name: "" });
+
   const descriptionRef = useRef(null);
 
-  // Reset form when modal opens
+  // ✅ Date toggle (close on second click)
+  const dateInputRef = useRef(null);
+  const [isDateOpen, setIsDateOpen] = useState(false);
+
+  const handleDatePointerDown = (e) => {
+    // If already open and user clicks again -> close
+    if (isDateOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      dateInputRef.current?.blur();
+    }
+    // else: allow normal browser behavior (it will open)
+  };
+
+  // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -38,20 +73,21 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
         members: [],
       });
       setErrors({});
-      setNewMember({ name: "", role: "" });
+      setNewMember({ name: "" });
+      setIsDateOpen(false);
     }
   }, [isOpen]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
+  // Auto numbering description
   const handleDescriptionKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+
       const textarea = e.target;
       const cursorPos = textarea.selectionStart;
       const textBefore = formData.description.substring(0, cursorPos);
@@ -62,10 +98,10 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
 
       const match = currentLine.match(/^(\d+)\.\s?/);
       if (match) {
-        const currentNum = Number.parseInt(match[1]);
+        const currentNum = Number.parseInt(match[1], 10);
         const nextNum = currentNum + 1;
-        const newText = textBefore + "\n" + nextNum + ". " + textAfter;
 
+        const newText = textBefore + "\n" + nextNum + ". " + textAfter;
         setFormData((prev) => ({ ...prev, description: newText }));
 
         setTimeout(() => {
@@ -73,33 +109,27 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
           textarea.setSelectionRange(newPos, newPos);
         }, 0);
       } else {
-        // If no number found, just add next line with number
         const lineCount = lines.length;
         const newText = textBefore + "\n" + (lineCount + 1) + ". " + textAfter;
         setFormData((prev) => ({ ...prev, description: newText }));
       }
     }
 
-    // Handle backspace to renumber
     if (e.key === "Backspace") {
       setTimeout(() => {
         const value = descriptionRef.current?.value || "";
         const lines = value.split("\n");
-        let needsRenumber = false;
 
-        // Check if renumbering is needed
+        let needsRenumber = false;
         lines.forEach((line, index) => {
           const match = line.match(/^(\d+)\.\s?/);
-          if (match && Number.parseInt(match[1]) !== index + 1) {
+          if (match && Number.parseInt(match[1], 10) !== index + 1)
             needsRenumber = true;
-          }
         });
 
         if (needsRenumber) {
           const renumbered = lines
-            .map((line, index) => {
-              return line.replace(/^(\d+)\.\s?/, `${index + 1}. `);
-            })
+            .map((line, index) => line.replace(/^(\d+)\.\s?/, `${index + 1}. `))
             .join("\n");
           setFormData((prev) => ({ ...prev, description: renumbered }));
         }
@@ -107,19 +137,18 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
+  // Members (role removed)
   const handleAddMember = () => {
-    if (newMember.name.trim() && newMember.role.trim()) {
-      const member = {
-        id: Date.now(),
-        name: newMember.name.trim(),
-        role: newMember.role.trim(),
-      };
-      setFormData((prev) => ({
-        ...prev,
-        members: [...prev.members, member],
-      }));
-      setNewMember({ name: "", role: "" });
-    }
+    if (!newMember.name.trim()) return;
+
+    const member = { id: Date.now(), name: newMember.name.trim() };
+
+    setFormData((prev) => ({
+      ...prev,
+      members: [...prev.members, member],
+    }));
+
+    setNewMember({ name: "" });
   };
 
   const handleRemoveMember = (memberId) => {
@@ -142,27 +171,22 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (validate()) {
-      // Format date from YYYY-MM-DD to DD/MM/YYYY
-      const [year, month, day] = formData.date.split("-");
-      const formattedDate = `${day}/${month}/${year}`;
+    if (!validate()) return;
 
-      onSubmit({
-        ...formData,
-        date: formattedDate,
-      });
+    onSubmit({ ...formData });
 
-      // Reset form
-      setFormData({
-        title: "",
-        date: "",
-        department: "IT",
-        type: "Online",
-        description: "1. ",
-        members: [],
-      });
-      setErrors({});
-    }
+    // Reset
+    setFormData({
+      title: "",
+      date: "",
+      department: "IT",
+      type: "Online",
+      description: "1. ",
+      members: [],
+    });
+    setErrors({});
+    setNewMember({ name: "" });
+    setIsDateOpen(false);
   };
 
   const handleClose = () => {
@@ -175,10 +199,16 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
       members: [],
     });
     setErrors({});
+    setNewMember({ name: "" });
+    setIsDateOpen(false);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  const safeDepartment = departmentOptions.includes(formData.department)
+    ? formData.department
+    : "Other";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
@@ -227,48 +257,52 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               )}
             </div>
 
-            {/* Meeting Date */}
+            {/* ✅ Meeting Date (ONLY ONE ICON + close on second click) */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Calendar className="h-4 w-4" />
                 Meeting Date <span className="text-red-500">*</span>
               </label>
+
               <input
+                ref={dateInputRef}
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleChange("date", e.target.value)}
+                onPointerDown={handleDatePointerDown}
+                onFocus={() => setIsDateOpen(true)}
+                onBlur={() => setIsDateOpen(false)}
                 className={`w-full px-4 py-2.5 border ${
                   errors.date ? "border-red-500" : "border-gray-300"
                 } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
               />
+
               {errors.date && (
                 <p className="mt-1 text-sm text-red-500">{errors.date}</p>
               )}
             </div>
 
-            {/* Department and Type in a row */}
+            {/* Department and Type */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Department */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Briefcase className="h-4 w-4" />
                   Department
                 </label>
                 <select
-                  value={formData.department}
+                  value={safeDepartment}
                   onChange={(e) => handleChange("department", e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
                 >
-                  <option value="IT">IT</option>
-                  <option value="HR">HR</option>
-                  <option value="Sales">Sales</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Operations">Operations</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                  <option value="Other">Other</option>
                 </select>
               </div>
 
-              {/* Meeting Type */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Video className="h-4 w-4" />
@@ -301,43 +335,31 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
+            {/* Members */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Users className="h-4 w-4" />
                 Meeting Members
               </label>
 
-              {/* Add Member Form */}
               <div className="flex gap-2 mb-3">
                 <input
                   type="text"
                   value={newMember.name}
-                  onChange={(e) =>
-                    setNewMember((prev) => ({ ...prev, name: e.target.value }))
-                  }
+                  onChange={(e) => setNewMember({ name: e.target.value })}
                   placeholder="Member name"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
-                />
-                <input
-                  type="text"
-                  value={newMember.role}
-                  onChange={(e) =>
-                    setNewMember((prev) => ({ ...prev, role: e.target.value }))
-                  }
-                  placeholder="Role"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                 />
                 <button
                   type="button"
                   onClick={handleAddMember}
-                  disabled={!newMember.name.trim() || !newMember.role.trim()}
+                  disabled={!newMember.name.trim()}
                   className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
 
-              {/* Members List */}
               {formData.members.length > 0 ? (
                 <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-32 overflow-y-auto">
                   {formData.members.map((member) => (
@@ -349,12 +371,9 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                         <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {member.name}
-                          </p>
-                          <p className="text-xs text-gray-500">{member.role}</p>
-                        </div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {member.name}
+                        </p>
                       </div>
                       <button
                         type="button"
@@ -373,7 +392,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               )}
             </div>
 
-            {/* Meeting Description */}
+            {/* Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <FileText className="h-4 w-4" />
@@ -384,7 +403,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
                 onKeyDown={handleDescriptionKeyDown}
-                placeholder="Type your first point and press Enter for automatic numbering"
                 rows="6"
                 className={`w-full px-4 py-2.5 border ${
                   errors.description ? "border-red-500" : "border-gray-300"

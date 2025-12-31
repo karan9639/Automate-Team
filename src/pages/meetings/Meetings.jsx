@@ -12,9 +12,18 @@ import {
   Loader2,
   Trash2,
   Eye,
+  Download,
+  AlertCircle,
 } from "lucide-react";
 import CreateMeetingModal from "../../components/CreateMeetingModal";
 import ViewMeetingModal from "../../components/ViewMeetingModal";
+import { generateMeetingPDF } from "../../utils/pdfGenerator";
+import {
+  fetchMeetings,
+  createMeeting,
+  updateMeeting,
+  deleteMeeting,
+} from "../../api/meetingsApi";
 
 const Meetings = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -24,14 +33,35 @@ const Meetings = () => {
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [loading, setLoading] = useState(true);
   const [meetings, setMeetings] = useState([]);
+  const [error, setError] = useState(null);
 
-  // Simulate initial loading state only
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
+    loadMeetings();
   }, []);
+
+  const loadMeetings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await fetchMeetings();
+
+      if (result.success) {
+        setMeetings(result.data);
+
+        // Log source for debugging
+        if (result.source === "localStorage") {
+          console.log(
+            "[v0] Loaded meetings from localStorage (API unavailable)"
+          );
+        }
+      }
+    } catch (err) {
+      console.error("[v0] Error loading meetings:", err);
+      setError("Failed to load meetings. Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openMeetingDetails = (meeting) => {
     setSelectedMeeting(meeting);
@@ -51,30 +81,52 @@ const Meetings = () => {
     setIsCreateModalOpen(false);
   };
 
-  const handleCreateMeeting = (meetingData) => {
-    const newMeeting = {
-      id: Date.now(), // Unique ID based on timestamp
-      ...meetingData,
-      createdAt: new Date().toLocaleDateString("en-GB"),
-    };
-    setMeetings((prevMeetings) => [...prevMeetings, newMeeting]);
-    closeCreateModal();
+  const handleCreateMeeting = async (meetingData) => {
+    try {
+      const result = await createMeeting(meetingData);
+
+      if (result.success) {
+        setMeetings((prevMeetings) => [...prevMeetings, result.data]);
+        closeCreateModal();
+      }
+    } catch (err) {
+      console.error("[v0] Error creating meeting:", err);
+      alert("Failed to create meeting. Please try again.");
+    }
   };
 
-  const handleUpdateMeeting = (updatedMeeting) => {
-    setMeetings((prevMeetings) =>
-      prevMeetings.map((meeting) =>
-        meeting.id === updatedMeeting.id ? updatedMeeting : meeting
-      )
-    );
-    setSelectedMeeting(updatedMeeting);
+  const handleUpdateMeeting = async (updatedMeeting) => {
+    try {
+      const result = await updateMeeting(updatedMeeting.id, updatedMeeting);
+
+      if (result.success) {
+        setMeetings((prevMeetings) =>
+          prevMeetings.map((meeting) =>
+            meeting.id === updatedMeeting.id ? result.data : meeting
+          )
+        );
+        setSelectedMeeting(result.data);
+      }
+    } catch (err) {
+      console.error("[v0] Error updating meeting:", err);
+      alert("Failed to update meeting. Please try again.");
+    }
   };
 
-  const handleDeleteMeeting = (meetingId) => {
-    setMeetings((prevMeetings) =>
-      prevMeetings.filter((meeting) => meeting.id !== meetingId)
-    );
-    closeViewModal();
+  const handleDeleteMeeting = async (meetingId) => {
+    try {
+      const result = await deleteMeeting(meetingId);
+
+      if (result.success) {
+        setMeetings((prevMeetings) =>
+          prevMeetings.filter((meeting) => meeting.id !== meetingId)
+        );
+        closeViewModal();
+      }
+    } catch (err) {
+      console.error("[v0] Error deleting meeting:", err);
+      alert("Failed to delete meeting. Please try again.");
+    }
   };
 
   // Filter meetings
@@ -93,6 +145,16 @@ const Meetings = () => {
     if (!description) return [];
     const lines = description.split("\n").filter((line) => line.trim());
     return lines.slice(0, 3);
+  };
+
+  const handleDownloadPDF = async (meeting, e) => {
+    e.stopPropagation();
+    try {
+      await generateMeetingPDF(meeting);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   return (
@@ -117,6 +179,21 @@ const Meetings = () => {
               Create
             </button>
           </div>
+
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <button
+                onClick={loadMeetings}
+                className="text-sm font-medium text-red-600 hover:text-red-700 underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {/* Search and Filter Bar - Only show when there are meetings */}
           {meetings.length > 0 && (
@@ -182,7 +259,7 @@ const Meetings = () => {
               No meetings found
             </h3>
             <p className="text-gray-600 mb-6 text-center max-w-md">
-              Try adjusting your search or filter criteria to find what you're
+              Try adjusting your search or filter criteria to find what you&apos;re
               looking for.
             </p>
             <button
@@ -273,14 +350,24 @@ const Meetings = () => {
                 </div>
 
                 {/* Card Footer with Actions */}
-                <div className="px-5 py-3 bg-gray-50 flex items-center justify-between">
-                  <button
-                    onClick={() => openMeetingDetails(meeting)}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View Details
-                  </button>
+                <div className="px-5 py-3 bg-gray-50 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => openMeetingDetails(meeting)}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>View Details</span>
+                    </button>
+                    <button
+                      onClick={(e) => handleDownloadPDF(meeting, e)}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                      title="Download PDF Report"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download</span>
+                    </button>
+                  </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -292,10 +379,10 @@ const Meetings = () => {
                         handleDeleteMeeting(meeting.id);
                       }
                     }}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
