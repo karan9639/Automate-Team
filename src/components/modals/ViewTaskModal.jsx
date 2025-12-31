@@ -1171,14 +1171,14 @@ const ViewTaskModal = ({
                         }
                         className="px-4 py-2 h-[60px] bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center"
                       >
-                        {isSubmittingComment || taskLoading.createComment ? (
+                        {isSubmittingComment || taskLoadingState.createComment ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Send className="h-4 w-4" />
                         )}
                       </button>
                     </div>
-                    {taskErrors.createComment && (
+                    {taskErrorState.createComment && (
                       <p className="mt-1 text-sm text-red-600">
                         {typeof createCommentError === "string"
                           ? createCommentError
