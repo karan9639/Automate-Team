@@ -50,6 +50,7 @@ const Meetings = () => {
           id: meeting._id,
           title: meeting.meetingTitle,
           date: meeting.meetingDate,
+          createdAt: meeting.createdAt,
           department: meeting.department,
           type: meeting.meetingMode,
           members: meeting.meetingMembers
@@ -144,6 +145,7 @@ const Meetings = () => {
           id: result.data._id,
           title: result.data.meetingTitle,
           date: result.data.meetingDate,
+          createdAt: result.data.createdAt,
           department: result.data.department,
           type: result.data.meetingMode,
           members: result.data.meetingMembers
@@ -188,14 +190,41 @@ const Meetings = () => {
       // Check if date is valid
       if (isNaN(date.getTime())) return dateString
 
-      // Format: 15 Jan 2025
+      // Format: 15 Jan 2026
       const options = {
         day: "2-digit",
         month: "short",
         year: "numeric",
+        timeZone: "Asia/Kolkata", // Indian Standard Time
       }
 
       return date.toLocaleDateString("en-GB", options)
+    } catch (error) {
+      return dateString
+    }
+  }
+
+  const formatCreatedAtForDisplay = (dateString) => {
+    if (!dateString) return ""
+
+    try {
+      const date = new Date(dateString)
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) return dateString
+
+      // Format: 15 Jan 2026, 03:39 pm (IST)
+      const options = {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata", // Indian Standard Time
+      }
+
+      return date.toLocaleString("en-IN", options)
     } catch (error) {
       return dateString
     }
@@ -367,7 +396,7 @@ const Meetings = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="h-4 w-4 text-gray-400" />
-                      <span>{formatDateForDisplay(meeting.date)}</span>
+                      <span>{formatCreatedAtForDisplay(meeting.createdAt)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Briefcase className="h-4 w-4 text-gray-400" />

@@ -42,7 +42,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
       // Check if date is valid
       if (isNaN(date.getTime())) return dateString
 
-      // Format: 15 Jan 2025, 10:30 AM
+      // Format: 09 Jan 2026, 05:30 am (IST)
       const options = {
         day: "2-digit",
         month: "short",
@@ -50,9 +50,10 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
+        timeZone: "Asia/Kolkata", // Indian Standard Time
       }
 
-      return date.toLocaleString("en-GB", options)
+      return date.toLocaleString("en-IN", options)
     } catch (error) {
       return dateString
     }
