@@ -77,6 +77,32 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     }
   }
 
+  const formatCreatedAtForDisplay = (dateString) => {
+    if (!dateString) return ""
+
+    try {
+      const date = new Date(dateString)
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) return dateString
+
+      // Format: 12 Jan 2026, 03:39 pm (IST)
+      const options = {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata", // Indian Standard Time
+      }
+
+      return date.toLocaleString("en-IN", options)
+    } catch (error) {
+      return dateString
+    }
+  }
+
   const handleChange = (field, value) => {
     setEditForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -292,7 +318,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{formatDateForDisplay(meeting.date)}</p>
+                  <p className="text-gray-900">{formatCreatedAtForDisplay(meeting.createdAt)}</p>
                 )}
               </div>
 
@@ -469,7 +495,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
             {/* Created Date */}
             {meeting.createdAt && (
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-400">Created: {meeting.createdAt}</p>
+                <p className="text-xs text-gray-400">Note Created: {formatCreatedAtForDisplay(meeting.createdAt)}</p>
               </div>
             )}
           </div>
