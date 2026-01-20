@@ -1,12 +1,38 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { X, Calendar, Briefcase, FileText, Video, Users, Edit2, Save, XCircle, Trash2, Plus } from "lucide-react"
-import DeleteConfirmationModal from "./DeleteConfirmationModal"
+import { useState, useEffect, useRef } from "react";
+import {
+  X,
+  Calendar,
+  Briefcase,
+  FileText,
+  Video,
+  Users,
+  Edit2,
+  Save,
+  XCircle,
+  Trash2,
+  Plus,
+} from "lucide-react";
+import DeleteConfirmationModal from "./DeleteConfirmationModal";
+
+import {
+  getDescriptionLines,
+  linesToNumberedText,
+  prepareDescriptionForStorage,
+  formatTsvToAlignedColumns,
+} from "@/utils/descriptionUtils";
+
+const normalizeNewlines = (text) =>
+  (text || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\u00A0/g, " ");
 
 const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
-  const [isEditing, setIsEditing] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
   const [editForm, setEditForm] = useState({
     title: "",
     date: "",
@@ -14,232 +40,270 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     type: "",
     description: "",
     members: [],
-  })
-  const [newMember, setNewMember] = useState({ name: "", role: "" })
-  const descriptionRef = useRef(null)
+  });
 
-  // Initialize edit form when meeting changes
+  const [newMember, setNewMember] = useState({ name: "", role: "" });
+  const descriptionRef = useRef(null);
+
   useEffect(() => {
     if (meeting) {
+      const lines = getDescriptionLines(meeting.description || "");
       setEditForm({
         title: meeting.title || "",
         date: formatDateForInput(meeting.date) || "",
         department: meeting.department || "IT",
         type: meeting.type || "Online",
-        description: meeting.description || "",
+        // ✅ show numbered text while editing
+        description: lines.length ? linesToNumberedText(lines) : "1. ",
         members: meeting.members || [],
-      })
-      setIsEditing(false)
+      });
+      setIsEditing(false);
+      setNewMember({ name: "", role: "" });
     }
-  }, [meeting])
+  }, [meeting]);
 
   const formatDateForDisplay = (dateString) => {
-    if (!dateString) return ""
-
+    if (!dateString) return "N/A";
     try {
-      const date = new Date(dateString)
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) return dateString
-
-      // Format: 09 Jan 2026, 05:30 am (IST)
-      const options = {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "Asia/Kolkata", // Indian Standard Time
-      }
-
-      return date.toLocaleString("en-IN", options)
-    } catch (error) {
-      return dateString
+        timeZone: "Asia/Kolkata",
+      });
+    } catch {
+      return dateString;
     }
-  }
+  };
 
   const formatDateForInput = (dateString) => {
-    if (!dateString) return ""
-
+    if (!dateString) return "";
     try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return ""
-
-      // Format for input: YYYY-MM-DD
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, "0")
-      const day = String(date.getDate()).padStart(2, "0")
-
-      return `${year}-${month}-${day}`
-    } catch (error) {
-      return ""
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "";
     }
-  }
+  };
 
   const formatCreatedAtForDisplay = (dateString) => {
-    if (!dateString) return ""
-
+    if (!dateString) return "";
     try {
-      const date = new Date(dateString)
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) return dateString
-
-      // Format: 12 Jan 2026, 03:39 pm (IST)
-      const options = {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
-        timeZone: "Asia/Kolkata", // Indian Standard Time
-      }
-
-      return date.toLocaleString("en-IN", options)
-    } catch (error) {
-      return dateString
+        timeZone: "Asia/Kolkata",
+      });
+    } catch {
+      return dateString;
     }
-  }
+  };
 
   const handleChange = (field, value) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }))
-  }
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
 
-  // Description auto-numbering
+  // ✅ Paste Excel in edit mode (keeps alignment)
+  const handleDescriptionPaste = (e) => {
+    const pastedRaw = e.clipboardData?.getData("text/plain") || "";
+    if (!pastedRaw) return;
+
+    e.preventDefault();
+
+    const textarea = e.currentTarget;
+    const value = textarea.value;
+
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? value.length;
+
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+
+    const formatted = pastedRaw.includes("\t")
+      ? formatTsvToAlignedColumns(pastedRaw)
+      : normalizeNewlines(pastedRaw);
+
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const currentLineUptoCursor = before.slice(lineStart);
+    const bulletOnlyMatch = currentLineUptoCursor.match(/^\s*(\d+)\.\s*$/);
+
+    let newValue = "";
+    let newCursor = 0;
+
+    if (bulletOnlyMatch) {
+      const startNum = parseInt(bulletOnlyMatch[1], 10);
+
+      let lines = normalizeNewlines(formatted).split("\n");
+      if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+
+      const lastNum = startNum + lines.length - 1;
+      const maxDigits = String(lastNum).length;
+
+      const numberedBlock = lines
+        .map((ln, idx) => {
+          const n = startNum + idx;
+          const prefix = `${String(n).padStart(maxDigits, " ")}. `;
+          return prefix + ln;
+        })
+        .join("\n");
+
+      newValue = value.slice(0, lineStart) + numberedBlock + after;
+      newCursor = lineStart + numberedBlock.length;
+    } else {
+      newValue = before + formatted + after;
+      newCursor = before.length + formatted.length;
+    }
+
+    setEditForm((prev) => ({ ...prev, description: newValue }));
+
+    setTimeout(() => {
+      const el = descriptionRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
+
+  // ✅ Enter numbering + Backspace renumber
   const handleDescriptionKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      const textarea = e.target
-      const cursorPos = textarea.selectionStart
-      const textBefore = editForm.description.substring(0, cursorPos)
-      const textAfter = editForm.description.substring(cursorPos)
+      e.preventDefault();
+      const textarea = e.target;
+      const cursorPos = textarea.selectionStart;
+      const textBefore = editForm.description.substring(0, cursorPos);
+      const textAfter = editForm.description.substring(cursorPos);
 
-      const lines = textBefore.split("\n")
-      const currentLine = lines[lines.length - 1]
+      const lines = textBefore.split("\n");
+      const currentLine = lines[lines.length - 1];
 
-      const match = currentLine.match(/^(\d+)\.\s?/)
+      const match = currentLine.match(/^(\d+)\.\s?/);
       if (match) {
-        const currentNum = Number.parseInt(match[1])
-        const nextNum = currentNum + 1
-        const newText = textBefore + "\n" + nextNum + ". " + textAfter
+        const currentNum = Number.parseInt(match[1], 10);
+        const nextNum = currentNum + 1;
+        const newText = textBefore + "\n" + nextNum + ". " + textAfter;
 
-        setEditForm((prev) => ({ ...prev, description: newText }))
+        setEditForm((prev) => ({ ...prev, description: newText }));
 
         setTimeout(() => {
-          const newPos = cursorPos + nextNum.toString().length + 3
-          textarea.setSelectionRange(newPos, newPos)
-        }, 0)
+          const newPos = cursorPos + nextNum.toString().length + 3;
+          textarea.setSelectionRange(newPos, newPos);
+        }, 0);
       }
     }
 
-    // Handle backspace to renumber
     if (e.key === "Backspace") {
       setTimeout(() => {
-        const value = descriptionRef.current?.value || ""
-        const lines = value.split("\n")
-        let needsRenumber = false
+        const value = descriptionRef.current?.value || "";
+        const lines = value.split("\n");
+        let needsRenumber = false;
 
         lines.forEach((line, index) => {
-          const match = line.match(/^(\d+)\.\s?/)
-          if (match && Number.parseInt(match[1]) !== index + 1) {
-            needsRenumber = true
+          const match = line.match(/^(\d+)\.\s?/);
+          if (match && Number.parseInt(match[1], 10) !== index + 1) {
+            needsRenumber = true;
           }
-        })
+        });
 
         if (needsRenumber) {
           const renumbered = lines
-            .map((line, index) => {
-              return line.replace(/^(\d+)\.\s?/, `${index + 1}. `)
-            })
-            .join("\n")
-          setEditForm((prev) => ({ ...prev, description: renumbered }))
+            .map((line, index) => line.replace(/^(\d+)\.\s?/, `${index + 1}. `))
+            .join("\n");
+          setEditForm((prev) => ({ ...prev, description: renumbered }));
         }
-      }, 0)
+      }, 0);
     }
-  }
+  };
 
-  // Add member
   const handleAddMember = () => {
     if (newMember.name.trim() && newMember.role.trim()) {
       const member = {
         id: Date.now(),
         name: newMember.name.trim(),
         role: newMember.role.trim(),
-      }
+      };
       setEditForm((prev) => ({
         ...prev,
         members: [...prev.members, member],
-      }))
-      setNewMember({ name: "", role: "" })
+      }));
+      setNewMember({ name: "", role: "" });
     }
-  }
+  };
 
-  // Remove member
   const handleRemoveMember = (memberId) => {
     setEditForm((prev) => ({
       ...prev,
       members: prev.members.filter((m) => m.id !== memberId),
-    }))
-  }
+    }));
+  };
 
   const handleSave = () => {
+    const cleanedDescription = prepareDescriptionForStorage(
+      editForm.description,
+    );
+
     const updatedMeeting = {
       ...meeting,
       ...editForm,
-      date: formatDateForDisplay(editForm.date),
-    }
-    onUpdate(updatedMeeting)
-    setIsEditing(false)
-  }
+      description: cleanedDescription, // ✅ store clean
+      date: editForm.date, // ✅ keep YYYY-MM-DD from input
+    };
+
+    onUpdate(updatedMeeting);
+    setIsEditing(false);
+  };
 
   const handleCancel = () => {
+    const lines = getDescriptionLines(meeting.description || "");
     setEditForm({
       title: meeting.title || "",
       date: formatDateForInput(meeting.date) || "",
       department: meeting.department || "IT",
       type: meeting.type || "Online",
-      description: meeting.description || "",
+      description: lines.length ? linesToNumberedText(lines) : "1. ",
       members: meeting.members || [],
-    })
-    setIsEditing(false)
-    setNewMember({ name: "", role: "" })
-  }
+    });
+    setIsEditing(false);
+    setNewMember({ name: "", role: "" });
+  };
 
-  const handleDeleteClick = () => {
-    setIsDeleteModalOpen(true)
-  }
-
+  const handleDeleteClick = () => setIsDeleteModalOpen(true);
   const handleDeleteConfirm = () => {
-    onDelete(meeting.id)
-    setIsDeleteModalOpen(false)
-  }
+    onDelete(meeting.id);
+    setIsDeleteModalOpen(false);
+  };
+  const handleDeleteCancel = () => setIsDeleteModalOpen(false);
 
-  const handleDeleteCancel = () => {
-    setIsDeleteModalOpen(false)
-  }
+  if (!isOpen || !meeting) return null;
 
-  // Parse description for display
-  const parseDescription = (desc) => {
-    if (!desc) return []
-    return desc.split("\n").filter((line) => line.trim())
-  }
-
-  if (!isOpen || !meeting) return null
+  // ✅ Lines for VIEW (no numbering inside)
+  const viewLines = getDescriptionLines(meeting.description || "");
 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-emerald-50">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-600 rounded-lg">
                 <Video className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Meeting Details</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Meeting Details
+              </h2>
             </div>
+
             <div className="flex items-center gap-2">
               {!isEditing ? (
                 <>
@@ -276,15 +340,17 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                   </button>
                 </>
               )}
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
           </div>
 
-          {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6 space-y-5">
-            {/* Meeting Title */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
                 <FileText className="h-4 w-4" />
@@ -298,13 +364,13 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-lg font-semibold text-gray-900">{meeting.title}</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {meeting.title}
+                </p>
               )}
             </div>
 
-            {/* Date and Type Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Meeting Date */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
                   <Calendar className="h-4 w-4" />
@@ -318,11 +384,12 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{formatCreatedAtForDisplay(meeting.createdAt)}</p>
+                  <p className="text-gray-900">
+                    {formatDateForDisplay(meeting.date)}
+                  </p>
                 )}
               </div>
 
-              {/* Meeting Type */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
                   <Video className="h-4 w-4" />
@@ -356,7 +423,9 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                 ) : (
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                      meeting.type === "Online" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                      meeting.type === "Online"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-blue-100 text-blue-700"
                     }`}
                   >
                     {meeting.type}
@@ -365,7 +434,6 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
               </div>
             </div>
 
-            {/* Department */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
                 <Briefcase className="h-4 w-4" />
@@ -391,7 +459,6 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
               )}
             </div>
 
-            {/* Members */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                 <Users className="h-4 w-4" />
@@ -403,14 +470,24 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                   <input
                     type="text"
                     value={newMember.name}
-                    onChange={(e) => setNewMember((prev) => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setNewMember((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
                     placeholder="Member name"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                   />
                   <input
                     type="text"
                     value={newMember.role}
-                    onChange={(e) => setNewMember((prev) => ({ ...prev, role: e.target.value }))}
+                    onChange={(e) =>
+                      setNewMember((prev) => ({
+                        ...prev,
+                        role: e.target.value,
+                      }))
+                    }
                     placeholder="Role"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                   />
@@ -427,75 +504,101 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
 
               {(isEditing ? editForm.members : meeting.members)?.length > 0 ? (
                 <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-40 overflow-y-auto">
-                  {(isEditing ? editForm.members : meeting.members).map((member) => (
-                    <div key={member.id} className="flex items-center justify-between px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
-                          {member.name.charAt(0).toUpperCase()}
+                  {(isEditing ? editForm.members : meeting.members).map(
+                    (member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
+                            {member.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {member.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {member.role}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                          <p className="text-xs text-gray-500">{member.role}</p>
-                        </div>
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(member.id)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
-                      {isEditing && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(member.id)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 italic">No members assigned</p>
+                <p className="text-sm text-gray-500 italic">
+                  No members assigned
+                </p>
               )}
             </div>
 
-            {/* Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                 <FileText className="h-4 w-4" />
                 Meeting Description
               </label>
+
               {isEditing ? (
                 <>
                   <textarea
                     ref={descriptionRef}
                     value={editForm.description}
-                    onChange={(e) => handleChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("description", e.target.value)
+                    }
                     onKeyDown={handleDescriptionKeyDown}
-                    rows="6"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-mono text-sm"
+                    onPaste={handleDescriptionPaste}
+                    rows="8"
+                    wrap="off"
+                    spellCheck={false}
+                    style={{ tabSize: 8, MozTabSize: 8 }}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-mono text-sm overflow-x-auto whitespace-pre"
                     placeholder="1. First point..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">Press Enter for automatic numbering.</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Press Enter for automatic numbering.
+                  </p>
                 </>
-              ) : meeting.description ? (
+              ) : viewLines.length ? (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <ol className="space-y-2">
-                    {parseDescription(meeting.description).map((line, index) => (
+                    {viewLines.map((line, index) => (
                       <li key={index} className="flex gap-3 text-gray-700">
                         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold">
                           {index + 1}
                         </span>
-                        <span className="flex-1">{line.replace(/^\d+\.\s*/, "")}</span>
+                        <div className="min-w-0 flex-1 overflow-x-auto">
+                          <pre className="m-0 font-mono text-sm whitespace-pre">
+                            {line}
+                          </pre>
+                        </div>
                       </li>
                     ))}
                   </ol>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 italic">No description provided</p>
+                <p className="text-sm text-gray-500 italic">
+                  No description provided
+                </p>
               )}
             </div>
 
-            {/* Created Date */}
             {meeting.createdAt && (
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-400">Note Created: {formatCreatedAtForDisplay(meeting.createdAt)}</p>
+                <p className="text-xs text-gray-400">
+                  Note Created: {formatCreatedAtForDisplay(meeting.createdAt)}
+                </p>
               </div>
             )}
           </div>
@@ -510,7 +613,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
         message="Are you sure you want to delete this meeting note? This action cannot be undone."
       />
     </>
-  )
-}
+  );
+};
 
-export default ViewMeetingModal
+export default ViewMeetingModal;

@@ -18,7 +18,7 @@ import {
 import CreateMeetingModal from "../../components/CreateMeetingModal"
 import ViewMeetingModal from "../../components/ViewMeetingModal"
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal"
-import { generateMeetingPDF } from "../../utils/pdfGenerator"
+import { generateMeetingPDF } from "../../utils/generateMeetingPDF"
 import { fetchMeetingNotes, createMeetingNote, updateMeetingNote, deleteMeetingNote } from "../../api/meetingNotesApi"
 
 const Meetings = () => {

@@ -12,6 +12,11 @@ import {
   Trash2,
 } from "lucide-react";
 
+import {
+  formatTsvToAlignedColumns,
+  prepareDescriptionForStorage,
+} from "@/utils/descriptionUtils";
+
 const departments = [
   "Sampling",
   "PPC",
@@ -32,10 +37,16 @@ const departments = [
 
 const departmentOptions = [...departments, "Other"];
 
+const normalizeNewlines = (text) =>
+  (text || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\u00A0/g, " ");
+
 const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     title: "",
-    date: "", // YYYY-MM-DD
+    date: "",
     department: "IT",
     type: "Online",
     description: "1. ",
@@ -47,21 +58,17 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
 
   const descriptionRef = useRef(null);
 
-  // ✅ Date toggle (close on second click)
   const dateInputRef = useRef(null);
   const [isDateOpen, setIsDateOpen] = useState(false);
 
   const handleDatePointerDown = (e) => {
-    // If already open and user clicks again -> close
     if (isDateOpen) {
       e.preventDefault();
       e.stopPropagation();
       dateInputRef.current?.blur();
     }
-    // else: allow normal browser behavior (it will open)
   };
 
-  // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -83,7 +90,67 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  // Auto numbering description
+  const handleDescriptionPaste = (e) => {
+    const pastedRaw = e.clipboardData?.getData("text/plain") || "";
+    if (!pastedRaw) return;
+
+    e.preventDefault();
+
+    const textarea = e.currentTarget;
+    const value = textarea.value;
+
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? value.length;
+
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+
+    const formatted = pastedRaw.includes("\t")
+      ? formatTsvToAlignedColumns(pastedRaw)
+      : normalizeNewlines(pastedRaw);
+
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const currentLineUptoCursor = before.slice(lineStart);
+    const bulletOnlyMatch = currentLineUptoCursor.match(/^\s*(\d+)\.\s*$/);
+
+    let newValue = "";
+    let newCursor = 0;
+
+    if (bulletOnlyMatch) {
+      const startNum = parseInt(bulletOnlyMatch[1], 10);
+
+      let lines = normalizeNewlines(formatted).split("\n");
+      if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+
+      const lastNum = startNum + lines.length - 1;
+      const maxDigits = String(lastNum).length;
+
+      const numberedBlock = lines
+        .map((ln, idx) => {
+          const n = startNum + idx;
+          const prefix = `${String(n).padStart(maxDigits, " ")}. `;
+          return prefix + ln;
+        })
+        .join("\n");
+
+      newValue = value.slice(0, lineStart) + numberedBlock + after;
+      newCursor = lineStart + numberedBlock.length;
+    } else {
+      newValue = before + formatted + after;
+      newCursor = before.length + formatted.length;
+    }
+
+    setFormData((prev) => ({ ...prev, description: newValue }));
+    if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+
+    setTimeout(() => {
+      const el = descriptionRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
+
   const handleDescriptionKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -108,10 +175,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
           const newPos = cursorPos + nextNum.toString().length + 3;
           textarea.setSelectionRange(newPos, newPos);
         }, 0);
-      } else {
-        const lineCount = lines.length;
-        const newText = textBefore + "\n" + (lineCount + 1) + ". " + textAfter;
-        setFormData((prev) => ({ ...prev, description: newText }));
       }
     }
 
@@ -137,7 +200,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
-  // Members (role removed)
   const handleAddMember = () => {
     if (!newMember.name.trim()) return;
 
@@ -173,9 +235,15 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     e.preventDefault();
     if (!validate()) return;
 
-    onSubmit({ ...formData });
+    const cleanedDescription = prepareDescriptionForStorage(
+      formData.description,
+    );
 
-    // Reset
+    onSubmit({
+      ...formData,
+      description: cleanedDescription, // ✅ stored clean (no numbering)
+    });
+
     setFormData({
       title: "",
       date: "",
@@ -213,7 +281,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-emerald-50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-600 rounded-lg">
@@ -231,13 +298,11 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
           </button>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="overflow-y-auto max-h-[calc(90vh-140px)]"
         >
           <div className="p-6 space-y-5">
-            {/* Meeting Title */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <FileText className="h-4 w-4" />
@@ -257,7 +322,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               )}
             </div>
 
-            {/* ✅ Meeting Date (ONLY ONE ICON + close on second click) */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Calendar className="h-4 w-4" />
@@ -282,7 +346,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               )}
             </div>
 
-            {/* Department and Type */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
@@ -335,7 +398,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
-            {/* Members */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Users className="h-4 w-4" />
@@ -392,35 +454,38 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               )}
             </div>
 
-            {/* Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <FileText className="h-4 w-4" />
                 Meeting Description <span className="text-red-500">*</span>
               </label>
+
               <textarea
                 ref={descriptionRef}
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
                 onKeyDown={handleDescriptionKeyDown}
-                rows="6"
+                onPaste={handleDescriptionPaste}
+                rows="8"
+                wrap="off"
+                spellCheck={false}
+                style={{ tabSize: 8, MozTabSize: 8 }}
                 className={`w-full px-4 py-2.5 border ${
                   errors.description ? "border-red-500" : "border-gray-300"
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none font-mono text-sm`}
+                } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none font-mono text-sm overflow-x-auto whitespace-pre`}
               />
+
               {errors.description && (
                 <p className="mt-1 text-sm text-red-500">
                   {errors.description}
                 </p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Press Enter for automatic numbering. Each point will be on a new
-                line.
+                Paste from Excel will stay aligned. Press Enter for numbering.
               </p>
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
             <button
               type="button"
