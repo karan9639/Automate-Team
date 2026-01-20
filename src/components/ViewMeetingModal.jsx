@@ -563,7 +563,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                     wrap="off"
                     spellCheck={false}
                     style={{ tabSize: 8, MozTabSize: 8 }}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-mono text-sm overflow-x-auto whitespace-pre"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-mono text-sm overflow-auto whitespace-pre"
                     placeholder="1. First point..."
                   />
                   <p className="mt-1 text-xs text-gray-500">
@@ -572,20 +572,26 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                 </>
               ) : viewLines.length ? (
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <ol className="space-y-2">
-                    {viewLines.map((line, index) => (
-                      <li key={index} className="flex gap-3 text-gray-700">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1 overflow-x-auto">
-                          <pre className="m-0 font-mono text-sm whitespace-pre">
+                  {/* ✅ Full box scroll (vertical + horizontal) */}
+                  <div className="max-h-80 overflow-auto">
+                    <ol className="space-y-2 min-w-max">
+                      {viewLines.map((line, index) => (
+                        <li
+                          key={index}
+                          className="flex gap-3 text-gray-700 items-start"
+                        >
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold">
+                            {index + 1}
+                          </span>
+
+                          {/* ✅ keep columns aligned + enable horizontal scroll */}
+                          <pre className="m-0 font-mono text-sm whitespace-pre min-w-max">
                             {line}
                           </pre>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-500 italic">
