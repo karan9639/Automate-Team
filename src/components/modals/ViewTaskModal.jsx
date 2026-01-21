@@ -114,6 +114,56 @@ const ViewTaskModal = ({
     }
   };
 
+  // --- Assignee helpers (API can return string, object, or array) ---
+  const extractPrimaryAssigneeId = (t) => {
+    const raw = t?.taskAssignedTo ?? t?.assignedTo;
+    if (!raw) return "";
+
+    if (Array.isArray(raw)) {
+      const first = raw[0];
+      if (!first) return "";
+      if (typeof first === "string") return first;
+      if (typeof first === "object") return first?._id || first?.id || "";
+      return "";
+    }
+
+    if (typeof raw === "string") return raw;
+    if (typeof raw === "object") return raw?._id || raw?.id || "";
+
+    return "";
+  };
+
+  const resolveAssigneeNames = (t) => {
+    const raw = t?.taskAssignedTo ?? t?.assignedTo;
+    if (!raw) return [];
+
+    const arr = Array.isArray(raw) ? raw : [raw];
+
+    const names = arr
+      .map((a) => {
+        if (!a) return null;
+
+        // Backend sometimes returns string IDs
+        if (typeof a === "string") {
+          return allUsers.find((u) => u.id === a)?.name || a;
+        }
+
+        if (typeof a === "object") {
+          const nameFromObj = a.fullname || a.name;
+          if (nameFromObj) return nameFromObj;
+
+          const id = a._id || a.id;
+          if (id) return allUsers.find((u) => u.id === id)?.name || String(id);
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    // De-dupe while keeping order
+    return [...new Set(names)];
+  };
+
   // Extract and store task ID when task changes
   useEffect(() => {
     if (task) {
@@ -136,11 +186,8 @@ const ViewTaskModal = ({
         taskPriority: task?.taskPriority || task?.priority || "medium",
         taskCategory: task?.taskCategory || task?.category || "",
         taskDueDate: task?.taskDueDate || task?.dueDate || task?.due_date || "",
-        // Fix: ensure taskAssignedTo is properly extracted as a string ID
-        taskAssignedTo:
-          typeof task?.taskAssignedTo === "string"
-            ? task.taskAssignedTo
-            : task?.taskAssignedTo?._id || task?.assignedTo?._id || "",
+        // Assignees can be returned as string, object, or array
+        taskAssignedTo: extractPrimaryAssigneeId(task),
         taskFrequency:
           task?.taskFrequency?.type || task?.frequency?.type || "one-time",
       });
@@ -339,12 +386,11 @@ const ViewTaskModal = ({
     ? editFormData.taskDueDate
     : task?.taskDueDate || task?.dueDate || task?.due_date;
   const taskAssignedTo = isEditMode
-    ? editFormData.taskAssignedTo
-    : task?.taskAssignedTo?.fullname ||
-      task?.assignedTo?.fullname ||
-      task?.taskAssignedTo ||
-      task?.assignedTo ||
-      "Not assigned";
+    ? selectedUserName
+    : (() => {
+        const names = resolveAssigneeNames(task);
+        return names.length ? names.join(", ") : "Not assigned";
+      })();
   const taskCreatedBy =
     task?.taskCreatedBy?.fullname ||
     task?.createdBy?.fullname ||
@@ -446,9 +492,7 @@ const ViewTaskModal = ({
       taskCategory: task?.taskCategory || task?.category || "",
       taskDueDate: task?.taskDueDate || task?.dueDate || task?.due_date || "",
       taskAssignedTo:
-        typeof task?.taskAssignedTo === "string"
-          ? task.taskAssignedTo
-          : task?.taskAssignedTo?._id || task?.assignedTo?._id || "",
+        extractPrimaryAssigneeId(task),
       taskFrequency:
         task?.taskFrequency?.type || task?.frequency?.type || "one-time",
     });
