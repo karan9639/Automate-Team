@@ -10,8 +10,13 @@ import {
   Users,
   Plus,
   Trash2,
+  ChevronDown,
+  Search,
+  Check,
+  Loader2,
 } from "lucide-react";
 
+import { userApi } from "@/api/userApi";
 import {
   formatTsvToAlignedColumns,
   prepareDescriptionForStorage,
@@ -43,6 +48,11 @@ const normalizeNewlines = (text) =>
     .replace(/\r/g, "\n")
     .replace(/\u00A0/g, " ");
 
+const cleanText = (v) =>
+  String(v ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     title: "",
@@ -50,16 +60,25 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     department: "IT",
     type: "Online",
     description: "1. ",
-    members: [],
+    members: [], // [{id,name,email,accountType,whatsappNumber,department}]
   });
 
   const [errors, setErrors] = useState({});
-  const [newMember, setNewMember] = useState({ name: "" });
 
   const descriptionRef = useRef(null);
 
   const dateInputRef = useRef(null);
   const [isDateOpen, setIsDateOpen] = useState(false);
+
+  // ✅ Users dropdown state
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const dropdownWrapRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [outsiderName, setOutsiderName] = useState("");
+
+  const [allUsers, setAllUsers] = useState([]); // fetched team members
+  const [isFetchingUsers, setIsFetchingUsers] = useState(false);
+  const [usersError, setUsersError] = useState("");
 
   const handleDatePointerDown = (e) => {
     if (isDateOpen) {
@@ -80,15 +99,155 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
         members: [],
       });
       setErrors({});
-      setNewMember({ name: "" });
       setIsDateOpen(false);
+
+      // reset dropdown UI
+      setIsUserDropdownOpen(false);
+      setSearchQuery("");
+      setOutsiderName("");
+      setUsersError("");
     }
+  }, [isOpen]);
+
+  // ✅ Close dropdown on outside click / Esc
+  useEffect(() => {
+    if (!isUserDropdownOpen) return;
+
+    const onDocMouseDown = (e) => {
+      if (!dropdownWrapRef.current) return;
+      if (!dropdownWrapRef.current.contains(e.target)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setIsUserDropdownOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isUserDropdownOpen]);
+
+  // ✅ Fetch all team members when modal opens
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsFetchingUsers(true);
+        setUsersError("");
+
+        const res = await userApi.fetchAllTeamMembers(); // /api/v1/user/fetch-all-team-members
+        const rows = res?.data?.data ?? [];
+
+        const users = rows
+          .map((r) => r?.newMember ?? r)
+          .filter(Boolean)
+          .map((m) => ({
+            id: String(m?._id ?? ""),
+            name: cleanText(m?.fullname),
+            email: m?.email ?? null,
+            department: m?.department ?? "NA",
+            accountType: m?.accountType ?? "Team Member",
+            whatsappNumber: m?.whatsappNumber ?? null,
+            avatar: m?.avatar ?? null, // if you have it; otherwise null
+          }))
+          .filter((u) => u.id && u.name);
+
+        setAllUsers(users);
+      } catch (err) {
+        console.error("fetchAllTeamMembers failed:", err);
+        setAllUsers([]);
+        setUsersError("Failed to load users.");
+      } finally {
+        setIsFetchingUsers(false);
+      }
+    };
+
+    if (isOpen) fetchUsers();
   }, [isOpen]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
+
+  // ✅ Toggle team user selection
+  const handleUserSelect = (userId) => {
+    const user = allUsers.find((u) => u.id === userId);
+    if (!user) return;
+
+    setFormData((prev) => {
+      const exists = prev.members.some((m) => String(m.id) === String(userId));
+
+      if (exists) {
+        return {
+          ...prev,
+          members: prev.members.filter((m) => String(m.id) !== String(userId)),
+        };
+      }
+
+      const newMember = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        department: user.department,
+        accountType: user.accountType ?? "Team Member",
+        whatsappNumber: user.whatsappNumber ?? null,
+      };
+
+      return { ...prev, members: [...prev.members, newMember] };
+    });
+  };
+
+  // ✅ Add outsider by typed name
+  const addOutsider = () => {
+    const name = cleanText(outsiderName);
+    if (!name) return;
+
+    setFormData((prev) => {
+      // prevent duplicates by name (case-insensitive)
+      const exists = prev.members.some(
+        (m) => cleanText(m.name).toLowerCase() === name.toLowerCase(),
+      );
+      if (exists) return prev;
+
+      const outsider = {
+        id: `outside-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        email: null,
+        department: "Outside",
+        accountType: "Outside",
+        whatsappNumber: null,
+      };
+
+      return { ...prev, members: [...prev.members, outsider] };
+    });
+
+    setOutsiderName("");
+  };
+
+  const handleRemoveMember = (memberId) => {
+    setFormData((prev) => ({
+      ...prev,
+      members: prev.members.filter((m) => String(m.id) !== String(memberId)),
+    }));
+  };
+
+  const filteredUsers = allUsers.filter((u) => {
+    const q = cleanText(searchQuery).toLowerCase();
+    if (!q) return true;
+    return (
+      cleanText(u.name).toLowerCase().includes(q) ||
+      cleanText(u.email).toLowerCase().includes(q) ||
+      cleanText(u.department).toLowerCase().includes(q)
+    );
+  });
+
+  const selectedCount = formData.members.length;
 
   const handleDescriptionPaste = (e) => {
     const pastedRaw = e.clipboardData?.getData("text/plain") || "";
@@ -200,26 +359,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
-  const handleAddMember = () => {
-    if (!newMember.name.trim()) return;
-
-    const member = { id: Date.now(), name: newMember.name.trim() };
-
-    setFormData((prev) => ({
-      ...prev,
-      members: [...prev.members, member],
-    }));
-
-    setNewMember({ name: "" });
-  };
-
-  const handleRemoveMember = (memberId) => {
-    setFormData((prev) => ({
-      ...prev,
-      members: prev.members.filter((m) => m.id !== memberId),
-    }));
-  };
-
   const validate = () => {
     const newErrors = {};
     if (!formData.title.trim()) newErrors.title = "Meeting title is required";
@@ -253,8 +392,11 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
       members: [],
     });
     setErrors({});
-    setNewMember({ name: "" });
     setIsDateOpen(false);
+
+    setIsUserDropdownOpen(false);
+    setSearchQuery("");
+    setOutsiderName("");
   };
 
   const handleClose = () => {
@@ -267,8 +409,12 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
       members: [],
     });
     setErrors({});
-    setNewMember({ name: "" });
     setIsDateOpen(false);
+
+    setIsUserDropdownOpen(false);
+    setSearchQuery("");
+    setOutsiderName("");
+
     onClose();
   };
 
@@ -398,59 +544,227 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
-            <div>
+            {/* ✅ Member MultiSelect dropdown like your image + outsider typing */}
+            <div ref={dropdownWrapRef} className="relative">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Users className="h-4 w-4" />
                 Meeting Members
               </label>
 
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={newMember.name}
-                  onChange={(e) => setNewMember({ name: e.target.value })}
-                  placeholder="Member name"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+              {/* Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsUserDropdownOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                aria-haspopup="listbox"
+                aria-expanded={isUserDropdownOpen}
+              >
+                <div className="min-w-0 flex items-center gap-2">
+                  {selectedCount === 0 ? (
+                    <span className="text-gray-500">Select User(s)</span>
+                  ) : (
+                    <span className="text-gray-900 font-medium truncate">
+                      {selectedCount} selected
+                    </span>
+                  )}
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-500 transition-transform ${
+                    isUserDropdownOpen ? "rotate-180" : ""
+                  }`}
                 />
-                <button
-                  type="button"
-                  onClick={handleAddMember}
-                  disabled={!newMember.name.trim()}
-                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+              </button>
 
-              {formData.members.length > 0 ? (
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-32 overflow-y-auto">
+              {/* Selected chips (optional nice UX) */}
+              {formData.members.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {formData.members.slice(0, 6).map((m) => (
+                    <span
+                      key={m.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100"
+                      title={m.name}
+                    >
+                      <span className="max-w-[160px] truncate">{m.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(m.id)}
+                        className="hover:bg-emerald-100 rounded-full p-0.5"
+                        aria-label={`Remove ${m.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {formData.members.length > 6 && (
+                    <span className="text-xs text-gray-500">
+                      +{formData.members.length - 6} more
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Dropdown */}
+              {isUserDropdownOpen && (
+                <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                  {/* Search */}
+                  <div className="p-2 border-b border-gray-100">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search users..."
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        autoFocus
+                      />
+                    </div>
+                    {usersError && (
+                      <p className="mt-1 text-xs text-red-500">{usersError}</p>
+                    )}
+                  </div>
+
+                  {/* List */}
+                  <ul role="listbox" className="py-1 overflow-y-auto max-h-60">
+                    {isFetchingUsers ? (
+                      <li className="px-3 py-2 text-gray-500 text-sm text-center flex items-center justify-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
+                        Loading users...
+                      </li>
+                    ) : filteredUsers.length > 0 ? (
+                      filteredUsers.map((user) => {
+                        const isSelected = formData.members.some(
+                          (m) => String(m.id) === String(user.id),
+                        );
+
+                        return (
+                          <li
+                            key={user.id}
+                            role="option"
+                            aria-selected={isSelected}
+                            className={`px-3 py-2 cursor-pointer flex items-center text-sm ${
+                              isSelected ? "bg-emerald-50" : "hover:bg-gray-100"
+                            }`}
+                            onClick={() => handleUserSelect(user.id)}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded border mr-3 flex items-center justify-center flex-shrink-0 ${
+                                isSelected
+                                  ? "bg-emerald-500 border-emerald-500"
+                                  : "border-gray-300 bg-white"
+                              }`}
+                            >
+                              {isSelected && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+
+                            <img
+                              src={user.avatar || "/placeholder.svg"}
+                              alt={user.name}
+                              className="w-7 h-7 rounded-full mr-2 flex-shrink-0 object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = `/placeholder.svg?height=28&width=28&query=${encodeURIComponent(
+                                  user.name,
+                                )}`;
+                              }}
+                            />
+
+                            <div className="flex-1 min-w-0">
+                              <span className="block truncate font-medium">
+                                {user.name}{" "}
+                                <span className="bg-purple-200 rounded-md px-2 text-purple-600 font-medium text-xs ml-2 inline-block">
+                                  {user.department || "NA"}
+                                </span>
+                              </span>
+                              {user.email && (
+                                <span className="block truncate text-xs text-gray-500">
+                                  {user.email}
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li className="px-3 py-2 text-gray-500 text-sm text-center">
+                        {allUsers.length === 0
+                          ? "No users available."
+                          : "No users match your search."}
+                      </li>
+                    )}
+                  </ul>
+
+                  {/* Outsider add */}
+                  <div className="p-2 border-t border-gray-100 bg-gray-50">
+                    <p className="text-xs text-gray-500 mb-2">
+                      Add outsider (custom name)
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={outsiderName}
+                        onChange={(e) => setOutsiderName(e.target.value)}
+                        placeholder="Type outsider name..."
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addOutsider();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addOutsider}
+                        disabled={!cleanText(outsiderName)}
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                        title="Add outsider"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Also show selected members list with delete (like your old UI) */}
+              {formData.members.length > 0 && (
+                <div className="mt-3 border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-40 overflow-y-auto">
                   {formData.members.map((member) => (
                     <div
                       key={member.id}
                       className="flex items-center justify-between px-3 py-2"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
-                          {member.name.charAt(0).toUpperCase()}
+                          {(member.name || "?").charAt(0).toUpperCase()}
                         </div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {member.name}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {member.name}
+                            <span className="ml-2 text-xs text-gray-500">
+                              ({member.accountType || "Outside"})
+                            </span>
+                          </p>
+                          {member.email && (
+                            <p className="text-xs text-gray-500 truncate">
+                              {member.email}
+                            </p>
+                          )}
+                        </div>
                       </div>
+
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(member.id)}
                         className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="Remove"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500 italic">
-                  No members added yet
-                </p>
               )}
             </div>
 
