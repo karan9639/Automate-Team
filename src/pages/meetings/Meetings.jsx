@@ -31,70 +31,107 @@ const cleanText = (v) =>
   String(v ?? "")
     .replace(/\s+/g, " ")
     .trim();
+const isObjectId = (v) => typeof v === "string" && /^[a-f\d]{24}$/i.test(v);
 
 /**
- * Backend schema:
- * meetingMembers: [{ companyMember: ObjectId|User, outsideMember: String|null }]
+ * ✅ API -> UI members
+ * Your fetch API returns:
+ * meetingMembers: [{ fullname, email, accountType, whatsappNumber }]
  *
- * This normalizer supports:
- * - companyMember populated object OR only ObjectId string
- * - outsideMember string
+ * We normalize into UI shape:
+ * { id, name, email, accountType, whatsappNumber, memberType, companyMemberId }
  */
-const normalizeMembersFromBackend = (meetingMembers = [], meetingId = "") => {
+const normalizeMembers = (meetingMembers, meetingId = "") => {
   if (!Array.isArray(meetingMembers)) return [];
 
   return meetingMembers
-    .map((entry, idx) => {
-      // company member
-      if (entry?.companyMember) {
-        const cm = entry.companyMember;
-        const id = typeof cm === "object" ? cm._id : cm;
+    .map((m, idx) => {
+      // Support BOTH:
+      // 1) Your current API (fullname/email/accountType)
+      // 2) Future schema-like (companyMember/outsideMember)
+      const fullname = cleanText(m?.fullname);
+      const accountType =
+        m?.accountType ??
+        (m?.companyMember ? "Team Member" : "Outside") ??
+        (m?.email ? "Team Member" : "Outside");
 
-        const name =
-          typeof cm === "object"
-            ? cleanText(cm.fullname ?? cm.name ?? cm.email ?? "Company Member")
-            : "Company Member";
+      // If backend ever returns schema:
+      const outsideName = cleanText(m?.outsideMember);
+      const companyMember = m?.companyMember;
 
-        return {
-          id: String(id),
-          name,
-          email: typeof cm === "object" ? (cm.email ?? null) : null,
-          department: typeof cm === "object" ? (cm.department ?? null) : null,
-          memberType: "company",
-        };
-      }
+      // Determine name
+      const name =
+        fullname ||
+        outsideName ||
+        (typeof companyMember === "object"
+          ? cleanText(
+              companyMember?.fullname ??
+                companyMember?.name ??
+                companyMember?.email,
+            )
+          : "") ||
+        "";
 
-      // outside member
-      if (entry?.outsideMember) {
-        const name = cleanText(entry.outsideMember);
-        if (!name) return null;
+      if (!name) return null;
 
-        return {
-          id: `outside-${meetingId}-${idx}`,
-          name,
-          memberType: "outside",
-        };
-      }
+      // Determine if company vs outside
+      const memberType = accountType === "Team Member" ? "company" : "outside";
 
-      return null;
+      // If companyMember is populated or ObjectId:
+      const companyMemberId =
+        memberType === "company"
+          ? typeof companyMember === "object"
+            ? String(companyMember?._id ?? "")
+            : typeof companyMember === "string"
+              ? String(companyMember)
+              : null
+          : null;
+
+      return {
+        id: `${meetingId}-member-${idx}`, // UI id (safe)
+        name,
+        email:
+          m?.email ??
+          (typeof companyMember === "object"
+            ? (companyMember?.email ?? null)
+            : null),
+        accountType,
+        whatsappNumber: m?.whatsappNumber ?? null,
+        memberType,
+        companyMemberId:
+          companyMemberId && isObjectId(companyMemberId)
+            ? companyMemberId
+            : null,
+      };
     })
     .filter(Boolean);
 };
 
-/** UI -> Backend meetingMembers */
+/**
+ * ✅ UI -> Backend payload (Mongo model expects)
+ * meetingMembers: [{ companyMember, outsideMember }]
+ */
 const toBackendMeetingMembers = (members = []) => {
   if (!Array.isArray(members)) return [];
 
   return members
     .map((m) => {
-      if (m?.memberType === "company") {
-        return { companyMember: m.id, outsideMember: null };
+      const name = cleanText(m?.name);
+      const cmId = m?.companyMemberId ?? m?.id;
+
+      // Company member (must send ObjectId)
+      if (
+        (m?.memberType === "company" || m?.accountType === "Team Member") &&
+        isObjectId(String(cmId))
+      ) {
+        return { companyMember: String(cmId), outsideMember: null };
       }
-      if (m?.memberType === "outside") {
-        const name = cleanText(m?.name);
-        if (!name) return null;
+
+      // Outside member
+      if (name) {
         return { companyMember: null, outsideMember: name };
       }
+
       return null;
     })
     .filter(Boolean);
@@ -133,10 +170,7 @@ const Meetings = () => {
           createdAt: meeting.createdAt,
           department: meeting.department,
           type: meeting.meetingMode,
-          members: normalizeMembersFromBackend(
-            meeting.meetingMembers,
-            meeting._id,
-          ),
+          members: normalizeMembers(meeting.meetingMembers, meeting._id),
           description: meeting.meetingDescription,
         }));
         setMeetings(meetingsData);
@@ -166,10 +200,9 @@ const Meetings = () => {
     try {
       const apiData = {
         meetingTitle: meetingData.title,
-        // backend has Date, ISO is safest (input gives YYYY-MM-DD)
-        meetingDate: new Date(meetingData.date).toISOString(),
+        meetingDate: new Date(meetingData.date).toISOString(), // Date in schema
         department: meetingData.department,
-        meetingMode: meetingData.type, // Online/Offline
+        meetingMode: meetingData.type,
         meetingMembers: toBackendMeetingMembers(meetingData.members),
         meetingDescription: meetingData.description,
       };
@@ -199,7 +232,7 @@ const Meetings = () => {
 
       const result = await updateMeetingNote(updatedMeeting.id, apiData);
 
-      // support both: result.data or result.data.meetingNote
+      // Some APIs return result.data.meetingNote, some return result.data
       const updated = result?.data?.meetingNote ?? result?.data;
 
       if (result?.success && updated) {
@@ -210,10 +243,7 @@ const Meetings = () => {
           createdAt: updated.createdAt,
           department: updated.department,
           type: updated.meetingMode,
-          members: normalizeMembersFromBackend(
-            updated.meetingMembers,
-            updated._id,
-          ),
+          members: normalizeMembers(updated.meetingMembers, updated._id),
           description: updated.meetingDescription,
         };
 

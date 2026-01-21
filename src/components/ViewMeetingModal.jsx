@@ -14,6 +14,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
+
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
 
 import {
@@ -29,6 +30,11 @@ const normalizeNewlines = (text) =>
     .replace(/\r/g, "\n")
     .replace(/\u00A0/g, " ");
 
+const cleanText = (v) =>
+  String(v ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -42,24 +48,27 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     members: [],
   });
 
-  const [newMember, setNewMember] = useState({ name: "", role: "" });
+  // ✅ only name, no role
+  const [newMemberName, setNewMemberName] = useState("");
   const descriptionRef = useRef(null);
 
   useEffect(() => {
-    if (meeting) {
-      const lines = getDescriptionLines(meeting.description || "");
-      setEditForm({
-        title: meeting.title || "",
-        date: formatDateForInput(meeting.date) || "",
-        department: meeting.department || "IT",
-        type: meeting.type || "Online",
-        // ✅ show numbered text while editing
-        description: lines.length ? linesToNumberedText(lines) : "1. ",
-        members: meeting.members || [],
-      });
-      setIsEditing(false);
-      setNewMember({ name: "", role: "" });
-    }
+    if (!meeting) return;
+
+    const lines = getDescriptionLines(meeting.description || "");
+    setEditForm({
+      title: meeting.title || "",
+      date: formatDateForInput(meeting.date) || "",
+      department: meeting.department || "IT",
+      type: meeting.type || "Online",
+      description: lines.length ? linesToNumberedText(lines) : "1. ",
+      members: Array.isArray(meeting.members)
+        ? meeting.members.filter((m) => cleanText(m?.name))
+        : [],
+    });
+
+    setIsEditing(false);
+    setNewMemberName("");
   }, [meeting]);
 
   const formatDateForDisplay = (dateString) => {
@@ -227,24 +236,39 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
   };
 
   const handleAddMember = () => {
-    if (newMember.name.trim() && newMember.role.trim()) {
-      const member = {
-        id: Date.now(),
-        name: newMember.name.trim(),
-        role: newMember.role.trim(),
-      };
-      setEditForm((prev) => ({
+    const name = cleanText(newMemberName);
+    if (!name) return;
+
+    setEditForm((prev) => {
+      const exists = prev.members.some(
+        (m) => cleanText(m.name).toLowerCase() === name.toLowerCase(),
+      );
+      if (exists) return prev;
+
+      return {
         ...prev,
-        members: [...prev.members, member],
-      }));
-      setNewMember({ name: "", role: "" });
-    }
+        members: [
+          ...prev.members,
+          {
+            id: `outside-${Date.now()}`,
+            name,
+            email: null,
+            accountType: "Outside",
+            whatsappNumber: null,
+            memberType: "outside",
+            companyMemberId: null,
+          },
+        ],
+      };
+    });
+
+    setNewMemberName("");
   };
 
   const handleRemoveMember = (memberId) => {
     setEditForm((prev) => ({
       ...prev,
-      members: prev.members.filter((m) => m.id !== memberId),
+      members: prev.members.filter((m) => String(m.id) !== String(memberId)),
     }));
   };
 
@@ -256,8 +280,9 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     const updatedMeeting = {
       ...meeting,
       ...editForm,
-      description: cleanedDescription, // ✅ store clean
-      date: editForm.date, // ✅ keep YYYY-MM-DD from input
+      description: cleanedDescription,
+      date: editForm.date, // YYYY-MM-DD from input
+      members: editForm.members,
     };
 
     onUpdate(updatedMeeting);
@@ -272,10 +297,12 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
       department: meeting.department || "IT",
       type: meeting.type || "Online",
       description: lines.length ? linesToNumberedText(lines) : "1. ",
-      members: meeting.members || [],
+      members: Array.isArray(meeting.members)
+        ? meeting.members.filter((m) => cleanText(m?.name))
+        : [],
     });
     setIsEditing(false);
-    setNewMember({ name: "", role: "" });
+    setNewMemberName("");
   };
 
   const handleDeleteClick = () => setIsDeleteModalOpen(true);
@@ -287,7 +314,6 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
 
   if (!isOpen || !meeting) return null;
 
-  // ✅ Lines for VIEW (no numbering inside)
   const viewLines = getDescriptionLines(meeting.description || "");
 
   return (
@@ -440,18 +466,12 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                 Department
               </label>
               {isEditing ? (
-                <select
+                <input
+                  type="text"
                   value={editForm.department}
                   onChange={(e) => handleChange("department", e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                >
-                  <option value="IT">IT</option>
-                  <option value="HR">HR</option>
-                  <option value="Sales">Sales</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Operations">Operations</option>
-                </select>
+                />
               ) : (
                 <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
                   {meeting.department}
@@ -459,6 +479,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
               )}
             </div>
 
+            {/* ✅ Members */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                 <Users className="h-4 w-4" />
@@ -469,32 +490,21 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                 <div className="flex gap-2 mb-3">
                   <input
                     type="text"
-                    value={newMember.name}
-                    onChange={(e) =>
-                      setNewMember((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
-                    placeholder="Member name"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    placeholder="Add outsider name (custom)"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={newMember.role}
-                    onChange={(e) =>
-                      setNewMember((prev) => ({
-                        ...prev,
-                        role: e.target.value,
-                      }))
-                    }
-                    placeholder="Role"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddMember();
+                      }
+                    }}
                   />
                   <button
                     type="button"
                     onClick={handleAddMember}
-                    disabled={!newMember.name.trim() || !newMember.role.trim()}
+                    disabled={!cleanText(newMemberName)}
                     className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                   >
                     <Plus className="h-4 w-4" />
@@ -510,19 +520,26 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                         key={member.id}
                         className="flex items-center justify-between px-3 py-2"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
                             {member.name.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
+
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
                               {member.name}
+                              <span className="ml-2 text-xs text-gray-500">
+                                ({member.accountType || "Outside"})
+                              </span>
                             </p>
-                            <p className="text-xs text-gray-500">
-                              {member.role}
-                            </p>
+                            {member.email && (
+                              <p className="text-xs text-gray-500 truncate">
+                                {member.email}
+                              </p>
+                            )}
                           </div>
                         </div>
+
                         {isEditing && (
                           <button
                             type="button"
@@ -543,6 +560,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
               )}
             </div>
 
+            {/* ✅ Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                 <FileText className="h-4 w-4" />
@@ -572,7 +590,6 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                 </>
               ) : viewLines.length ? (
                 <div className="bg-gray-50 rounded-lg p-4">
-                  {/* ✅ Full box scroll (vertical + horizontal) */}
                   <div className="max-h-80 overflow-auto">
                     <ol className="space-y-2 min-w-max">
                       {viewLines.map((line, index) => (
@@ -583,8 +600,6 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                           <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold">
                             {index + 1}
                           </span>
-
-                          {/* ✅ keep columns aligned + enable horizontal scroll */}
                           <pre className="m-0 font-mono text-sm whitespace-pre min-w-max">
                             {line}
                           </pre>
