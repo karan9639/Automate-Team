@@ -27,62 +27,75 @@ import {
   deleteMeetingNote,
 } from "../../api/meetingNotesApi";
 
-/** API -> UI members (supports array OR legacy comma-separated string) */
-const normalizeMembers = (meetingMembers, meetingId = "") => {
-  if (!meetingMembers) return [];
+const cleanText = (v) =>
+  String(v ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  if (Array.isArray(meetingMembers)) {
-    return meetingMembers
-      .map((m, idx) => {
-        const name = (m?.fullname ?? m?.name ?? "").trim();
+/**
+ * Backend schema:
+ * meetingMembers: [{ companyMember: ObjectId|User, outsideMember: String|null }]
+ *
+ * This normalizer supports:
+ * - companyMember populated object OR only ObjectId string
+ * - outsideMember string
+ */
+const normalizeMembersFromBackend = (meetingMembers = [], meetingId = "") => {
+  if (!Array.isArray(meetingMembers)) return [];
+
+  return meetingMembers
+    .map((entry, idx) => {
+      // company member
+      if (entry?.companyMember) {
+        const cm = entry.companyMember;
+        const id = typeof cm === "object" ? cm._id : cm;
+
+        const name =
+          typeof cm === "object"
+            ? cleanText(cm.fullname ?? cm.name ?? cm.email ?? "Company Member")
+            : "Company Member";
+
         return {
-          id: `${meetingId}-member-${idx}`,
+          id: String(id),
           name,
-          email: m?.email ?? null,
-          accountType: m?.accountType ?? "Outside",
-          whatsappNumber: m?.whatsappNumber ?? null,
+          email: typeof cm === "object" ? (cm.email ?? null) : null,
+          department: typeof cm === "object" ? (cm.department ?? null) : null,
+          memberType: "company",
         };
-      })
-      .filter((m) => m.name);
-  }
+      }
 
-  if (typeof meetingMembers === "string") {
-    return meetingMembers
-      .split(",")
-      .map((name, idx) => ({
-        id: `${meetingId}-member-${idx}`,
-        name: String(name).trim(),
-        email: null,
-        accountType: "Outside",
-        whatsappNumber: null,
-      }))
-      .filter((m) => m.name);
-  }
+      // outside member
+      if (entry?.outsideMember) {
+        const name = cleanText(entry.outsideMember);
+        if (!name) return null;
 
-  return [];
+        return {
+          id: `outside-${meetingId}-${idx}`,
+          name,
+          memberType: "outside",
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
 };
 
-/** UI -> API members (send array of objects like your response) */
-const toApiMembers = (members) => {
+/** UI -> Backend meetingMembers */
+const toBackendMeetingMembers = (members = []) => {
   if (!Array.isArray(members)) return [];
 
   return members
     .map((m) => {
-      const fullname =
-        typeof m === "string"
-          ? m.trim()
-          : String(m?.name ?? m?.fullname ?? "").trim();
-
-      if (!fullname) return null;
-
-      return {
-        fullname,
-        email: typeof m === "object" ? (m?.email ?? null) : null,
-        accountType:
-          typeof m === "object" ? (m?.accountType ?? "Outside") : "Outside",
-        whatsappNumber:
-          typeof m === "object" ? (m?.whatsappNumber ?? null) : null,
-      };
+      if (m?.memberType === "company") {
+        return { companyMember: m.id, outsideMember: null };
+      }
+      if (m?.memberType === "outside") {
+        const name = cleanText(m?.name);
+        if (!name) return null;
+        return { companyMember: null, outsideMember: name };
+      }
+      return null;
     })
     .filter(Boolean);
 };
@@ -120,7 +133,10 @@ const Meetings = () => {
           createdAt: meeting.createdAt,
           department: meeting.department,
           type: meeting.meetingMode,
-          members: normalizeMembers(meeting.meetingMembers, meeting._id),
+          members: normalizeMembersFromBackend(
+            meeting.meetingMembers,
+            meeting._id,
+          ),
           description: meeting.meetingDescription,
         }));
         setMeetings(meetingsData);
@@ -150,10 +166,11 @@ const Meetings = () => {
     try {
       const apiData = {
         meetingTitle: meetingData.title,
-        meetingDate: meetingData.date,
+        // backend has Date, ISO is safest (input gives YYYY-MM-DD)
+        meetingDate: new Date(meetingData.date).toISOString(),
         department: meetingData.department,
-        meetingMode: meetingData.type,
-        meetingMembers: toApiMembers(meetingData.members),
+        meetingMode: meetingData.type, // Online/Offline
+        meetingMembers: toBackendMeetingMembers(meetingData.members),
         meetingDescription: meetingData.description,
       };
 
@@ -173,28 +190,31 @@ const Meetings = () => {
     try {
       const apiData = {
         meetingTitle: updatedMeeting.title,
-        meetingDate: updatedMeeting.date,
+        meetingDate: new Date(updatedMeeting.date).toISOString(),
         department: updatedMeeting.department,
         meetingMode: updatedMeeting.type,
-        meetingMembers: toApiMembers(updatedMeeting.members),
+        meetingMembers: toBackendMeetingMembers(updatedMeeting.members),
         meetingDescription: updatedMeeting.description,
       };
 
       const result = await updateMeetingNote(updatedMeeting.id, apiData);
 
-      if (result?.success && result?.data) {
+      // support both: result.data or result.data.meetingNote
+      const updated = result?.data?.meetingNote ?? result?.data;
+
+      if (result?.success && updated) {
         const transformedMeeting = {
-          id: result.data._id,
-          title: result.data.meetingTitle,
-          date: result.data.meetingDate,
-          createdAt: result.data.createdAt,
-          department: result.data.department,
-          type: result.data.meetingMode,
-          members: normalizeMembers(
-            result.data.meetingMembers,
-            result.data._id,
+          id: updated._id,
+          title: updated.meetingTitle,
+          date: updated.meetingDate,
+          createdAt: updated.createdAt,
+          department: updated.department,
+          type: updated.meetingMode,
+          members: normalizeMembersFromBackend(
+            updated.meetingMembers,
+            updated._id,
           ),
-          description: result.data.meetingDescription,
+          description: updated.meetingDescription,
         };
 
         setMeetings((prev) =>
@@ -414,7 +434,6 @@ const Meetings = () => {
           </div>
         ) : (
           <>
-            {/* Responsive grid: 1 -> 2 -> 3 -> 4 columns */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
               {filteredMeetings.map((meeting) => (
                 <div
@@ -504,7 +523,6 @@ const Meetings = () => {
                     )}
                   </div>
 
-                  {/* Footer: stack on mobile, inline on sm+ */}
                   <div className="p-3 sm:px-5 sm:py-3 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                       <button
@@ -537,7 +555,6 @@ const Meetings = () => {
               ))}
             </div>
 
-            {/* Footer count */}
             <div className="mt-5 sm:mt-6 text-center text-sm text-gray-600">
               Showing {filteredMeetings.length} of {meetings.length} meeting
               {meetings.length !== 1 ? "s" : ""}

@@ -60,23 +60,26 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     department: "IT",
     type: "Online",
     description: "1. ",
-    members: [], // [{id,name,email,accountType,whatsappNumber,department}]
+    // members: [{id,name,email,department,memberType:"company"|"outside"}]
+    members: [],
   });
 
   const [errors, setErrors] = useState({});
 
   const descriptionRef = useRef(null);
 
+  // Date UX fix
   const dateInputRef = useRef(null);
   const [isDateOpen, setIsDateOpen] = useState(false);
 
-  // ✅ Users dropdown state
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const dropdownWrapRef = useRef(null);
+  // Dropdown state
+  const wrapRef = useRef(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [outsiderName, setOutsiderName] = useState("");
 
-  const [allUsers, setAllUsers] = useState([]); // fetched team members
+  // Team users
+  const [allUsers, setAllUsers] = useState([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
   const [usersError, setUsersError] = useState("");
 
@@ -88,52 +91,50 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
+  // Reset on open
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        title: "",
-        date: "",
-        department: "IT",
-        type: "Online",
-        description: "1. ",
-        members: [],
-      });
-      setErrors({});
-      setIsDateOpen(false);
+    if (!isOpen) return;
 
-      // reset dropdown UI
-      setIsUserDropdownOpen(false);
-      setSearchQuery("");
-      setOutsiderName("");
-      setUsersError("");
-    }
+    setFormData({
+      title: "",
+      date: "",
+      department: "IT",
+      type: "Online",
+      description: "1. ",
+      members: [],
+    });
+    setErrors({});
+    setIsDateOpen(false);
+
+    setIsDropdownOpen(false);
+    setSearchQuery("");
+    setOutsiderName("");
+
+    setUsersError("");
   }, [isOpen]);
 
-  // ✅ Close dropdown on outside click / Esc
+  // Close dropdown on outside click/Esc
   useEffect(() => {
-    if (!isUserDropdownOpen) return;
+    if (!isDropdownOpen) return;
 
-    const onDocMouseDown = (e) => {
-      if (!dropdownWrapRef.current) return;
-      if (!dropdownWrapRef.current.contains(e.target)) {
-        setIsUserDropdownOpen(false);
-      }
+    const onDocDown = (e) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target)) setIsDropdownOpen(false);
     };
 
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setIsUserDropdownOpen(false);
+    const onKey = (e) => {
+      if (e.key === "Escape") setIsDropdownOpen(false);
     };
 
-    document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-
+    document.addEventListener("mousedown", onDocDown);
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onDocDown);
+      document.removeEventListener("keydown", onKey);
     };
-  }, [isUserDropdownOpen]);
+  }, [isDropdownOpen]);
 
-  // ✅ Fetch all team members when modal opens
+  // Fetch team members
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -151,9 +152,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
             name: cleanText(m?.fullname),
             email: m?.email ?? null,
             department: m?.department ?? "NA",
-            accountType: m?.accountType ?? "Team Member",
-            whatsappNumber: m?.whatsappNumber ?? null,
-            avatar: m?.avatar ?? null, // if you have it; otherwise null
+            avatar: m?.avatar ?? null,
           }))
           .filter((u) => u.id && u.name);
 
@@ -175,56 +174,58 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  // ✅ Toggle team user selection
+  // ✅ Toggle company user selection
   const handleUserSelect = (userId) => {
-    const user = allUsers.find((u) => u.id === userId);
+    const user = allUsers.find((u) => String(u.id) === String(userId));
     if (!user) return;
 
     setFormData((prev) => {
-      const exists = prev.members.some((m) => String(m.id) === String(userId));
+      const exists = prev.members.some(
+        (m) => m.memberType === "company" && String(m.id) === String(user.id),
+      );
 
       if (exists) {
         return {
           ...prev,
-          members: prev.members.filter((m) => String(m.id) !== String(userId)),
+          members: prev.members.filter(
+            (m) =>
+              !(m.memberType === "company" && String(m.id) === String(user.id)),
+          ),
         };
       }
 
-      const newMember = {
+      const member = {
         id: user.id,
         name: user.name,
         email: user.email,
         department: user.department,
-        accountType: user.accountType ?? "Team Member",
-        whatsappNumber: user.whatsappNumber ?? null,
+        memberType: "company",
       };
 
-      return { ...prev, members: [...prev.members, newMember] };
+      return { ...prev, members: [...prev.members, member] };
     });
   };
 
-  // ✅ Add outsider by typed name
+  // ✅ Add outsider
   const addOutsider = () => {
     const name = cleanText(outsiderName);
     if (!name) return;
 
     setFormData((prev) => {
-      // prevent duplicates by name (case-insensitive)
       const exists = prev.members.some(
-        (m) => cleanText(m.name).toLowerCase() === name.toLowerCase(),
+        (m) =>
+          m.memberType === "outside" &&
+          cleanText(m.name).toLowerCase() === name.toLowerCase(),
       );
       if (exists) return prev;
 
-      const outsider = {
+      const member = {
         id: `outside-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         name,
-        email: null,
-        department: "Outside",
-        accountType: "Outside",
-        whatsappNumber: null,
+        memberType: "outside",
       };
 
-      return { ...prev, members: [...prev.members, outsider] };
+      return { ...prev, members: [...prev.members, member] };
     });
 
     setOutsiderName("");
@@ -247,8 +248,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     );
   });
 
-  const selectedCount = formData.members.length;
-
+  // Description paste
   const handleDescriptionPaste = (e) => {
     const pastedRaw = e.clipboardData?.getData("text/plain") || "";
     if (!pastedRaw) return;
@@ -310,6 +310,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
     }, 0);
   };
 
+  // Enter numbering + Backspace renumber
   const handleDescriptionKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -378,43 +379,14 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
       formData.description,
     );
 
+    // ✅ Modal only sends UI data; parent converts to backend payload
     onSubmit({
       ...formData,
-      description: cleanedDescription, // ✅ stored clean (no numbering)
+      description: cleanedDescription,
     });
-
-    setFormData({
-      title: "",
-      date: "",
-      department: "IT",
-      type: "Online",
-      description: "1. ",
-      members: [],
-    });
-    setErrors({});
-    setIsDateOpen(false);
-
-    setIsUserDropdownOpen(false);
-    setSearchQuery("");
-    setOutsiderName("");
   };
 
   const handleClose = () => {
-    setFormData({
-      title: "",
-      date: "",
-      department: "IT",
-      type: "Online",
-      description: "1. ",
-      members: [],
-    });
-    setErrors({});
-    setIsDateOpen(false);
-
-    setIsUserDropdownOpen(false);
-    setSearchQuery("");
-    setOutsiderName("");
-
     onClose();
   };
 
@@ -423,6 +395,8 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
   const safeDepartment = departmentOptions.includes(formData.department)
     ? formData.department
     : "Other";
+
+  const selectedCount = formData.members.length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
@@ -544,69 +518,38 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
-            {/* ✅ Member MultiSelect dropdown like your image + outsider typing */}
-            <div ref={dropdownWrapRef} className="relative">
+            {/* ✅ Members dropdown + outsider */}
+            <div ref={wrapRef} className="relative">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Users className="h-4 w-4" />
                 Meeting Members
               </label>
 
-              {/* Trigger */}
               <button
                 type="button"
-                onClick={() => setIsUserDropdownOpen((v) => !v)}
+                onClick={() => setIsDropdownOpen((v) => !v)}
                 className="w-full flex items-center justify-between px-4 py-2.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                aria-haspopup="listbox"
-                aria-expanded={isUserDropdownOpen}
               >
-                <div className="min-w-0 flex items-center gap-2">
-                  {selectedCount === 0 ? (
-                    <span className="text-gray-500">Select User(s)</span>
-                  ) : (
-                    <span className="text-gray-900 font-medium truncate">
-                      {selectedCount} selected
-                    </span>
-                  )}
-                </div>
+                <span
+                  className={
+                    selectedCount
+                      ? "text-gray-900 font-medium"
+                      : "text-gray-500"
+                  }
+                >
+                  {selectedCount
+                    ? `${selectedCount} selected`
+                    : "Select User(s)"}
+                </span>
                 <ChevronDown
                   className={`h-4 w-4 text-gray-500 transition-transform ${
-                    isUserDropdownOpen ? "rotate-180" : ""
+                    isDropdownOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
 
-              {/* Selected chips (optional nice UX) */}
-              {formData.members.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {formData.members.slice(0, 6).map((m) => (
-                    <span
-                      key={m.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100"
-                      title={m.name}
-                    >
-                      <span className="max-w-[160px] truncate">{m.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(m.id)}
-                        className="hover:bg-emerald-100 rounded-full p-0.5"
-                        aria-label={`Remove ${m.name}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                  {formData.members.length > 6 && (
-                    <span className="text-xs text-gray-500">
-                      +{formData.members.length - 6} more
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Dropdown */}
-              {isUserDropdownOpen && (
+              {isDropdownOpen && (
                 <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                  {/* Search */}
                   <div className="p-2 border-b border-gray-100">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -623,7 +566,6 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                     )}
                   </div>
 
-                  {/* List */}
                   <ul role="listbox" className="py-1 overflow-y-auto max-h-60">
                     {isFetchingUsers ? (
                       <li className="px-3 py-2 text-gray-500 text-sm text-center flex items-center justify-center">
@@ -633,7 +575,9 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                     ) : filteredUsers.length > 0 ? (
                       filteredUsers.map((user) => {
                         const isSelected = formData.members.some(
-                          (m) => String(m.id) === String(user.id),
+                          (m) =>
+                            m.memberType === "company" &&
+                            String(m.id) === String(user.id),
                         );
 
                         return (
@@ -671,7 +615,7 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
 
                             <div className="flex-1 min-w-0">
                               <span className="block truncate font-medium">
-                                {user.name}{" "}
+                                {user.name}
                                 <span className="bg-purple-200 rounded-md px-2 text-purple-600 font-medium text-xs ml-2 inline-block">
                                   {user.department || "NA"}
                                 </span>
@@ -727,8 +671,8 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                 </div>
               )}
 
-              {/* Also show selected members list with delete (like your old UI) */}
-              {formData.members.length > 0 && (
+              {/* Selected list */}
+              {formData.members.length > 0 ? (
                 <div className="mt-3 border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-40 overflow-y-auto">
                   {formData.members.map((member) => (
                     <div
@@ -743,7 +687,11 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {member.name}
                             <span className="ml-2 text-xs text-gray-500">
-                              ({member.accountType || "Outside"})
+                              (
+                              {member.memberType === "company"
+                                ? "Company"
+                                : "Outside"}
+                              )
                             </span>
                           </p>
                           {member.email && (
@@ -765,9 +713,14 @@ const CreateMeetingModal = ({ isOpen, onClose, onSubmit }) => {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic mt-2">
+                  No members added yet
+                </p>
               )}
             </div>
 
+            {/* Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <FileText className="h-4 w-4" />
