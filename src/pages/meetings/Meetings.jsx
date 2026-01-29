@@ -464,7 +464,7 @@ const Meetings = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-4 sm:gap-5">
               {filteredMeetings.map((meeting) => (
                 <div
                   key={meeting.id}
@@ -560,7 +560,7 @@ const Meetings = () => {
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
                       >
                         <Eye className="h-4 w-4" />
-                        <span>View Details</span>
+                        <span>View</span>
                       </button>
 
                       <button
