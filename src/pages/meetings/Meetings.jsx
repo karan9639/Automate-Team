@@ -31,104 +31,122 @@ const cleanText = (v) =>
   String(v ?? "")
     .replace(/\s+/g, " ")
     .trim();
+
 const isObjectId = (v) => typeof v === "string" && /^[a-f\d]{24}$/i.test(v);
 
 /**
+ * ✅ Dedupe UI members:
+ * - Company: by companyMemberId OR email OR name
+ * - Outside: by name
+ */
+const dedupeUiMembers = (members = []) => {
+  const seenCompany = new Set();
+  const seenOutside = new Set();
+
+  return (members || []).filter((m) => {
+    const type = m?.memberType;
+
+    if (type === "company") {
+      const key =
+        (m?.companyMemberId && isObjectId(String(m.companyMemberId))
+          ? String(m.companyMemberId)
+          : cleanText(m?.email).toLowerCase()) ||
+        cleanText(m?.name).toLowerCase();
+
+      if (!key) return false;
+      if (seenCompany.has(key)) return false;
+      seenCompany.add(key);
+      return true;
+    }
+
+    // outside
+    const nameKey = cleanText(m?.name).toLowerCase();
+    if (!nameKey) return false;
+    if (seenOutside.has(nameKey)) return false;
+    seenOutside.add(nameKey);
+    return true;
+  });
+};
+
+/**
  * ✅ API -> UI members
- * Your fetch API returns:
+ * fetchMeetingNotes returns:
  * meetingMembers: [{ fullname, email, accountType, whatsappNumber }]
  *
- * We normalize into UI shape:
+ * Normalize into UI:
  * { id, name, email, accountType, whatsappNumber, memberType, companyMemberId }
  */
 const normalizeMembers = (meetingMembers, meetingId = "") => {
   if (!Array.isArray(meetingMembers)) return [];
 
-  return meetingMembers
+  const members = meetingMembers
     .map((m, idx) => {
-      // Support BOTH:
-      // 1) Your current API (fullname/email/accountType)
-      // 2) Future schema-like (companyMember/outsideMember)
       const fullname = cleanText(m?.fullname);
+      const email = m?.email ? cleanText(m.email) : null;
       const accountType =
-        m?.accountType ??
-        (m?.companyMember ? "Team Member" : "Outside") ??
-        (m?.email ? "Team Member" : "Outside");
+        cleanText(m?.accountType) || (email ? "Team Member" : "Outside");
 
-      // If backend ever returns schema:
-      const outsideName = cleanText(m?.outsideMember);
-      const companyMember = m?.companyMember;
-
-      // Determine name
-      const name =
-        fullname ||
-        outsideName ||
-        (typeof companyMember === "object"
-          ? cleanText(
-              companyMember?.fullname ??
-                companyMember?.name ??
-                companyMember?.email,
-            )
-          : "") ||
-        "";
-
+      const name = fullname || "";
       if (!name) return null;
 
-      // Determine if company vs outside
       const memberType = accountType === "Team Member" ? "company" : "outside";
 
-      // If companyMember is populated or ObjectId:
-      const companyMemberId =
-        memberType === "company"
-          ? typeof companyMember === "object"
-            ? String(companyMember?._id ?? "")
-            : typeof companyMember === "string"
-              ? String(companyMember)
-              : null
-          : null;
-
+      // NOTE: list API does NOT include companyMemberId. We'll hydrate it in ViewMeetingModal.
       return {
-        id: `${meetingId}-member-${idx}`, // UI id (safe)
+        id: `${meetingId}-member-${idx}`, // UI-only id
         name,
-        email:
-          m?.email ??
-          (typeof companyMember === "object"
-            ? (companyMember?.email ?? null)
-            : null),
+        email,
         accountType,
         whatsappNumber: m?.whatsappNumber ?? null,
         memberType,
-        companyMemberId:
-          companyMemberId && isObjectId(companyMemberId)
-            ? companyMemberId
-            : null,
+        companyMemberId: null, // hydrated in modal from fetchAllTeamMembers
       };
     })
     .filter(Boolean);
+
+  return dedupeUiMembers(members);
 };
 
 /**
- * ✅ UI -> Backend payload (Mongo model expects)
+ * ✅ UI -> Backend payload
  * meetingMembers: [{ companyMember, outsideMember }]
+ *
+ * IMPORTANT:
+ * - Company MUST have ObjectId (companyMemberId)
+ * - Outside uses name
+ * - DEDUPE before sending
  */
 const toBackendMeetingMembers = (members = []) => {
   if (!Array.isArray(members)) return [];
 
+  const seenCompany = new Set();
+  const seenOutside = new Set();
+
   return members
     .map((m) => {
       const name = cleanText(m?.name);
-      const cmId = m?.companyMemberId ?? m?.id;
 
-      // Company member (must send ObjectId)
-      if (
-        (m?.memberType === "company" || m?.accountType === "Team Member") &&
-        isObjectId(String(cmId))
-      ) {
-        return { companyMember: String(cmId), outsideMember: null };
+      // Prefer companyMemberId if present
+      const cmId =
+        m?.companyMemberId && isObjectId(String(m.companyMemberId))
+          ? String(m.companyMemberId)
+          : isObjectId(String(m?.id))
+            ? String(m.id)
+            : null;
+
+      const isCompany =
+        m?.memberType === "company" || m?.accountType === "Team Member";
+
+      if (isCompany && cmId && isObjectId(cmId)) {
+        if (seenCompany.has(cmId)) return null;
+        seenCompany.add(cmId);
+        return { companyMember: cmId, outsideMember: null };
       }
 
-      // Outside member
       if (name) {
+        const key = name.toLowerCase();
+        if (seenOutside.has(key)) return null;
+        seenOutside.add(key);
         return { companyMember: null, outsideMember: name };
       }
 
@@ -151,9 +169,14 @@ const Meetings = () => {
   const [meetings, setMeetings] = useState([]);
   const [error, setError] = useState(null);
 
+  // ✅ Trigger re-fetch after create/update/delete
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // ✅ useEffect you requested: whenever refreshKey changes, fetch meetingNotes again
   useEffect(() => {
     loadMeetings();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   const loadMeetings = async () => {
     try {
@@ -173,7 +196,16 @@ const Meetings = () => {
           members: normalizeMembers(meeting.meetingMembers, meeting._id),
           description: meeting.meetingDescription,
         }));
+
         setMeetings(meetingsData);
+
+        // ✅ keep selectedMeeting fresh after refresh
+        if (selectedMeeting?.id) {
+          const fresh = meetingsData.find(
+            (m) => String(m.id) === String(selectedMeeting.id),
+          );
+          if (fresh) setSelectedMeeting(fresh);
+        }
       } else {
         setMeetings([]);
       }
@@ -200,7 +232,9 @@ const Meetings = () => {
     try {
       const apiData = {
         meetingTitle: meetingData.title,
-        meetingDate: new Date(meetingData.date).toISOString(), // Date in schema
+        meetingDate: meetingData.date
+          ? `${meetingData.date}T00:00:00.000Z`
+          : null,
         department: meetingData.department,
         meetingMode: meetingData.type,
         meetingMembers: toBackendMeetingMembers(meetingData.members),
@@ -211,19 +245,22 @@ const Meetings = () => {
       if (!result?.success)
         throw new Error(result?.message || "Failed to create meeting");
 
-      await loadMeetings();
       setIsCreateModalOpen(false);
+      setRefreshKey((k) => k + 1); // ✅ re-fetch list
     } catch (err) {
       console.error("[Meetings] Error creating meeting note:", err);
       alert("Failed to create meeting note. Please try again.");
     }
   };
 
+  // ✅ Modal calls onUpdate(updatedMeeting)
   const handleUpdateMeeting = async (updatedMeeting) => {
     try {
       const apiData = {
         meetingTitle: updatedMeeting.title,
-        meetingDate: new Date(updatedMeeting.date).toISOString(),
+        meetingDate: updatedMeeting.date
+          ? `${updatedMeeting.date}T00:00:00.000Z`
+          : null,
         department: updatedMeeting.department,
         meetingMode: updatedMeeting.type,
         meetingMembers: toBackendMeetingMembers(updatedMeeting.members),
@@ -231,29 +268,12 @@ const Meetings = () => {
       };
 
       const result = await updateMeetingNote(updatedMeeting.id, apiData);
+      if (!result?.success)
+        throw new Error(result?.message || "Failed to update meeting");
 
-      // Some APIs return result.data.meetingNote, some return result.data
-      const updated = result?.data?.meetingNote ?? result?.data;
-
-      if (result?.success && updated) {
-        const transformedMeeting = {
-          id: updated._id,
-          title: updated.meetingTitle,
-          date: updated.meetingDate,
-          createdAt: updated.createdAt,
-          department: updated.department,
-          type: updated.meetingMode,
-          members: normalizeMembers(updated.meetingMembers, updated._id),
-          description: updated.meetingDescription,
-        };
-
-        setMeetings((prev) =>
-          prev.map((m) =>
-            m.id === updatedMeeting.id ? transformedMeeting : m,
-          ),
-        );
-        setSelectedMeeting(transformedMeeting);
-      }
+      // ✅ Do NOT patch list using update response (different shape).
+      // ✅ Always re-fetch meetingNotes list so UI shows correct normalized data.
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error("[Meetings] Error updating meeting note:", err);
       alert("Failed to update meeting note. Please try again.");
@@ -263,10 +283,11 @@ const Meetings = () => {
   const handleDeleteMeeting = async (meetingId) => {
     try {
       const result = await deleteMeetingNote(meetingId);
-      if (result?.success) {
-        setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
-        closeViewModal();
-      }
+      if (!result?.success)
+        throw new Error(result?.message || "Failed to delete meeting");
+
+      closeViewModal();
+      setRefreshKey((k) => k + 1); // ✅ re-fetch list
     } catch (err) {
       console.error("[Meetings] Error deleting meeting note:", err);
       alert("Failed to delete meeting note. Please try again.");
@@ -368,7 +389,6 @@ const Meetings = () => {
             </button>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -376,7 +396,7 @@ const Meetings = () => {
                 <p className="text-sm text-red-800 break-words">{error}</p>
               </div>
               <button
-                onClick={loadMeetings}
+                onClick={() => setRefreshKey((k) => k + 1)}
                 className="text-sm font-medium text-red-600 hover:text-red-700 underline"
               >
                 Retry
@@ -384,7 +404,6 @@ const Meetings = () => {
             </div>
           )}
 
-          {/* Search + Filter */}
           {!loading && meetings.length > 0 && (
             <div className="mt-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
@@ -431,8 +450,7 @@ const Meetings = () => {
               No meetings yet
             </h3>
             <p className="text-gray-600 mb-6 text-center max-w-md">
-              Get started by creating your first meeting. Click the button below
-              to add a new meeting.
+              Get started by creating your first meeting.
             </p>
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -449,8 +467,7 @@ const Meetings = () => {
               No meetings found
             </h3>
             <p className="text-gray-600 mb-6 text-center max-w-md">
-              Try adjusting your search or filter criteria to find what
-              you&apos;re looking for.
+              Try adjusting your search or filter criteria.
             </p>
             <button
               onClick={() => {
@@ -518,7 +535,6 @@ const Meetings = () => {
                         <p className="text-xs text-gray-500 mb-1">
                           Description:
                         </p>
-
                         <div className="space-y-1">
                           {getDescriptionPreview(meeting.description).map(
                             (line, index) => (
@@ -529,18 +545,6 @@ const Meetings = () => {
                                 {line}
                               </p>
                             ),
-                          )}
-
-                          {meeting.description
-                            .split("\n")
-                            .filter((l) => l.trim()).length > 3 && (
-                            <p className="text-xs text-gray-400 italic">
-                              +
-                              {meeting.description
-                                .split("\n")
-                                .filter((l) => l.trim()).length - 3}{" "}
-                              more...
-                            </p>
                           )}
                         </div>
                       </div>

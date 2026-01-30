@@ -60,48 +60,77 @@ const cleanText = (v) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const isObjectId = (v) => typeof v === "string" && /^[a-f\d]{24}$/i.test(v);
+
+const dedupeMembers = (members = []) => {
+  const seenCompany = new Set();
+  const seenOutside = new Set();
+
+  return (members || []).filter((m) => {
+    if (m.memberType === "company") {
+      const key =
+        (m.companyMemberId && isObjectId(String(m.companyMemberId))
+          ? String(m.companyMemberId)
+          : cleanText(m.email).toLowerCase()) ||
+        cleanText(m.name).toLowerCase();
+
+      if (!key) return false;
+      if (seenCompany.has(key)) return false;
+      seenCompany.add(key);
+      return true;
+    }
+
+    const k = cleanText(m.name).toLowerCase();
+    if (!k) return false;
+    if (seenOutside.has(k)) return false;
+    seenOutside.add(k);
+    return true;
+  });
+};
+
 const normalizeMemberType = (m) => {
   const raw = cleanText(m?.memberType || m?.accountType || "");
   const low = raw.toLowerCase();
-
+  if (low.includes("team")) return "company";
   if (low.includes("company")) return "company";
   if (low.includes("outside")) return "outside";
-
-  // Heuristic fallback
-  if (m?.companyMemberId || m?.department || m?.email) return "company";
+  if (m?.email) return "company";
   return "outside";
 };
 
 const normalizeMeetingMembers = (members) => {
   if (!Array.isArray(members)) return [];
 
-  return members
-    .map((m) => {
-      const name = cleanText(m?.name || m?.fullname || m?.fullName);
-      if (!name) return null;
+  return dedupeMembers(
+    members
+      .map((m) => {
+        const name = cleanText(m?.name || m?.fullname || m?.fullName);
+        if (!name) return null;
 
-      const memberType = normalizeMemberType(m);
+        const memberType = normalizeMemberType(m);
 
-      const id =
-        String(
+        // keep UI id stable
+        const id = String(
           m?.id ??
             m?._id ??
-            m?.companyMemberId ??
-            (memberType === "outside"
-              ? `outside-${Date.now()}-${Math.random().toString(16).slice(2)}`
-              : ""),
-        ) || "";
+            `mem-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        );
 
-      return {
-        id,
-        name,
-        email: m?.email ?? null,
-        department: m?.department ?? "NA",
-        avatar: m?.avatar ?? null,
-        memberType, // "company" | "outside"
-      };
-    })
-    .filter(Boolean);
+        return {
+          id,
+          name,
+          email: m?.email ?? null,
+          department: m?.department ?? "NA",
+          avatar: m?.avatar ?? null,
+          accountType:
+            m?.accountType ??
+            (memberType === "company" ? "Team Member" : "Outside"),
+          memberType,
+          companyMemberId: m?.companyMemberId ?? null, // will hydrate
+        };
+      })
+      .filter(Boolean),
+  );
 };
 
 const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
@@ -119,7 +148,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
 
   const descriptionRef = useRef(null);
 
-  // Date UX fix (same as Create)
+  // Date UX fix
   const dateInputRef = useRef(null);
   const [isDateOpen, setIsDateOpen] = useState(false);
 
@@ -131,7 +160,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     }
   };
 
-  // Members dropdown state (same as Create)
+  // Members dropdown state
   const wrapRef = useRef(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -202,18 +231,13 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
       department: meeting.department || "IT",
       type: meeting.type || "Online",
       description: lines.length ? linesToNumberedText(lines) : "1. ",
-      members: normalizeMeetingMembers(meeting.members).filter((m) =>
-        cleanText(m?.name),
-      ),
+      members: normalizeMeetingMembers(meeting.members || []),
     });
 
     setIsEditing(false);
-
-    // reset dropdown stuff
     setIsDropdownOpen(false);
     setSearchQuery("");
     setOutsiderName("");
-
     setUsersError("");
     setIsDateOpen(false);
   }, [meeting]);
@@ -239,14 +263,14 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     };
   }, [isDropdownOpen]);
 
-  // Fetch team members (when editing starts + modal open)
+  // Fetch team members (when editing starts)
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setIsFetchingUsers(true);
         setUsersError("");
 
-        const res = await userApi.fetchAllTeamMembers(); // /api/v1/user/fetch-all-team-members
+        const res = await userApi.fetchAllTeamMembers();
         const rows = res?.data?.data ?? [];
 
         const users = rows
@@ -274,18 +298,81 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     if (isOpen && isEditing && allUsers.length === 0) fetchUsers();
   }, [isOpen, isEditing, allUsers.length]);
 
+  // ✅ Hydrate companyMemberId for existing "Team Member" entries (from list API)
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!allUsers.length) return;
+
+    const byEmail = new Map();
+    const byName = new Map();
+    allUsers.forEach((u) => {
+      if (u.email) byEmail.set(cleanText(u.email).toLowerCase(), u);
+      byName.set(cleanText(u.name).toLowerCase(), u);
+    });
+
+    setEditForm((prev) => {
+      const nextMembers = (prev.members || []).map((m) => {
+        if (m.memberType !== "company") return m;
+
+        // already has objectId
+        if (m.companyMemberId && isObjectId(String(m.companyMemberId)))
+          return m;
+
+        const emailKey = cleanText(m.email).toLowerCase();
+        const nameKey = cleanText(m.name).toLowerCase();
+
+        const found =
+          (emailKey && byEmail.get(emailKey)) ||
+          (nameKey && byName.get(nameKey)) ||
+          null;
+
+        if (!found) return m;
+
+        return {
+          ...m,
+          id: found.id, // important for selection toggle
+          companyMemberId: found.id,
+          name: found.name,
+          email: found.email ?? m.email,
+          department: found.department ?? m.department,
+          avatar: found.avatar ?? m.avatar,
+          accountType: "Team Member",
+          memberType: "company",
+        };
+      });
+
+      return { ...prev, members: dedupeMembers(nextMembers) };
+    });
+  }, [isEditing, allUsers]);
+
   const handleChange = (field, value) => {
     setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // ✅ Toggle company user selection (same as Create)
+  const filteredUsers = allUsers.filter((u) => {
+    const q = cleanText(searchQuery).toLowerCase();
+    if (!q) return true;
+    return (
+      cleanText(u.name).toLowerCase().includes(q) ||
+      cleanText(u.email || "")
+        .toLowerCase()
+        .includes(q) ||
+      cleanText(u.department || "")
+        .toLowerCase()
+        .includes(q)
+    );
+  });
+
+  // Toggle company selection
   const handleUserSelect = (userId) => {
     const user = allUsers.find((u) => String(u.id) === String(userId));
     if (!user) return;
 
     setEditForm((prev) => {
       const exists = prev.members.some(
-        (m) => m.memberType === "company" && String(m.id) === String(user.id),
+        (m) =>
+          m.memberType === "company" &&
+          String(m.companyMemberId || m.id) === String(user.id),
       );
 
       if (exists) {
@@ -293,47 +380,47 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
           ...prev,
           members: prev.members.filter(
             (m) =>
-              !(m.memberType === "company" && String(m.id) === String(user.id)),
+              !(
+                m.memberType === "company" &&
+                String(m.companyMemberId || m.id) === String(user.id)
+              ),
           ),
         };
       }
 
       const member = {
         id: user.id,
+        companyMemberId: user.id,
         name: user.name,
         email: user.email,
         department: user.department,
         avatar: user.avatar ?? null,
+        accountType: "Team Member",
         memberType: "company",
       };
 
-      return { ...prev, members: [...prev.members, member] };
+      return { ...prev, members: dedupeMembers([...prev.members, member]) };
     });
   };
 
-  // ✅ Add outsider (same as Create)
+  // Add outsider
   const addOutsider = () => {
     const name = cleanText(outsiderName);
     if (!name) return;
 
     setEditForm((prev) => {
-      const exists = prev.members.some(
-        (m) =>
-          m.memberType === "outside" &&
-          cleanText(m.name).toLowerCase() === name.toLowerCase(),
-      );
-      if (exists) return prev;
-
       const member = {
         id: `outside-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         name,
-        memberType: "outside",
         email: null,
         department: "NA",
         avatar: null,
+        accountType: "Outside",
+        memberType: "outside",
+        companyMemberId: null,
       };
 
-      return { ...prev, members: [...prev.members, member] };
+      return { ...prev, members: dedupeMembers([...prev.members, member]) };
     });
 
     setOutsiderName("");
@@ -346,17 +433,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     }));
   };
 
-  const filteredUsers = allUsers.filter((u) => {
-    const q = cleanText(searchQuery).toLowerCase();
-    if (!q) return true;
-    return (
-      cleanText(u.name).toLowerCase().includes(q) ||
-      cleanText(u.email).toLowerCase().includes(q) ||
-      cleanText(u.department).toLowerCase().includes(q)
-    );
-  });
-
-  // ✅ Paste Excel in edit mode (keeps alignment)
+  // Paste Excel (alignment)
   const handleDescriptionPaste = (e) => {
     const pastedRaw = e.clipboardData?.getData("text/plain") || "";
     if (!pastedRaw) return;
@@ -417,7 +494,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
     }, 0);
   };
 
-  // ✅ Enter numbering + Backspace renumber
+  // Enter numbering + Backspace renumber
   const handleDescriptionKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -444,43 +521,36 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
         }, 0);
       }
     }
-
-    if (e.key === "Backspace") {
-      setTimeout(() => {
-        const value = descriptionRef.current?.value || "";
-        const lines = value.split("\n");
-
-        let needsRenumber = false;
-        lines.forEach((line, index) => {
-          const match = line.match(/^(\d+)\.\s?/);
-          if (match && Number.parseInt(match[1], 10) !== index + 1)
-            needsRenumber = true;
-        });
-
-        if (needsRenumber) {
-          const renumbered = lines
-            .map((line, index) => line.replace(/^(\d+)\.\s?/, `${index + 1}. `))
-            .join("\n");
-          setEditForm((prev) => ({ ...prev, description: renumbered }));
-        }
-      }, 0);
-    }
   };
 
-  const handleSave = () => {
+  // ✅ Save: now company member keeps its companyMemberId
+  const handleSave = async () => {
     const cleanedDescription = prepareDescriptionForStorage(
       editForm.description,
     );
+
+    // validate company members have companyMemberId
+    const bad = editForm.members.some(
+      (m) =>
+        m.memberType === "company" &&
+        !isObjectId(String(m.companyMemberId || "")),
+    );
+    if (bad) {
+      setUsersError(
+        "Some Team Member IDs are missing. Remove and reselect them from dropdown.",
+      );
+      return;
+    }
 
     const updatedMeeting = {
       ...meeting,
       ...editForm,
       description: cleanedDescription,
       date: editForm.date, // YYYY-MM-DD
-      members: editForm.members,
+      members: dedupeMembers(editForm.members),
     };
 
-    onUpdate(updatedMeeting);
+    await onUpdate(updatedMeeting); // parent will refresh list via refreshKey
     setIsEditing(false);
 
     setIsDropdownOpen(false);
@@ -496,16 +566,14 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
       department: meeting.department || "IT",
       type: meeting.type || "Online",
       description: lines.length ? linesToNumberedText(lines) : "1. ",
-      members: normalizeMeetingMembers(meeting.members).filter((m) =>
-        cleanText(m?.name),
-      ),
+      members: normalizeMeetingMembers(meeting.members || []),
     });
 
     setIsEditing(false);
-
     setIsDropdownOpen(false);
     setSearchQuery("");
     setOutsiderName("");
+    setUsersError("");
   };
 
   const handleDeleteClick = () => setIsDeleteModalOpen(true);
@@ -518,11 +586,9 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
   if (!isOpen || !meeting) return null;
 
   const viewLines = getDescriptionLines(meeting.description || "");
-
   const safeDepartment = departmentOptions.includes(editForm.department)
     ? editForm.department
     : "Other";
-
   const selectedCount = editForm.members.length;
 
   return (
@@ -701,54 +767,15 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
               )}
             </div>
 
-            {/* ✅ Members (Create-like dropdown in edit mode) */}
+            {/* Members */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                 <Users className="h-4 w-4" />
                 Meeting Members
               </label>
 
-              {!isEditing ? (
-                Array.isArray(meeting.members) && meeting.members.length > 0 ? (
-                  <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-40 overflow-y-auto">
-                    {normalizeMeetingMembers(meeting.members).map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between px-3 py-2"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
-                            {(member.name || "?").charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {member.name}
-                              <span className="ml-2 text-xs text-gray-500">
-                                (
-                                {member.memberType === "company"
-                                  ? "Company"
-                                  : "Outside"}
-                                )
-                              </span>
-                            </p>
-                            {member.email && (
-                              <p className="text-xs text-gray-500 truncate">
-                                {member.email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 italic">
-                    No members assigned
-                  </p>
-                )
-              ) : (
+              {isEditing ? (
                 <div ref={wrapRef} className="relative">
-                  {/* Dropdown trigger */}
                   <button
                     type="button"
                     onClick={() => setIsDropdownOpen((v) => !v)}
@@ -766,13 +793,10 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                         : "Select User(s)"}
                     </span>
                     <ChevronDown
-                      className={`h-4 w-4 text-gray-500 transition-transform ${
-                        isDropdownOpen ? "rotate-180" : ""
-                      }`}
+                      className={`h-4 w-4 text-gray-500 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
                     />
                   </button>
 
-                  {/* Dropdown */}
                   {isDropdownOpen && (
                     <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
                       <div className="p-2 border-b border-gray-100">
@@ -793,10 +817,7 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                         )}
                       </div>
 
-                      <ul
-                        role="listbox"
-                        className="py-1 overflow-y-auto max-h-60"
-                      >
+                      <ul className="py-1 overflow-y-auto max-h-60">
                         {isFetchingUsers ? (
                           <li className="px-3 py-2 text-gray-500 text-sm text-center flex items-center justify-center">
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -807,14 +828,13 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                             const isSelected = editForm.members.some(
                               (m) =>
                                 m.memberType === "company" &&
-                                String(m.id) === String(user.id),
+                                String(m.companyMemberId || m.id) ===
+                                  String(user.id),
                             );
 
                             return (
                               <li
                                 key={user.id}
-                                role="option"
-                                aria-selected={isSelected}
                                 className={`px-3 py-2 cursor-pointer flex items-center text-sm ${
                                   isSelected
                                     ? "bg-emerald-50"
@@ -833,17 +853,6 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                                     <Check className="h-3 w-3 text-white" />
                                   )}
                                 </div>
-
-                                <img
-                                  src={user.avatar || "/placeholder.svg"}
-                                  alt={user.name}
-                                  className="w-7 h-7 rounded-full mr-2 flex-shrink-0 object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.src = `/placeholder.svg?height=28&width=28&query=${encodeURIComponent(
-                                      user.name,
-                                    )}`;
-                                  }}
-                                />
 
                                 <div className="flex-1 min-w-0">
                                   <span className="block truncate font-medium">
@@ -951,10 +960,46 @@ const ViewMeetingModal = ({ isOpen, onClose, meeting, onUpdate, onDelete }) => {
                     </p>
                   )}
                 </div>
+              ) : meeting.members?.length > 0 ? (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-40 overflow-y-auto">
+                  {meeting.members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-medium">
+                          {(member.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {member.name}
+                            <span className="ml-2 text-xs text-gray-500">
+                              (
+                              {member.memberType === "company"
+                                ? "Company"
+                                : "Outside"}
+                              )
+                            </span>
+                          </p>
+                          {member.email && (
+                            <p className="text-xs text-gray-500 truncate">
+                              {member.email}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  No members assigned
+                </p>
               )}
             </div>
 
-            {/* ✅ Description */}
+            {/* Description */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                 <FileText className="h-4 w-4" />
