@@ -169,6 +169,29 @@ const Meetings = () => {
   const [meetings, setMeetings] = useState([]);
   const [error, setError] = useState(null);
 
+  const [fromDate, setFromDate] = useState(""); // "YYYY-MM-DD"
+  const [toDate, setToDate] = useState(""); // "YYYY-MM-DD"
+
+  const startOfDayMs = (yyyyMmDd) => {
+    if (!yyyyMmDd) return null;
+    const [y, m, d] = yyyyMmDd.split("-").map(Number);
+    // local midnight
+    return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+  };
+
+  const endOfDayMs = (yyyyMmDd) => {
+    if (!yyyyMmDd) return null;
+    const [y, m, d] = yyyyMmDd.split("-").map(Number);
+    // local 23:59:59.999
+    return new Date(y, m - 1, d, 23, 59, 59, 999).getTime();
+  };
+
+  const meetingDateMs = (meetingDateString) => {
+    if (!meetingDateString) return null;
+    const ms = new Date(meetingDateString).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  };
+
   // ✅ Trigger re-fetch after create/update/delete
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -177,6 +200,15 @@ const Meetings = () => {
     loadMeetings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
+
+  useEffect(() => {
+    if (fromDate && toDate && startOfDayMs(fromDate) > endOfDayMs(toDate)) {
+      // auto-fix: if from is after to, clear to
+      setToDate("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromDate]);
+  
 
   const loadMeetings = async () => {
     try {
@@ -349,10 +381,20 @@ const Meetings = () => {
     const matchesSearch = meeting.title
       ?.toLowerCase()
       .includes(searchTerm.toLowerCase());
+
     const matchesDepartment =
       filterDepartment === "all" || meeting.department === filterDepartment;
-    return matchesSearch && matchesDepartment;
+
+    const ms = meetingDateMs(meeting.date);
+    const fromMs = startOfDayMs(fromDate);
+    const toMs = endOfDayMs(toDate);
+
+    const matchesFrom = fromMs == null || (ms != null && ms >= fromMs);
+    const matchesTo = toMs == null || (ms != null && ms <= toMs);
+
+    return matchesSearch && matchesDepartment && matchesFrom && matchesTo;
   });
+
 
   const departments = [
     "all",
@@ -406,7 +448,7 @@ const Meetings = () => {
 
           {!loading && meetings.length > 0 && (
             <div className="mt-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_220px_160px_160px] gap-3">
                 <div className="relative min-w-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -431,6 +473,27 @@ const Meetings = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+                {/* From Date */}
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+                    title="From date"
+                  />
+                </div>
+
+                {/* To Date */}
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+                    title="To date"
+                  />
                 </div>
               </div>
             </div>
@@ -473,6 +536,8 @@ const Meetings = () => {
               onClick={() => {
                 setSearchTerm("");
                 setFilterDepartment("all");
+                setFromDate("");
+                setToDate("");
               }}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
             >
