@@ -282,7 +282,7 @@ const ViewTaskModal = ({
     setIsSubmittingComment(true);
     try {
       const commentData = { comment: newComment.trim() };
-      await dispatch(createTaskComment({ taskId, commentData }));
+      await dispatch(createTaskComment({ taskId, commentData })).unwrap();
       setNewComment("");
     } catch (error) {
       console.error("Failed to submit comment:", error);
