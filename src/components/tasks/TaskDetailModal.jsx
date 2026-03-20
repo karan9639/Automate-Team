@@ -69,6 +69,22 @@ const TaskDetailModal = ({ isOpen, onClose, taskId, onEdit, onDelete }) => {
     }
   };
 
+
+  const getAssigneeNames = (assignees) => {
+    if (!assignees) return "Assigned User";
+
+    const arr = Array.isArray(assignees) ? assignees : [assignees];
+    const names = arr
+      .map((user) => {
+        if (!user) return null;
+        if (typeof user === "string") return user;
+        return user.fullname || user.name || null;
+      })
+      .filter(Boolean);
+
+    return names.length ? names.join(", ") : "Assigned User";
+  };
+
   const isOverdue = () => {
     if (!task?.taskDueDate || task.taskStatus?.toLowerCase() === "completed")
       return false;
@@ -245,9 +261,7 @@ const TaskDetailModal = ({ isOpen, onClose, taskId, onEdit, onDelete }) => {
               <div>
                 <p className="text-sm font-medium text-gray-500">Assigned To</p>
                 <p className="text-gray-900">
-                  {typeof task.taskAssignedTo === "object"
-                    ? task.taskAssignedTo.fullname || task.taskAssignedTo.name
-                    : "Assigned User"}
+                  {getAssigneeNames(task.taskAssignedTo)}
                 </p>
               </div>
             </div>

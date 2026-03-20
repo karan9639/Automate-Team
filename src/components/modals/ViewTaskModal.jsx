@@ -84,10 +84,15 @@ const ViewTaskModal = ({
     []
   );
 
-  const selectedUserName = editFormData.taskAssignedTo
-    ? allUsers.find((u) => u.id === editFormData.taskAssignedTo)?.name ||
-      "Select User"
-    : "Select User";
+  const selectedUserNames = Array.isArray(editFormData.taskAssignedTo)
+    ? editFormData.taskAssignedTo
+        .map((id) => allUsers.find((u) => u.id === id)?.name)
+        .filter(Boolean)
+    : [];
+
+  const selectedUserLabel = selectedUserNames.length
+    ? selectedUserNames.join(", ")
+    : "Select User(s)";
 
   const fetchUsersForDropdown = async () => {
     if (allUsers.length > 0 && !isFetchingUsers) return;
@@ -115,22 +120,20 @@ const ViewTaskModal = ({
   };
 
   // --- Assignee helpers (API can return string, object, or array) ---
-  const extractPrimaryAssigneeId = (t) => {
+  const extractAssigneeIds = (t) => {
     const raw = t?.taskAssignedTo ?? t?.assignedTo;
-    if (!raw) return "";
+    if (!raw) return [];
 
-    if (Array.isArray(raw)) {
-      const first = raw[0];
-      if (!first) return "";
-      if (typeof first === "string") return first;
-      if (typeof first === "object") return first?._id || first?.id || "";
-      return "";
-    }
+    const arr = Array.isArray(raw) ? raw : [raw];
 
-    if (typeof raw === "string") return raw;
-    if (typeof raw === "object") return raw?._id || raw?.id || "";
-
-    return "";
+    return arr
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === "string") return item;
+        if (typeof item === "object") return item?._id || item?.id || null;
+        return null;
+      })
+      .filter(Boolean);
   };
 
   const resolveAssigneeNames = (t) => {
@@ -187,7 +190,7 @@ const ViewTaskModal = ({
         taskCategory: task?.taskCategory || task?.category || "",
         taskDueDate: task?.taskDueDate || task?.dueDate || task?.due_date || "",
         // Assignees can be returned as string, object, or array
-        taskAssignedTo: extractPrimaryAssigneeId(task),
+        taskAssignedTo: extractAssigneeIds(task),
         taskFrequency:
           task?.taskFrequency?.type || task?.frequency?.type || "one-time",
       });
@@ -303,13 +306,23 @@ const ViewTaskModal = ({
   };
 
   const handleUserSelect = (userId) => {
-    setEditFormData((prev) => ({
-      ...prev,
-      taskAssignedTo: userId, // Store as single user ID, not array
-    }));
-    setShowUserDropdown(false);
-    if (formErrors.taskAssignedTo)
+    setEditFormData((prev) => {
+      const current = Array.isArray(prev.taskAssignedTo)
+        ? prev.taskAssignedTo
+        : [];
+      const exists = current.includes(userId);
+
+      return {
+        ...prev,
+        taskAssignedTo: exists
+          ? current.filter((id) => id !== userId)
+          : [...current, userId],
+      };
+    });
+
+    if (formErrors.taskAssignedTo) {
       setFormErrors((prev) => ({ ...prev, taskAssignedTo: "" }));
+    }
   };
 
   const handleCategorySelect = (categoryName) => {
@@ -386,7 +399,7 @@ const ViewTaskModal = ({
     ? editFormData.taskDueDate
     : task?.taskDueDate || task?.dueDate || task?.due_date;
   const taskAssignedTo = isEditMode
-    ? selectedUserName
+    ? selectedUserNames
     : (() => {
         const names = resolveAssigneeNames(task);
         return names.length ? names.join(", ") : "Not assigned";
@@ -423,9 +436,11 @@ const ViewTaskModal = ({
         "Task description is required and cannot be empty";
     }
 
-    // Fix: Check for single user assignment, not array
-    if (!editFormData.taskAssignedTo) {
-      errors.taskAssignedTo = "A user must be assigned";
+    if (
+      !Array.isArray(editFormData.taskAssignedTo) ||
+      editFormData.taskAssignedTo.length === 0
+    ) {
+      errors.taskAssignedTo = "At least one user must be assigned";
     }
 
     if (
@@ -491,8 +506,7 @@ const ViewTaskModal = ({
       taskPriority: task?.taskPriority || task?.priority || "medium",
       taskCategory: task?.taskCategory || task?.category || "",
       taskDueDate: task?.taskDueDate || task?.dueDate || task?.due_date || "",
-      taskAssignedTo:
-        extractPrimaryAssigneeId(task),
+      taskAssignedTo: extractAssigneeIds(task),
       taskFrequency:
         task?.taskFrequency?.type || task?.frequency?.type || "one-time",
     });
@@ -516,7 +530,7 @@ const ViewTaskModal = ({
       const payload = {
         taskTitle: editFormData.taskTitle.trim(),
         taskDescription: editFormData.taskDescription.trim(),
-        taskAssignedTo: editFormData.taskAssignedTo, // Single user ID
+        taskAssignedTo: editFormData.taskAssignedTo,
         taskCategory: editFormData.taskCategory.trim(),
         taskDueDate: editFormData.taskDueDate
           ? new Date(editFormData.taskDueDate).toISOString()
@@ -838,7 +852,7 @@ const ViewTaskModal = ({
                             aria-haspopup="listbox"
                           >
                             <span className="text-gray-700 dark:text-gray-200 truncate">
-                              {selectedUserName}
+                              {selectedUserLabel}
                             </span>
                             {isFetchingUsers ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -862,17 +876,16 @@ const ViewTaskModal = ({
                                       key={user.id}
                                       role="option"
                                       aria-selected={
-                                        editFormData.taskAssignedTo === user.id
+                                        editFormData.taskAssignedTo?.includes(user.id)
                                       }
                                       className={`px-3 py-2 cursor-pointer flex items-center text-gray-900 dark:text-gray-100 ${
-                                        editFormData.taskAssignedTo === user.id
+                                        editFormData.taskAssignedTo?.includes(user.id)
                                           ? "bg-blue-100 dark:bg-blue-600 font-semibold"
                                           : "hover:bg-gray-100 dark:hover:bg-gray-600"
                                       }`}
                                       onClick={() => handleUserSelect(user.id)}
                                     >
-                                      {editFormData.taskAssignedTo ===
-                                        user.id && (
+                                      {editFormData.taskAssignedTo?.includes(user.id) && (
                                         <Check className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                                       )}
                                       <img
